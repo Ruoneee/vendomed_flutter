@@ -1,30 +1,30 @@
+// ignore_for_file: use_full_hex_values_for_flutter_colors
+
 import 'package:flutter/material.dart';
 import 'dart:async'; // Import for Timer
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  SplashScreenState createState() => SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  int _dotCount = 0; // Track the number of dots for the loading effect
+class SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  int dotCount = 0; // Track the number of dots for the loading effect
 
   @override
   void initState() {
     super.initState();
 
     // Change the number of dots every 500 milliseconds
-    Timer.periodic(Duration(milliseconds: 500), (Timer timer) {
+    Timer.periodic(const Duration(milliseconds: 500), (Timer timer) {
       setState(() {
-        _dotCount = (_dotCount + 1) % 4; // Cycle through 0-3 dots
+        dotCount = (dotCount + 1) % 4; // Cycle through 0-3 dots
       });
     });
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,43 +33,50 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         child: Container(
           width: 1080, // Width for resolution
           height: 2400, // Height for resolution
-          decoration: BoxDecoration(
-            color: Colors.white, // Background color
+          decoration: const BoxDecoration(
+            color: Color(0xfffffe4e5), // Background color
           ),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Image at the top of the screen
+                Image.asset(
+                  'assets/images/splash_logo.png', // Ensure this path matches your assets folder
+                  height: 280, // Adjust height as needed
+                ),
+                const SizedBox(height: 50), // Space between image and dots
+
                 // Dots for loading effect
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(3, (index) {
                     return Container(
-                      margin: EdgeInsets.symmetric(horizontal: 4.0),
+                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.blue.withOpacity(_dotCount == index ? 1.0 : 0.3), // Change opacity based on active dot
+                        color: const Color(0xFF1E5D6F).withOpacity(dotCount == index ? 1.0 : 0.3), // Change opacity based on active dot
                       ),
                     );
                   }),
                 ),
-                SizedBox(height: 20), // Space between dots and text
-                Text(
+                const SizedBox(height: 20), // Space between dots and text
+                const Text(
                   'VendoMed',
                   style: TextStyle(
                     fontSize: 48, // Adjust font size as needed
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue, // Text color
+                    color: Color(0xFF1E5D6F), // Text color
                   ),
                 ),
-                SizedBox(height: 10), // Space between title and message
-                Text(
-                  'Please scan your RFID to proceed.',
+                const SizedBox(height: 10), // Space between title and message
+                const Text(
+                  'Scan RFID to access VendoMed.',
                   style: TextStyle(
                     fontSize: 20, // Adjust font size as needed
-                    color: Colors.black, // Message text color
+                    color: Color(0xFF1E5D6F), // Message text color
                   ),
                 ),
               ],
