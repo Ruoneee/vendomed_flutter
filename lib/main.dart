@@ -1,19 +1,30 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'splash_screen.dart'; // Import your splash screen
+import 'medicine_menu.dart'; // Import your medicine menu
+import 'payment.dart'; // Import your payment screen
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'VendoMed App',
+      title: 'VendoMed',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: SplashScreen(), // Set SplashScreen as the home widget
+      initialRoute: '/', // Set the initial route
+      routes: {
+        '/': (context) => SplashScreen(), // Splash screen as the home widget
+        '/medicine_menu': (context) => MedicineMenu(), // Route for MedicineMenu
+        '/payment': (context) => Payment(), // Route for Payment screen
+      },
     );
   }
 }

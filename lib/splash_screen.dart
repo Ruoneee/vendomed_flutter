@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'dart:async'; // Import for Timer
+import 'medicine_menu.dart'; // Import your medicine menu
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,8 +24,14 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
         dotCount = (dotCount + 1) % 4; // Cycle through 0-3 dots
       });
     });
-  }
 
+    // Navigate to MedicineMenu after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const MedicineMenu()),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
