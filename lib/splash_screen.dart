@@ -3,6 +3,8 @@ import 'dart:async'; // Import for Timer
 import 'dart:typed_data'; // Import for Uint8List
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -17,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.initState();
 
     // Change the number of dots every 500 milliseconds
-    _timer = Timer.periodic(Duration(milliseconds: 500), (Timer timer) {
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (Timer timer) {
       setState(() {
         _dotCount = (_dotCount + 1) % 4; // Cycle through 0-3 dots
       });
@@ -36,77 +38,95 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: Color(0xFFFFF4E5),
+        backgroundColor: const Color(0xFFFFF4E5),
         body: Align(
-          alignment: AlignmentDirectional(0.0, 0.0),
+          alignment: const AlignmentDirectional(0.0, 0.0),
           child: Stack(
             children: [
               Align(
-                alignment: AlignmentDirectional(0.0, -0.6),
+                alignment: const AlignmentDirectional(0.0, -0.6),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
-                  child: Image.memory(
-                    Uint8List.fromList([]), // Replace with your image data
+                  child: Image.asset(
+                    'assets/image/splash-logo.png', // Replace with your image asset path
                     width: 200.0,
                     height: 192.0,
                     fit: BoxFit.cover,
                   ),
                 ),
               ),
-              Align(
+              const Align(
                 alignment: AlignmentDirectional(0.0, -0.15),
                 child: Text(
                   'Hello!',
                   style: TextStyle(
                     fontFamily: 'Readex Pro',
                     color: Color(0xFF1E5D6F),
-                    fontSize: 48.0,
+                    fontSize: 50.0,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              Align(
+              const Align(
                 alignment: AlignmentDirectional(0.01, -0.04),
                 child: Text(
                   'Feeling sick? Tap it!',
                   style: TextStyle(
                     fontFamily: 'Readex Pro',
                     color: Color(0xFF1E5D6F),
+                    fontSize: 20.0,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
               Align(
-                alignment: AlignmentDirectional(0.03, 0.27),
+                alignment: const AlignmentDirectional(0.01, 0.20),
                 child: Card(
                   clipBehavior: Clip.antiAliasWithSaveLayer,
                   color: Colors.white,
-                  elevation: 0.0,
+                  elevation: 0.0, // Remove shadow by setting elevation to 0
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
+                    borderRadius: BorderRadius.circular(5.0),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Container(
+                    width: 250.0, // Set the width of the Card
+                    padding: const EdgeInsets.symmetric(horizontal: 1.0), // Adjust padding
                     child: TextField(
                       controller: _cardNumberController,
-                      decoration: InputDecoration(
+                      textAlign: TextAlign.center, // Center the text
+                      decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         labelText: 'Enter Card Number',
+                        filled: true,
+                        fillColor: Colors.transparent, // Set background color to transparent
+                        alignLabelWithHint: true, // Align label with hint
                       ),
                       keyboardType: TextInputType.number,
                     ),
                   ),
                 ),
               ),
-              Align(
-                alignment: AlignmentDirectional(0.05, 0.51),
+              const Align(
+                alignment: AlignmentDirectional(0.05, 0.45),
                 child: Text(
                   'Tap your card to access \nVendoMed services',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Readex Pro',
-                    fontSize: 16.0,
+                    fontSize: 20.0,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Align(
+                alignment: AlignmentDirectional(0.05, 0.70),
+                child: Text(
+                  '© 2023 VendoMed Services',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Readex Pro',
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
