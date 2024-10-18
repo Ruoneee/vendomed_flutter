@@ -83,7 +83,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ],
               ),
 
-              const SizedBox(height: 20), // Space below the list
+              const SizedBox(height:  30), // Space below the list
 
               // Grid of Medicines
               Expanded(
@@ -106,38 +106,41 @@ class MedicineMenuState extends State<MedicineMenu> {
               ),
 
               // Bottom buttons: Reset and Checkout
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Space buttons evenly
-                children: [
-                  ElevatedButton(
-                    onPressed: _resetOrders, // Reset orders on button press
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[700], // Button color
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10), // Padding for the button
-                    ),
-                    child: const Text(
-                      "RESET", // Button text
-                      style: TextStyle(
-                        fontSize: 18, // Font size of the button text
-                        color: Colors.white, // Text color
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 25), // Reduced padding around buttons
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Space buttons evenly
+                  children: [
+                    ElevatedButton(
+                      onPressed: _resetOrders, // Reset orders on button press
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[700], // Button color
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10), // Padding for the button
+                      ),
+                      child: const Text(
+                        "RESET", // Button text
+                        style: TextStyle(
+                          fontSize: 18, // Font size of the button text
+                          color: Colors.white, // Text color
+                        ),
                       ),
                     ),
-                  ),
-                  ElevatedButton(
-                    onPressed: _proceedToCheckout, // Proceed to checkout on button press
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E5D6F), // Checkout button color
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10), // Padding for the button
-                    ),
-                    child: const Text(
-                      "CHECKOUT", // Button text
-                      style: TextStyle(
-                        fontSize: 18, // Font size of the button text
-                        color: Colors.white, // Text color
+                    ElevatedButton(
+                      onPressed: _proceedToCheckout, // Proceed to checkout on button press
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E5D6F), // Checkout button color
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10), // Padding for the button
+                      ),
+                      child: const Text(
+                        "CHECKOUT", // Button text
+                        style: TextStyle(
+                          fontSize: 18, // Font size of the button text
+                          color: Colors.white, // Text color
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -183,23 +186,43 @@ class MedicineMenuState extends State<MedicineMenu> {
               mainAxisAlignment: MainAxisAlignment.center, // Center quantity text
               children: [
                 Text(
-                  '+ $quantity', // Display quantity of the medicine
+                  '$quantity pcs. daily', // Display quantity of the medicine
                   style: const TextStyle(
-                    fontSize: 16, // Font size of quantity text
+                    fontSize: 13, // Font size of quantity text
                     fontWeight: FontWeight.bold, // Bold font weight
                     color: Color(0xFF267489), // Quantity color
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 1), // Space below the quantity
+            const SizedBox(height: 7), // Space below pcs. daily
+
             Material(
               color: Colors.transparent, // Make the button transparent
-              child: ElevatedButton(
-                onPressed: buttonStates[index] ? () => _addToOrder(name, index) : null, // Add to order if button is enabled
-                child: const Text('Add to Order'), // Button text
+              child: SizedBox(
+                width: 120, // Set the width of the button
+                height: 40, // Set the height of the button
+                child: ElevatedButton(
+                  onPressed: buttonStates[index] ? () => _addToOrder(name, index) : null, // Add to order if button is enabled
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: buttonStates[index] ? const Color(0xFF1E5D6F) : Colors.grey, // Change button color (enabled/disabled)
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25), // Rounded corners
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 10), // Adjust padding inside the button
+                  ),
+                  child: const Text(
+                    'Add to Order', // Button text
+                    style: TextStyle(
+                      fontSize: 12, // Font size of button text
+                      color: Colors.white, // Text color
+                    ),
+                  ),
+                ),
               ),
             ),
+
+
           ],
         ),
       ),

@@ -1,6 +1,5 @@
-// ignore_for_file: use_full_hex_values_for_flutter_colors
-
 import 'package:flutter/material.dart';
+import 'splash_screen.dart'; // Import the SplashScreen
 
 class Payment extends StatelessWidget {
   const Payment({super.key});
@@ -30,12 +29,25 @@ class Payment extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: () {
-                // Placeholder for the button action, e.g., process payment
-                Navigator.pop(context); // Navigate back to the previous screen
-              },
-              child: const Text('Go Back'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    // Placeholder for the button action, e.g., process payment
+                    Navigator.pop(context); // Navigate back to the previous screen
+                  },
+                  child: const Text('Go Back'),
+                ),
+                const SizedBox(width: 20), // Space between buttons
+                ElevatedButton(
+                  onPressed: () {
+                    // Navigate to SplashScreen
+                    Navigator.pushNamed(context, '/');
+                  },
+                  child: const Text('Proceed'),
+                ),
+              ],
             ),
           ],
         ),
