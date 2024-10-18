@@ -1,6 +1,7 @@
 // ignore_for_file: use_full_hex_values_for_flutter_colors
 
 import 'package:flutter/material.dart';
+import 'payment.dart';
 
 class MedicineMenu extends StatefulWidget {
   const MedicineMenu({super.key});
@@ -10,268 +11,227 @@ class MedicineMenu extends StatefulWidget {
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
-  List<String> orders = []; // List to keep track of selected medicines
+  List<Map<String, String>> orders = []; // List to keep track of selected medicines (name and price)
   List<bool> buttonStates = [true, true, true, true]; // Button states for each medicine
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E5D6F), // Set app bar color
-        title: const Row(
-          children: [
-            CircleAvatar(
-              backgroundImage: AssetImage('assets/userIcons/user_icon.png'), // User icon image
-              radius: 20, // Radius of the circle
+    return WillPopScope(
+        onWillPop: () async {
+          return false; // Prevent the back button
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF1E5D6F),
+            automaticallyImplyLeading: false,
+            title: const Row(
+              children: [
+                CircleAvatar(
+                  backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
+                  radius: 20,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  "Welcome, User!",
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
+              ],
             ),
-            SizedBox(width: 10), // Space between icon and text
-            Text(
-              "Welcome, User!", // Welcome message
-              style: TextStyle(
-                fontSize: 18, // Font size of the welcome message
-                color: Colors.white, // Text color
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: Container(
-        color: const Color(0xfffffe4e5), // Set background color
-        child: Padding(
-          padding: const EdgeInsets.all(16.0), // Padding around the content
-          child: Column(
-            children: [
-              const SizedBox(height: 10), // Space to push content down
-
-              // Scrollable List for items (for receipt summary)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // Align title to the start
+          ),
+          body: Container(
+            color: const Color(0xfffffe4e5),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8.0), // Space between title and list
-                    child: Text(
-                      "Your Orders:", // Title text
-                      style: TextStyle(
-                        fontSize: 18, // Font size of the title
-                        fontWeight: FontWeight.bold, // Bold font weight
-                        color: Colors.black, // Title text color
+                  const SizedBox(height: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          "Your Orders:",
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                        ),
                       ),
+                      Container(
+                        height: 95,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Scrollbar(
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: orders.length,
+                            itemBuilder: (context, index) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 8.0),
+                                child: Text(
+                                  '${index + 1}. ${orders[index]['name']} - ${orders[index]['price']}',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+                  Expanded(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.75,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      children: [
+                        _buildMedicineItem('Ibuprofen', '₱10.00', 'assets/images/ibuprofen.png', 4, 0),
+                        _buildMedicineItem('Cetirizine', '₱18.00', 'assets/images/cetirizine.png', 1, 1),
+                        _buildMedicineItem('Paracetamol', '₱5.00', 'assets/images/paracetamol.png', 4, 2),
+                        _buildMedicineItem('Loperamide', '₱10.00', 'assets/images/loperamide.png', 2, 3),
+                      ],
                     ),
                   ),
-                  Container(
-                    height: 95, // Set a specific height for the ListView
-                    decoration: BoxDecoration(
-                      color: Colors.white, // Background color of the list
-                      borderRadius: BorderRadius.circular(8), // Rounded corners
-                    ),
-                    child: Scrollbar( // Add a Scrollbar here
-                      child: ListView.builder(
-                        padding: EdgeInsets.zero, // Remove default padding from the ListView
-                        itemCount: orders.length, // Number of items in the orders
-                        itemBuilder: (context, index) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 8.0), // Set vertical padding to 0.0 for minimal spacing
-                            child: Text(
-                              '${index + 1}. ${orders[index]}', // Display each order with its index
-                              style: const TextStyle(fontSize: 16), // You can also adjust the font size if needed
-                            ),
-                          );
-                        },
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 25),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _resetOrders,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[700],
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                          ),
+                          child: const Text(
+                            "RESET",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: _proceedToCheckout,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E5D6F),
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                          ),
+                          child: const Text(
+                            "CHECKOUT",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height:  30), // Space below the list
-
-              // Grid of Medicines
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2, // Number of columns in the grid
-                  childAspectRatio: 0.75, // Aspect ratio of each child
-                  mainAxisSpacing: 16, // Vertical spacing between items
-                  crossAxisSpacing: 16, // Horizontal spacing between items
-                  children: [
-                    // Medicine Item 1
-                    _buildMedicineItem('Ibuprofen', '₱10.00', 'assets/images/ibuprofen.png', 4, 0),
-                    // Medicine Item 2
-                    _buildMedicineItem('Cetirizine', '₱18.00', 'assets/images/cetirizine.png', 1, 1),
-                    // Medicine Item 3
-                    _buildMedicineItem('Paracetamol', '₱5.00', 'assets/images/paracetamol.png', 4, 2),
-                    // Medicine Item 4
-                    _buildMedicineItem('Loperamide', '₱10.00', 'assets/images/loperamide.png', 2, 3),
-                  ],
-                ),
-              ),
-
-              // Bottom buttons: Reset and Checkout
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 25), // Reduced padding around buttons
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Space buttons evenly
-                  children: [
-                    ElevatedButton(
-                      onPressed: _resetOrders, // Reset orders on button press
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[700], // Button color
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10), // Padding for the button
-                      ),
-                      child: const Text(
-                        "RESET", // Button text
-                        style: TextStyle(
-                          fontSize: 18, // Font size of the button text
-                          color: Colors.white, // Text color
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _proceedToCheckout, // Proceed to checkout on button press
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E5D6F), // Checkout button color
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10), // Padding for the button
-                      ),
-                      child: const Text(
-                        "CHECKOUT", // Button text
-                        style: TextStyle(
-                          fontSize: 18, // Font size of the button text
-                          color: Colors.white, // Text color
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
-  // Widget to build each medicine item
   Widget _buildMedicineItem(String name, String price, String imagePath, int quantity, int index) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white, // Background color of medicine item
-        borderRadius: BorderRadius.circular(12), // Rounded corners
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12.0), // Padding inside the item
+        padding: const EdgeInsets.all(12.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              imagePath, // Image of the medicine
-              height: 100, // Height of the medicine image
-            ),
-            const SizedBox(height: 2), // Space below the image
+            Image.asset(imagePath, height: 100),
+            const SizedBox(height: 2),
             Text(
-              name, // Name of the medicine
-              style: const TextStyle(
-                fontSize: 16, // Font size of the medicine name
-                fontWeight: FontWeight.bold, // Bold font weight
-                color: Colors.black, // Text color
-              ),
+              name,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
             ),
             Text(
-              price, // Price of the medicine
-              style: const TextStyle(
-                fontSize: 14, // Font size of the price
-                color: Colors.black54, // Text color for price
-              ),
+              price,
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
             ),
-            const Spacer(), // Flexible space to push content up
+            const Spacer(),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center, // Center quantity text
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '$quantity pcs. daily', // Display quantity of the medicine
-                  style: const TextStyle(
-                    fontSize: 13, // Font size of quantity text
-                    fontWeight: FontWeight.bold, // Bold font weight
-                    color: Color(0xFF267489), // Quantity color
-                  ),
+                  '$quantity pcs. daily',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF267489)),
                 ),
               ],
             ),
-            const SizedBox(height: 7), // Space below pcs. daily
-
+            const SizedBox(height: 7),
             Material(
-              color: Colors.transparent, // Make the button transparent
+              color: Colors.transparent,
               child: SizedBox(
-                width: 120, // Set the width of the button
-                height: 40, // Set the height of the button
+                width: 120,
+                height: 40,
                 child: ElevatedButton(
-                  onPressed: buttonStates[index] ? () => _addToOrder(name, index) : null, // Add to order if button is enabled
+                  onPressed: buttonStates[index] ? () => _addToOrder(name, price, index) : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonStates[index] ? const Color(0xFF1E5D6F) : Colors.grey, // Change button color (enabled/disabled)
+                    backgroundColor: buttonStates[index] ? const Color(0xFF1E5D6F) : Colors.grey,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25), // Rounded corners
+                      borderRadius: BorderRadius.circular(25),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 10), // Adjust padding inside the button
+                    padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 10),
                   ),
                   child: const Text(
-                    'Add to Order', // Button text
-                    style: TextStyle(
-                      fontSize: 12, // Font size of button text
-                      color: Colors.white, // Text color
-                    ),
+                    'Add to Order',
+                    style: TextStyle(fontSize: 12, color: Colors.white),
                   ),
                 ),
               ),
             ),
-
-
           ],
         ),
       ),
     );
   }
 
-  // Function to add medicine to order
-  void _addToOrder(String name, int index) {
+  void _addToOrder(String name, String price, int index) {
     setState(() {
-      orders.add(name); // Add medicine to the orders
-      buttonStates[index] = false; // Disable the button
+      orders.add({'name': name, 'price': price});
+      buttonStates[index] = false;
     });
   }
 
-  // Function to reset orders
   void _resetOrders() {
     setState(() {
-      orders.clear(); // Clear orders
-      buttonStates = [true, true, true, true]; // Enable all buttons again
+      orders.clear();
+      buttonStates = [true, true, true, true];
     });
   }
 
-  // Function to proceed to checkout
   void _proceedToCheckout() {
     if (orders.isEmpty) {
-      _showAlertDialog(); // Show alert if no orders are present
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('No Orders'),
+            content: const Text('Please add items to your order before proceeding to checkout.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     } else {
-      Navigator.pushNamed(context, '/payment'); // Navigate to payment page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentPage(
+            orders: orders, // Pass the orders list as is (containing name and price)
+          ),
+        ),
+      );
     }
-  }
-
-  // Function to show alert dialog
-  void _showAlertDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('No Orders'), // Alert dialog title
-          content: const Text('Please add medicines to your order before proceeding.'), // Alert dialog message
-          actions: <Widget>[
-            TextButton(
-              child: const Text('OK'), // Button text
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 }

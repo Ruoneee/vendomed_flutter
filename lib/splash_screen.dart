@@ -2,8 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'medicine_menu.dart'; // Assuming this is the next screen after connection
-import 'dart:async'; // Import for handling timeouts and delays
+import 'dart:async';
+
+import 'rfid_screen.dart'; // Import for handling timeouts and delays
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -71,14 +72,20 @@ class SplashScreenState extends State<SplashScreen> {
     if (isConnected) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const MedicineMenu()),
+        MaterialPageRoute(builder: (context) => const RfidScreen()),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+        onWillPop: () async {
+      // Returning false prevents the back button from working
+      return false;
+    },
+
+      child: Scaffold(
       body: Center(
         child: Container(
           width: 1080, // Width for resolution
@@ -114,21 +121,14 @@ class SplashScreenState extends State<SplashScreen> {
                 ),
                 const SizedBox(height: 20), // Space between dots and text
                 const Text(
-                  'VendoMed',
+                  'Connecting!',
                   style: TextStyle(
-                    fontSize: 48, // Adjust font size as needed
+                    fontSize: 30, // Adjust font size as needed
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1E5D6F), // Text color
                   ),
                 ),
-                const SizedBox(height: 10), // Space between title and message
-                const Text(
-                  'Please scan your RFID', // New message
-                  style: TextStyle(
-                    fontSize: 20, // Adjust font size as needed
-                    color: Color(0xFF1E5D6F), // Message text color
-                  ),
-                ),
+
                 const SizedBox(height: 10), // Space between messages
                 if (isConnected) // Show message if connected
                   const Text(
@@ -143,6 +143,7 @@ class SplashScreenState extends State<SplashScreen> {
           ),
         ),
       ),
+     )
     );
   }
 }
