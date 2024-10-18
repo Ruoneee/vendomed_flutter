@@ -1,8 +1,9 @@
 // ignore_for_file: use_full_hex_values_for_flutter_colors
 
 import 'package:flutter/material.dart';
-import 'dart:async'; // Import for Timer
-import 'medicine_menu.dart'; // Import your medicine menu
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'medicine_menu.dart'; // Assuming this is the next screen after connection
+import 'dart:async'; // Import for handling timeouts and delays
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,12 +12,17 @@ class SplashScreen extends StatefulWidget {
   SplashScreenState createState() => SplashScreenState();
 }
 
-class SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class SplashScreenState extends State<SplashScreen> {
+  FlutterBluePlus flutterBlue = FlutterBluePlus();
+  BluetoothDevice? connectedDevice;
+  bool isConnected = false;
   int dotCount = 0; // Track the number of dots for the loading effect
 
   @override
   void initState() {
     super.initState();
+    // Start Bluetooth connection process
+    _connectToDevice();
 
     // Change the number of dots every 500 milliseconds
     Timer.periodic(const Duration(milliseconds: 500), (Timer timer) {
@@ -24,13 +30,50 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
         dotCount = (dotCount + 1) % 4; // Cycle through 0-3 dots
       });
     });
+  }
 
-    // Navigate to MedicineMenu after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(
+  Future<void> _connectToDevice() async {
+    // Avoid reconnecting if already connected
+    if (isConnected) return;
+
+    // Start scanning for BLE devices
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
+
+    FlutterBluePlus.scanResults.listen((scanResult) {
+      for (ScanResult result in scanResult) {
+        if (result.advertisementData.advName == 'VendoMed' || result.device.remoteId.toString() == "8:A6:F7:22:D3:AE") {
+          FlutterBluePlus.stopScan();
+          _connect(result.device);
+          break;
+        }
+      }
+    });
+  }
+
+  Future<void> _connect(BluetoothDevice device) async {
+    if (isConnected) return; // Avoid re-connecting if already connected
+
+    try {
+      await device.connect();
+      setState(() {
+        connectedDevice = device;
+        isConnected = true;
+      });
+      await device.discoverServices();
+      _navigateToNextScreen();
+    } catch (e) {
+      print('Failed to connect: $e');
+      // Handle connection failure
+    }
+  }
+
+  void _navigateToNextScreen() {
+    if (isConnected) {
+      Navigator.pushReplacement(
+        context,
         MaterialPageRoute(builder: (context) => const MedicineMenu()),
       );
-    });
+    }
   }
 
   @override
@@ -80,12 +123,21 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
                 ),
                 const SizedBox(height: 10), // Space between title and message
                 const Text(
-                  'Scan RFID to access VendoMed.',
+                  'Please scan your RFID', // New message
                   style: TextStyle(
                     fontSize: 20, // Adjust font size as needed
                     color: Color(0xFF1E5D6F), // Message text color
                   ),
                 ),
+                const SizedBox(height: 10), // Space between messages
+                if (isConnected) // Show message if connected
+                  const Text(
+                    'Connected to ESP32! Redirecting...',
+                    style: TextStyle(
+                      fontSize: 20, // Adjust font size as needed
+                      color: Color(0xFF1E5D6F), // Message text color
+                    ),
+                  )
               ],
             ),
           ),

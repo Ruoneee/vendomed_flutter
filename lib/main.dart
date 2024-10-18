@@ -25,6 +25,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => SplashScreen(), // Splash screen as the home widget
         '/medicine_menu': (context) => MedicineMenu(), // Route for MedicineMenu
         '/payment': (context) => Payment(), // Route for Payment screen
+
       },
     );
   }
