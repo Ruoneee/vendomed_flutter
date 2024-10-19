@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/medicine_menu', // Set the initial route
+      initialRoute: '/splash_screen', // Set the initial route
       routes: {
         '/': (context) => SplashScreen(), // Splash screen as the home widget
         '/medicine_menu': (context) => MedicineMenu(), // Route for MedicineMenu
