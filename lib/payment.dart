@@ -108,23 +108,7 @@ class PaymentPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Entered Amount
-              const Text(
-                'ENTERED AMOUNT:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter amount',
-                ),
-              ),
-              const SizedBox(height: 20),
+
 
               // Transaction History
               const Text(

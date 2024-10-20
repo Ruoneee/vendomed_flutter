@@ -3,7 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'rfid_screen.dart';
-import 'splash_screen.dart'; // Import your splash screen
+//import 'splash_screen.dart'; // Import your splash screen
 import 'medicine_menu.dart'; // Import your medicine menu
 import 'payment.dart'; // Import your payment screen
 
@@ -21,9 +21,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/splash_screen', // Set the initial route
+      initialRoute: '/rfid_screen', // Set the initial route
       routes: {
-        '/': (context) => SplashScreen(), // Splash screen as the home widget
+        '/': (context) => RfidScreen(), // Splash screen as the home widget
         '/medicine_menu': (context) => MedicineMenu(), // Route for MedicineMenu
         '/payment': (context) => PaymentPage(orders: const []), // Route for Payment screen
         '/rfid_screen': (context) => RfidScreen(), // Route for Payment screen
