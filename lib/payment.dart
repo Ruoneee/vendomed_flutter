@@ -1,27 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'dart:async';
 
-class PaymentPage extends StatelessWidget {
+class PaymentPage extends StatefulWidget {
   final List<Map<String, String>> orders; // Accept the orders list with name and price
 
   const PaymentPage({super.key, required this.orders}); // Constructor to receive orders
 
   @override
-  Widget build(BuildContext context) {
-    double totalAmount = 0.0;
+  PaymentPageState createState() => PaymentPageState();
+}
 
+class PaymentPageState extends State<PaymentPage> {
+  FlutterBluePlus flutterBlue = FlutterBluePlus();
+  BluetoothDevice? connectedDevice;
+  bool isConnected = false;
+  double totalAmount = 0.0;
+  int dotCount = 0; // Track the number of dots for the loading effect
+
+  @override
+  void initState() {
+    super.initState();
+    // Calculate total amount from the orders
+    _calculateTotalAmount();
+
+    // Start Bluetooth connection process
+    _connectToDevice();
+  }
+
+  void _calculateTotalAmount() {
     // Sum the total amount from the price in the orders list
-    for (var order in orders) {
+    for (var order in widget.orders) {
       String priceString = order['price']!.replaceAll('₱', '').trim(); // Remove '₱' and any spaces
       totalAmount += double.parse(priceString); // Convert to double and sum
     }
+  }
 
-    // Sample data for transaction history
-    final List<String> transactions = [
-      'Transaction 1: P10.00',
-      'Transaction 2: P15.00',
-      'Transaction 3: P20.00',
-    ];
+  Future<void> _connectToDevice() async {
+    // Avoid reconnecting if already connected
+    if (isConnected) return;
 
+    // Start scanning for BLE devices
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
+
+    FlutterBluePlus.scanResults.listen((scanResult) {
+      for (ScanResult result in scanResult) {
+        if (result.advertisementData.advName == 'VendoMed' || result.device.remoteId.toString() == "8:A6:F7:22:D3:AE") {
+          FlutterBluePlus.stopScan();
+          _connect(result.device);
+          break;
+        }
+      }
+    });
+  }
+
+  Future<void> _connect(BluetoothDevice device) async {
+    if (isConnected) return; // Avoid re-connecting if already connected
+
+    try {
+      await device.connect();
+      setState(() {
+        connectedDevice = device;
+        isConnected = true;
+      });
+      await device.discoverServices();
+      _sendDataToESP32(); // Send data once connected
+    } catch (e) {
+      print('Failed to connect: $e');
+      // Handle connection failure
+    }
+  }
+
+  void _sendDataToESP32() {
+    if (isConnected && connectedDevice != null) {
+      // Here, implement the logic to send data to the ESP32 device
+      // For example: connectedDevice!.write(...);
+      // Make sure to format the data you want to send based on your ESP32's requirements
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
         // Returning false prevents the back button from working
@@ -73,11 +132,11 @@ class PaymentPage extends StatelessWidget {
                 ),
                 child: Scrollbar(
                   child: ListView.builder(
-                    itemCount: orders.length, // Display the passed orders
+                    itemCount: widget.orders.length, // Display the passed orders
                     itemBuilder: (context, index) {
                       return Padding(
                         padding: const EdgeInsets.all(8.0),
-                        child: Text('${orders[index]['name']} - ${orders[index]['price']}'),
+                        child: Text('${widget.orders[index]['name']} - ${widget.orders[index]['price']}'),
                       );
                     },
                   ),
@@ -103,45 +162,11 @@ class PaymentPage extends StatelessWidget {
                   ),
                   hintText: 'Total amount will appear here',
                 ),
-                initialValue: 'P${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(color: Colors.black), // Set text color to black// Display total amount
+                initialValue: '₱${totalAmount.toStringAsFixed(2)}', // Display total amount
+                style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 20),
 
-
-
-              // Transaction History
-              const Text(
-                'TRANSACTION HISTORY:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.black),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Scrollbar(
-                  child: ListView.builder(
-                    itemCount: transactions.length, // Display transaction history
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(transactions[index]),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Buttons
               // Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -168,13 +193,16 @@ class PaymentPage extends StatelessWidget {
                       foregroundColor: Colors.white, // Set text color for the Proceed button
                     ),
                     onPressed: () {
-                      Navigator.popAndPushNamed(context, '/rfid_screen'); // Done button action
+                      if (isConnected) {
+                        Navigator.popAndPushNamed(context, '/rfid_screen'); // Proceed button action
+                      } else {
+                        // Optionally show a message or handle disconnection case
+                      }
                     },
                     child: const Text('PROCEED'),
                   ),
                 ],
               ),
-
             ],
           ),
         ),
