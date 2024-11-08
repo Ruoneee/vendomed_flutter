@@ -1,11 +1,10 @@
-// ignore_for_file: prefer_const_constructors
-// ignore_for_file: use_full_hex_values_for_flutter_colors
-
+// main.dart
 import 'package:flutter/material.dart';
 import 'rfid_screen.dart';
-//import 'splash_screen.dart'; // Import your splash screen
-import 'medicine_menu.dart'; // Import your medicine menu
-import 'payment.dart'; // Import your payment screen
+import 'splash_screen.dart';
+import 'medicine_menu.dart';
+import 'payment.dart';
+// import 'confirmation_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -21,14 +20,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/rfid_screen', // Set the initial route
+      initialRoute: '/medicine_menu',
       routes: {
-        '/': (context) => RfidScreen(), // Splash screen as the home widget
-        '/medicine_menu': (context) => MedicineMenu(), // Route for MedicineMenu
-        '/payment': (context) => PaymentPage(orders: const []), // Route for Payment screen
-        '/rfid_screen': (context) => RfidScreen(), // Route for Payment screen
-
-
+        '/': (context) => RfidScreen(),
+        '/splash_screen': (context) => SplashScreen(),
+        '/medicine_menu': (context) => MedicineMenu(),
+        '/payment': (context) => PaymentPage(orders: const []),
+        '/rfid_screen': (context) => RfidScreen(),
       },
     );
   }

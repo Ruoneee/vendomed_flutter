@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'confirmation_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class PaymentPage extends StatefulWidget {
@@ -18,13 +19,30 @@ class PaymentPageState extends State<PaymentPage> {
 
   final String serviceUUID = "1bf2a612-29c3-4a82-9b3d-b9abc9e81daa"; // Service UUID
   final String characteristicUUID = "45088d05-aa3b-42da-aa75-bf85d5046829"; // Characteristic UUID
+  final TextEditingController _coinsInsertedController = TextEditingController();
 
-  String coinCountMessage = ''; // Store coin count message
+  int coinInserted = 0; // Counter for inserted coins
+  String dataToSend = '';
+  String lastReceivedData = '';
+  bool coinEqualToAmount = false;
+  double totalAmount = 0.0; // Class-level variable for total amount
+
 
   @override
   void initState() {
     super.initState();
+    _calculateTotalAmount(); // Calculate total amount on initialization
     _connectToDevice(); // Start Bluetooth connection process
+  }
+
+  // Method to calculate the total amount
+  void _calculateTotalAmount() {
+    totalAmount = 0.0; // Reset total amount
+    for (var order in widget.orders) {
+      String priceString = order['price']!.replaceAll('₱', '').trim();
+      totalAmount += double.parse(priceString);
+    }
+    print('Total Amount: $totalAmount');
   }
 
   Future<void> _connectToDevice() async {
@@ -33,7 +51,7 @@ class PaymentPageState extends State<PaymentPage> {
 
     FlutterBluePlus.scanResults.listen((scanResult) {
       for (ScanResult result in scanResult) {
-        if (result.advertisementData.advName == 'VendoMed' || result.device.remoteId.toString() == "8:A6:F7:22:D3:AE") {
+        if (result.advertisementData.advName == 'VendoMed') {
           FlutterBluePlus.stopScan();
           _connect(result.device);
           break;
@@ -62,16 +80,20 @@ class PaymentPageState extends State<PaymentPage> {
 
     for (var service in services) {
       if (service.uuid.toString() == serviceUUID) {
+        _calculateTotalAmount();
         for (var characteristic in service.characteristics) {
           if (characteristic.uuid.toString() == characteristicUUID) {
             targetCharacteristic = characteristic;
             await targetCharacteristic!.setNotifyValue(true);
             targetCharacteristic!.value.listen((value) {
               String receivedData = String.fromCharCodes(value);
+              if(receivedData.isEmpty ||!(RegExp(r'^\d+$').hasMatch(receivedData))){
+                return;
+              }
               print("Received data from ESP32: $receivedData");
+
               _handleReceivedData(receivedData); // Handle received data
             });
-            print('Service and characteristic found and notifications enabled.');
           }
         }
       }
@@ -91,18 +113,26 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  // Handle received coin count data
+  // Handle received coin detection data
   void _handleReceivedData(String data) {
-    setState(() {
-      coinCountMessage = data; // Update the coin count message
-    });
+    if (mounted && data != lastReceivedData) {
+      lastReceivedData = data; // Check if the widget is still in the widget tree
 
-    // Extract coin count and check if it matches the total amount
-    if (data.startsWith("Coins: ")) {
-      int coinCount = int.parse(data.split(": ")[1]);
-      // Assuming each coin is worth 1 unit, you can adjust this logic
-      if (coinCount >= widget.orders.length) { // Check if enough coins are inserted
-        _dispenseMedicine(); // Dispense medicines if coin count is sufficient
+      if (data.isNotEmpty) {
+        setState(() {
+          coinInserted++; // Increment coin count
+          if(data == dataToSend || data == '0'){
+            dataToSend = '';
+            coinInserted = 0;
+          }
+          _coinsInsertedController.text = '₱${coinInserted.toString()}';
+
+          // Check if the inserted coins match the required total
+          if (coinInserted >= totalAmount) {
+            coinEqualToAmount = true;
+          }
+          print("Coin equal to amount: $coinEqualToAmount");
+        });
       }
     }
   }
@@ -112,23 +142,50 @@ class PaymentPageState extends State<PaymentPage> {
     for (var order in widget.orders) {
       String medicineName = order['name']!;
 
-      String dataToSend = '';
       if (medicineName == 'Ibuprofen') {
-        dataToSend = '1'; // Send '1' for Ibuprofen
+        dataToSend += '1'; // Send '1' for Ibuprofen
       } else if (medicineName == 'Cetirizine') {
-        dataToSend = '2'; // Send '2' for Cetirizine
+        dataToSend += '2'; // Send '2' for Cetirizine
       } else if (medicineName == 'Paracetamol') {
-        dataToSend = '3'; // Send '3' for Paracetamol
+        dataToSend += '3'; // Send '3' for Paracetamol
       } else if (medicineName == 'Loperamide') {
-        dataToSend = '4'; // Send '4' for Loperamide
-      }
-
-      // Send the data to ESP32
-      if (dataToSend.isNotEmpty) {
-        sendData(dataToSend); // Command the ESP32 to activate the corresponding motor
+        dataToSend += '4'; // Send '4' for Loperamide
       }
     }
   }
+  void _onProceedButtonPressed() {
+    if (coinEqualToAmount) {
+      _dispenseMedicine();
+      sendData(dataToSend); // Send the number of orders to ESP32
+      setState(() {
+        coinEqualToAmount = false;
+        // dataToSend = '';
+        coinInserted = 0;
+      });
+      print("Data Successfully Sent");
+
+      // Check if connectedDevice is not null before navigating
+      if (connectedDevice != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConfirmationScreen(device: connectedDevice!),
+          ),
+        );
+      } else {
+        print("No device connected");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No Bluetooth device connected')),
+        );
+      }
+    } else {
+      print("Coins inserted do not equal total amount.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Insufficient Coins Inserted')),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -227,6 +284,28 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 20),
 
+              // Coins Inserted
+              const Text(
+                'COINS INSERTED:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                enabled: false,
+                controller: _coinsInsertedController, // Set the controller
+                decoration: const InputDecoration(
+                  disabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black),
+                  ),
+                  hintText: 'Number of coins inserted',
+                ),
+                style: const TextStyle(color: Colors.black),
+              ),
+              const SizedBox(height: 20),
 
 
               // Buttons
@@ -243,6 +322,7 @@ class PaymentPageState extends State<PaymentPage> {
                     ),
                     onPressed: () {
                       Navigator.pop(context); // Back button
+
                     },
                     child: const Text('CANCEL'),
                   ),
@@ -254,17 +334,12 @@ class PaymentPageState extends State<PaymentPage> {
                       ),
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: () {
-                      sendData("Coins: ${widget.orders.length}"); // Send the number of orders to ESP32
-                    },
+                    onPressed: _onProceedButtonPressed, // Call the new function
                     child: const Text('PROCEED'),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-
-              // Debugging Button
-
             ],
           ),
         ),

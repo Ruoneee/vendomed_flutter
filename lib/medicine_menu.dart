@@ -1,4 +1,4 @@
-// ignore_for_file: use_full_hex_values_for_flutter_colors
+// ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'payment.dart';
@@ -227,8 +227,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PaymentPage(
-            orders: orders, // Pass the orders list as is (containing name and price)
+          builder: (context) => PaymentPage(orders: orders, // Pass the orders list as is (containing name and price)
           ),
         ),
       );

@@ -1,4 +1,4 @@
-// ignore_for_file: use_full_hex_values_for_flutter_colors
+// ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -38,7 +38,7 @@ class SplashScreenState extends State<SplashScreen> {
     if (isConnected) return;
 
     // Start scanning for BLE devices
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 300));
 
     FlutterBluePlus.scanResults.listen((scanResult) {
       for (ScanResult result in scanResult) {
