@@ -44,7 +44,7 @@ class MedicineMenuState extends State<MedicineMenu> {
         },
         child: Scaffold(
           appBar: AppBar(
-            backgroundColor: const Color(0xFF1E5D6F),
+            backgroundColor: const Color(0xFF0D2A5E),
             automaticallyImplyLeading: false,
             title: Row(
               children: [
@@ -60,8 +60,9 @@ class MedicineMenuState extends State<MedicineMenu> {
               ],
             ),
           ),
+
           body: Container(
-            color: const Color(0xfffffe4e5),
+            color: const Color(0xF21588d),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -135,7 +136,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                         ElevatedButton(
                           onPressed: _proceedToCheckout,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E5D6F),
+                            backgroundColor: const Color(0xFF0D2A5E),
                             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                           ),
                           child: const Text(
@@ -180,7 +181,7 @@ class MedicineMenuState extends State<MedicineMenu> {
               children: [
                 Text(
                   '$quantity pcs. daily',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF267489)),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0D2A5E)),
                 ),
               ],
             ),
@@ -193,7 +194,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                 child: ElevatedButton(
                   onPressed: buttonStates[index] ? () => _addToOrder(name, price, index) : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonStates[index] ? const Color(0xFF1E5D6F) : Colors.grey,
+                    backgroundColor: buttonStates[index] ? const Color(0xFF0D2A5E) : Colors.grey,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),

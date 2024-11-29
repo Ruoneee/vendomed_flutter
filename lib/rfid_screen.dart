@@ -92,7 +92,7 @@ class RfidScreenState extends State<RfidScreen> {
           width: 1080, // Width for resolution
           height: 2400, // Height for resolution
           decoration: const BoxDecoration(
-            color: Color(0xfffffe4e5), // Background color
+            color: Color(0xfffffffff), // Background color
           ),
           child: Center(
             child: Column(
@@ -101,10 +101,10 @@ class RfidScreenState extends State<RfidScreen> {
                 // Image at the top of the screen
                 Image.asset(
                   'assets/images/splash_logo.png', // Ensure this path matches your assets folder
-                  height: 280, // Adjust height as needed
+                  height: 400, // Adjust height as needed
                 ),
 
-                const SizedBox(height: 50), // Space between image and dots
+                const SizedBox(height: 30), // Space between image and dots
 
                 // Loading Dots Effect
                 Row(
@@ -116,7 +116,7 @@ class RfidScreenState extends State<RfidScreen> {
                       height: 8.0,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: dotCount > index ? Color(0xFF1E5D6F) : Colors.grey,
+                        color: dotCount > index ? Color(0xFF0D2A5E) : Colors.grey,
                       ),
                     );
                   }),
@@ -124,14 +124,7 @@ class RfidScreenState extends State<RfidScreen> {
 
                 const SizedBox(height: 20), // Space between dots and text
 
-                const Text(
-                  'VendoMed',
-                  style: TextStyle(
-                    fontSize: 48, // Adjust font size as needed
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E5D6F), // Text color
-                  ),
-                ),
+
 
                 const SizedBox(height: 10), // Space between title and message
 
@@ -139,7 +132,7 @@ class RfidScreenState extends State<RfidScreen> {
                   'Scan RFID to access VendoMed.',
                   style: TextStyle(
                     fontSize: 20, // Adjust font size as needed
-                    color: Color(0xFF1E5D6F), // Message text color
+                    color: Color(0xFF0D2A5E), // Message text color
                   ),
                 ),
 
@@ -152,19 +145,19 @@ class RfidScreenState extends State<RfidScreen> {
                     height: 60, // Adjust height of the TextField
                     child: TextField(
                       controller: _rfidController,
-                      cursorColor: Color(0xfffffe4e5),
+                      cursorColor: Color(0xfffffffff),
                       decoration: const InputDecoration(
                         counterText: "",
                         border: OutlineInputBorder(),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(
-                            color: Color(0xfffffe4e5), // Color of the border when unfocused (change this color)
+                            color: Color(0xfffffffff), // Color of the border when unfocused (change this color)
                             width: 2.0, // Width of the border when unfocused
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(
-                            color: Color(0xfffffe4e5), // Color of the border when focused
+                            color: Color(0xfffffffff), // Color of the border when focused
                             width: 2.0, // Width of the border
                           ),
                         ),
@@ -173,7 +166,7 @@ class RfidScreenState extends State<RfidScreen> {
                       autofocus: true, // Automatically focuses on the TextField
                       style: const TextStyle(
                         fontSize: 20, // Font size of the entered text
-                        color: Color(0xfffffe4e5), // Text color inside the TextField
+                        color: Color(0xfffffffff), // Text color inside the TextField
                       ),
                     ),
                   ),

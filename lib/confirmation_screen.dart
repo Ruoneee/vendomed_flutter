@@ -74,7 +74,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Confirmation'),
-        backgroundColor: const Color(0xFF1E5D6F),
+        backgroundColor: const Color(0xfffffffff),
         actions: [
           IconButton(
             icon: const Icon(Icons.bluetooth_disabled),

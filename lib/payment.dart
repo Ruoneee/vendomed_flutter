@@ -216,7 +216,7 @@ class PaymentPageState extends State<PaymentPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: const Color(0xFF1E5D6F),
+          backgroundColor: const Color(0xFF0D2A5E),
           automaticallyImplyLeading: false,
           title: const Row(
             children: [
@@ -235,7 +235,8 @@ class PaymentPageState extends State<PaymentPage> {
             ],
           ),
         ),
-        backgroundColor: const Color(0xfffffe4e5),
+
+        backgroundColor: const Color(0xFFFFFFFF),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -344,7 +345,7 @@ class PaymentPageState extends State<PaymentPage> {
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4E5A5D),
+                      backgroundColor: const Color(0xFF0D2A5E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
