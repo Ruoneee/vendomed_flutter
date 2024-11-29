@@ -4,15 +4,37 @@ import 'package:flutter/material.dart';
 import 'payment.dart';
 
 class MedicineMenu extends StatefulWidget {
-  const MedicineMenu({super.key});
+  final String rfidData;
+
+  const MedicineMenu({Key? key, required this.rfidData}) : super(key: key);
 
   @override
   MedicineMenuState createState() => MedicineMenuState();
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
-  List<Map<String, String>> orders = []; // List to keep track of selected medicines (name and price)
-  List<bool> buttonStates = [true, true, true, true]; // Button states for each medicine
+  static final Map<String, Map<int, bool>> userMedicineStatus = {};
+
+  List<Map<String, String>> orders = [];
+  List<bool> buttonStates = [true, true, true, true];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeButtonStates();
+  }
+
+  void _initializeButtonStates() {
+    final userStatus = userMedicineStatus.putIfAbsent(widget.rfidData, () => {
+      0: true,
+      1: true,
+      2: true,
+      3: true,
+    });
+    setState(() {
+      buttonStates = List<bool>.from(userStatus.values);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +46,7 @@ class MedicineMenuState extends State<MedicineMenu> {
           appBar: AppBar(
             backgroundColor: const Color(0xFF1E5D6F),
             automaticallyImplyLeading: false,
-            title: const Row(
+            title: Row(
               children: [
                 CircleAvatar(
                   backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
@@ -32,7 +54,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ),
                 SizedBox(width: 10),
                 Text(
-                  "Welcome, User!",
+                  "Welcome,  ${widget.rfidData}!!",
                   style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ],
@@ -87,7 +109,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
                       children: [
-                        _buildMedicineItem('Ibuprofen', '10.00',  'assets/images/ibuprofen.png', 4, 0),
+                        _buildMedicineItem('Ibuprofen', '10.00', 'assets/images/ibuprofen.png', 4, 0),
                         _buildMedicineItem('Cetirizine', '18.00', 'assets/images/cetirizine.png', 1, 1),
                         _buildMedicineItem('Paracetamol', '5.00', 'assets/images/paracetamol.png', 4, 2),
                         _buildMedicineItem('Loperamide', '10.00', 'assets/images/loperamide.png', 2, 3),
@@ -194,13 +216,14 @@ class MedicineMenuState extends State<MedicineMenu> {
     setState(() {
       orders.add({'name': name, 'price': price});
       buttonStates[index] = false;
+      //userMedicineStatus[widget.rfidData]![index] = false; // Update user's purchase status
     });
   }
 
   void _resetOrders() {
     setState(() {
       orders.clear();
-      buttonStates = [true, true, true, true];
+      buttonStates = userMedicineStatus[widget.rfidData]!.values.toList(); // Restore button states
     });
   }
 
@@ -224,13 +247,45 @@ class MedicineMenuState extends State<MedicineMenu> {
         },
       );
     } else {
+      List<String> medicinesToBeDisabled =
+      orders.map((order) => order['name']!).toList();
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PaymentPage(orders: orders, // Pass the orders list as is (containing name and price)
+          builder: (context) => PaymentPage(
+            orders: orders,
+            medicinesToBeDisabled: medicinesToBeDisabled,
           ),
         ),
-      );
+      ).then((medicinesToDisable) {
+        if (medicinesToDisable != null) {
+          setState(() {
+            // Disable medicines that were checked out
+            for (var medicine in medicinesToDisable) {
+              int index = _getMedicineIndex(medicine);
+              if (index != -1) {
+                buttonStates[index] = false;
+                userMedicineStatus[widget.rfidData]![index] = false;
+              }
+            }
+            orders.clear(); // Clear orders after checkout
+          });
+        }
+      });
     }
   }
+
+// Helper function to get the index of a medicine
+  int _getMedicineIndex(String medicineName) {
+    const List<String> medicines = [
+      'Ibuprofen',
+      'Cetirizine',
+      'Paracetamol',
+      'Loperamide'
+    ];
+    return medicines.indexOf(medicineName);
+  }
+
 }
+

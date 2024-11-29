@@ -3,9 +3,14 @@ import 'confirmation_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class PaymentPage extends StatefulWidget {
-  final List<Map<String, String>> orders; // Accept the orders list with name and price
+  final List<Map<String, String>> orders;
+  final List<String> medicinesToBeDisabled; // New parameter
 
-  const PaymentPage({super.key, required this.orders}); // Constructor to receive orders
+  const PaymentPage({
+    Key? key,
+    required this.orders,
+    required this.medicinesToBeDisabled,
+  }) : super(key: key);
 
   @override
   PaymentPageState createState() => PaymentPageState();
@@ -156,22 +161,28 @@ class PaymentPageState extends State<PaymentPage> {
   void _onProceedButtonPressed() {
     if (coinEqualToAmount) {
       _dispenseMedicine();
-      sendData(dataToSend); // Send the number of orders to ESP32
+      sendData(dataToSend);
+
       setState(() {
         coinEqualToAmount = false;
-        // dataToSend = '';
         coinInserted = 0;
       });
+
       print("Data Successfully Sent");
 
-      // Check if connectedDevice is not null before navigating
       if (connectedDevice != null) {
+        // Send medicinesToBeDisabled back to the previous screen first
+        Navigator.pop(context, widget.medicinesToBeDisabled);
+
+        // Then navigate to the confirmation screen
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ConfirmationScreen(device: connectedDevice!),
           ),
         );
+
+
       } else {
         print("No device connected");
         ScaffoldMessenger.of(context).showSnackBar(
@@ -185,6 +196,7 @@ class PaymentPageState extends State<PaymentPage> {
       );
     }
   }
+
 
 
   @override
@@ -321,6 +333,10 @@ class PaymentPageState extends State<PaymentPage> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () {
+                      if (connectedDevice != null) {
+                        connectedDevice!.disconnect();
+                        print('Disconnected from Bluetooth device.');
+                      }
                       Navigator.pop(context); // Back button
 
                     },
@@ -349,9 +365,6 @@ class PaymentPageState extends State<PaymentPage> {
 
   @override
   void dispose() {
-    if (connectedDevice != null) {
-      connectedDevice!.disconnect();
-    }
     super.dispose();
   }
 }

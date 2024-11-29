@@ -20,12 +20,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/medicine_menu',
+      initialRoute: '/',
       routes: {
         '/': (context) => RfidScreen(),
         '/splash_screen': (context) => SplashScreen(),
-        '/medicine_menu': (context) => MedicineMenu(),
-        '/payment': (context) => PaymentPage(orders: const []),
+        '/medicine_menu': (context) => MedicineMenu(rfidData: '',),
+        //'/payment': (context) => PaymentPage(orders: const [], medicinesToBeDisabled: [],),
         '/rfid_screen': (context) => RfidScreen(),
       },
     );

@@ -37,12 +37,15 @@ class RfidScreenState extends State<RfidScreen> {
       if (rfidData?.length == 10) {
         if (_isValidRfid(rfidData)) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MedicineMenu()),
+            MaterialPageRoute(
+              builder: (context) => MedicineMenu(rfidData: rfidData!), // Pass rfidData here
+            ),
           );
         } else {
           _showErrorMessage("Invalid RFID. Please try again.");
         }
       }
+
     });
   }
 

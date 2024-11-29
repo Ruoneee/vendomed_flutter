@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:vendomed_flutter/rfid_screen.dart';
 
 class ConfirmationScreen extends StatefulWidget {
   final BluetoothDevice device;  // The Bluetooth device passed from the previous screen
-
 
   const ConfirmationScreen({super.key, required this.device});
 
@@ -18,7 +18,6 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   // Replace these with your actual service and characteristic UUIDs
   final String serviceUUID = "1bf2a612-29c3-4a82-9b3d-b9abc9e81daa";  // Example UUID
   final String characteristicUUID = "45088d05-aa3b-42da-aa75-bf85d5046829"; // Example UUID
-
 
   @override
   void initState() {
@@ -57,16 +56,34 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     }
   }
 
+  // Function to disconnect from Bluetooth
+  Future<void> disconnectFromDevice() async {
+      await widget.device.disconnect();
+      print('Disconnected from Bluetooth device.');
+
+  }
+
   @override
   void dispose() {
     super.dispose();
+    disconnectFromDevice(); // Call disconnectFromDevice in dispose
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Confirmation'),
         backgroundColor: const Color(0xFF1E5D6F),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bluetooth_disabled),
+            onPressed: () async {
+              await disconnectFromDevice();
+              // Show a snackbar or dialog to confirm disconnection (optional)
+            },
+          )
+        ],
       ),
       body: Center(
         child: Column(
@@ -79,9 +96,13 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                await disconnectFromDevice();  // Disconnect before navigating
                 Navigator.pop(context); // Pop ConfirmationScreen
-                Navigator.pop(context); // Pop PaymentScree
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RfidScreen()),
+                );
               },
               child: const Text('Back to Menu'),
             ),
