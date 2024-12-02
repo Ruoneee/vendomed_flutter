@@ -1,9 +1,10 @@
+import 'dart:async'; // Import this for Timer
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:vendomed_flutter/rfid_screen.dart';
 
 class ConfirmationScreen extends StatefulWidget {
-  final BluetoothDevice device;  // The Bluetooth device passed from the previous screen
+  final BluetoothDevice device;
 
   const ConfirmationScreen({super.key, required this.device});
 
@@ -12,12 +13,13 @@ class ConfirmationScreen extends StatefulWidget {
 }
 
 class _ConfirmationScreenState extends State<ConfirmationScreen> {
-  String _dispensingMessage = "Order Confirmed!"; // Initial message
+  String _dispensingMessage = "Order Confirmed!";
   BluetoothCharacteristic? targetCharacteristic;
 
-  // Replace these with your actual service and characteristic UUIDs
-  final String serviceUUID = "1bf2a612-29c3-4a82-9b3d-b9abc9e81daa";  // Example UUID
-  final String characteristicUUID = "45088d05-aa3b-42da-aa75-bf85d5046829"; // Example UUID
+  final String serviceUUID = "1bf2a612-29c3-4a82-9b3d-b9abc9e81daa";
+  final String characteristicUUID = "45088d05-aa3b-42da-aa75-bf85d5046829";
+
+  Timer? _autoNavigateTimer; // Timer for auto navigation
 
   @override
   void initState() {
@@ -26,27 +28,27 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   }
 
   Future<void> startListening() async {
-    // Discover services from the already connected device
     List<BluetoothService> services = await widget.device.discoverServices();
 
-    // Look for the target service and characteristic
     for (var service in services) {
       if (service.uuid.toString() == serviceUUID) {
         for (var characteristic in service.characteristics) {
           if (characteristic.uuid.toString() == characteristicUUID) {
             targetCharacteristic = characteristic;
 
-            // Enable notifications for the target characteristic
             await targetCharacteristic!.setNotifyValue(true);
-
-            // Listen for incoming data
             targetCharacteristic!.value.listen((value) {
               String receivedData = String.fromCharCodes(value);
-              if(receivedData.isEmpty ||(RegExp(r'^\d+$').hasMatch(receivedData))){
+              if (receivedData.isEmpty || (RegExp(r'^\d+$').hasMatch(receivedData))) {
                 return;
               }
               setState(() {
-                _dispensingMessage = receivedData; // Update message with received data
+                _dispensingMessage = receivedData;
+
+                // Start timer when "Order complete" is received
+                if (_dispensingMessage.toLowerCase() == "order complete") {
+                  _startAutoNavigateTimer();
+                }
               });
               print('Confirmed Data: $_dispensingMessage');
             });
@@ -56,17 +58,30 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     }
   }
 
-  // Function to disconnect from Bluetooth
-  Future<void> disconnectFromDevice() async {
-      await widget.device.disconnect();
-      print('Disconnected from Bluetooth device.');
+  void _startAutoNavigateTimer() {
+    _autoNavigateTimer?.cancel(); // Cancel existing timer, if any
+    _autoNavigateTimer = Timer(const Duration(seconds: 5), () async {
+      await disconnectFromDevice(); // Ensure Bluetooth disconnects
+      if (mounted) {
+        Navigator.pop(context); // Pop ConfirmationScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const RfidScreen()),
+        );
+      }
+    });
+  }
 
+  Future<void> disconnectFromDevice() async {
+    await widget.device.disconnect();
+    print('Disconnected from Bluetooth device.');
   }
 
   @override
   void dispose() {
-    super.dispose();
+    _autoNavigateTimer?.cancel(); // Cancel the timer when widget is disposed
     disconnectFromDevice(); // Call disconnectFromDevice in dispose
+    super.dispose();
   }
 
   @override
@@ -80,7 +95,6 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             icon: const Icon(Icons.bluetooth_disabled),
             onPressed: () async {
               await disconnectFromDevice();
-              // Show a snackbar or dialog to confirm disconnection (optional)
             },
           )
         ],
@@ -97,8 +111,9 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
-                await disconnectFromDevice();  // Disconnect before navigating
-                Navigator.pop(context); // Pop ConfirmationScreen
+                _autoNavigateTimer?.cancel(); // Cancel timer if manually pressed
+                await disconnectFromDevice();
+                Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const RfidScreen()),

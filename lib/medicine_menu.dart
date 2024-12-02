@@ -1,6 +1,7 @@
 // ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'rfid_screen.dart';
 import 'payment.dart';
 
 class MedicineMenu extends StatefulWidget {
@@ -59,8 +60,18 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ),
               ],
             ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RfidScreen()),
+                  );
+                },
+              ),
+            ],
           ),
-
           body: Container(
             color: const Color(0xF21588d),
             child: Padding(
@@ -75,7 +86,10 @@ class MedicineMenuState extends State<MedicineMenu> {
                         padding: EdgeInsets.only(bottom: 8.0),
                         child: Text(
                           "Your Orders:",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black),
                         ),
                       ),
                       Container(
@@ -90,7 +104,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                             itemCount: orders.length,
                             itemBuilder: (context, index) {
                               return Container(
-                                padding: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 0.0, horizontal: 8.0),
                                 child: Text(
                                   '${index + 1}. ${orders[index]['name']} - ${orders[index]['price']}',
                                   style: const TextStyle(fontSize: 16),
@@ -110,10 +125,14 @@ class MedicineMenuState extends State<MedicineMenu> {
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
                       children: [
-                        _buildMedicineItem('Ibuprofen', '10.00', 'assets/images/ibuprofen.png', 4, 0),
-                        _buildMedicineItem('Cetirizine', '18.00', 'assets/images/cetirizine.png', 1, 1),
-                        _buildMedicineItem('Paracetamol', '5.00', 'assets/images/paracetamol.png', 4, 2),
-                        _buildMedicineItem('Loperamide', '10.00', 'assets/images/loperamide.png', 2, 3),
+                        _buildMedicineItem(
+                            'Ibuprofen', '10.00', 'assets/images/ibuprofen.png', 4, 0),
+                        _buildMedicineItem(
+                            'Cetirizine', '18.00', 'assets/images/cetirizine.png', 1, 1),
+                        _buildMedicineItem(
+                            'Paracetamol', '5.00', 'assets/images/paracetamol.png', 4, 2),
+                        _buildMedicineItem(
+                            'Loperamide', '10.00', 'assets/images/loperamide.png', 2, 3),
                       ],
                     ),
                   ),
@@ -126,7 +145,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                           onPressed: _resetOrders,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey[700],
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 10),
                           ),
                           child: const Text(
                             "RESET",
@@ -137,7 +157,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                           onPressed: _proceedToCheckout,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0D2A5E),
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 10),
                           ),
                           child: const Text(
                             "CHECKOUT",
@@ -154,7 +175,8 @@ class MedicineMenuState extends State<MedicineMenu> {
         ));
   }
 
-  Widget _buildMedicineItem(String name, String price, String imagePath, int quantity, int index) {
+  Widget _buildMedicineItem(String name, String price, String imagePath,
+      int quantity, int index) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -169,7 +191,10 @@ class MedicineMenuState extends State<MedicineMenu> {
             const SizedBox(height: 2),
             Text(
               name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black),
             ),
             Text(
               price,
@@ -181,7 +206,10 @@ class MedicineMenuState extends State<MedicineMenu> {
               children: [
                 Text(
                   '$quantity pcs. daily',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0D2A5E)),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D2A5E)),
                 ),
               ],
             ),
@@ -192,13 +220,17 @@ class MedicineMenuState extends State<MedicineMenu> {
                 width: 120,
                 height: 40,
                 child: ElevatedButton(
-                  onPressed: buttonStates[index] ? () => _addToOrder(name, price, index) : null,
+                  onPressed:
+                  buttonStates[index] ? () => _addToOrder(name, price, index) : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonStates[index] ? const Color(0xFF0D2A5E) : Colors.grey,
+                    backgroundColor: buttonStates[index]
+                        ? const Color(0xFF0D2A5E)
+                        : Colors.grey,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 19, vertical: 10),
                   ),
                   child: const Text(
                     'Add to Order',
@@ -217,14 +249,13 @@ class MedicineMenuState extends State<MedicineMenu> {
     setState(() {
       orders.add({'name': name, 'price': price});
       buttonStates[index] = false;
-      //userMedicineStatus[widget.rfidData]![index] = false; // Update user's purchase status
     });
   }
 
   void _resetOrders() {
     setState(() {
       orders.clear();
-      buttonStates = userMedicineStatus[widget.rfidData]!.values.toList(); // Restore button states
+      buttonStates = userMedicineStatus[widget.rfidData]!.values.toList();
     });
   }
 
@@ -235,7 +266,8 @@ class MedicineMenuState extends State<MedicineMenu> {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('No Orders'),
-            content: const Text('Please add items to your order before proceeding to checkout.'),
+            content: const Text(
+                'Please add items to your order before proceeding to checkout.'),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
@@ -257,12 +289,13 @@ class MedicineMenuState extends State<MedicineMenu> {
           builder: (context) => PaymentPage(
             orders: orders,
             medicinesToBeDisabled: medicinesToBeDisabled,
+            rfidData: widget.rfidData,
+
           ),
         ),
       ).then((medicinesToDisable) {
         if (medicinesToDisable != null) {
           setState(() {
-            // Disable medicines that were checked out
             for (var medicine in medicinesToDisable) {
               int index = _getMedicineIndex(medicine);
               if (index != -1) {
@@ -270,14 +303,13 @@ class MedicineMenuState extends State<MedicineMenu> {
                 userMedicineStatus[widget.rfidData]![index] = false;
               }
             }
-            orders.clear(); // Clear orders after checkout
+            orders.clear();
           });
         }
       });
     }
   }
 
-// Helper function to get the index of a medicine
   int _getMedicineIndex(String medicineName) {
     const List<String> medicines = [
       'Ibuprofen',
@@ -287,6 +319,4 @@ class MedicineMenuState extends State<MedicineMenu> {
     ];
     return medicines.indexOf(medicineName);
   }
-
 }
-

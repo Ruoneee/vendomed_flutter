@@ -5,11 +5,14 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 class PaymentPage extends StatefulWidget {
   final List<Map<String, String>> orders;
   final List<String> medicinesToBeDisabled; // New parameter
+  final String rfidData;
+
 
   const PaymentPage({
     Key? key,
     required this.orders,
     required this.medicinesToBeDisabled,
+    required this.rfidData,
   }) : super(key: key);
 
   @override
@@ -218,7 +221,7 @@ class PaymentPageState extends State<PaymentPage> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           automaticallyImplyLeading: false,
-          title: const Row(
+          title: Row(
             children: [
               CircleAvatar(
                 backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
@@ -226,7 +229,7 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               SizedBox(width: 10),
               Text(
-                "Welcome, User!",
+                "Welcome,  ${widget.rfidData}!!",
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.white,
