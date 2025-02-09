@@ -1,8 +1,10 @@
 // ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'user_selection_screen.dart'; // For navigation back to the selection screen
 import 'rfid_screen.dart';
-import 'payment_method.dart'; // Import PaymentMethodPage
+import 'payment.dart';
+import 'payment_method.dart'; // Added import for PaymentMethodPage
 
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
@@ -28,8 +30,7 @@ class MedicineMenuState extends State<MedicineMenu> {
           title: Row(
             children: [
               CircleAvatar(
-                backgroundImage:
-                AssetImage('assets/userIcons/user_icon.png'),
+                backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
                 radius: 20,
               ),
               const SizedBox(width: 10),
@@ -43,9 +44,10 @@ class MedicineMenuState extends State<MedicineMenu> {
             IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () {
+                // Navigate back to the UserSelectionScreen instead of RfidScreen.
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const RfidScreen()),
+                  MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
                 );
               },
             ),
@@ -133,9 +135,9 @@ class MedicineMenuState extends State<MedicineMenu> {
                           3),
                       // New medicine: Multivitamins
                       _buildMedicineItem(
-                          'Multivitamins',
+                          'Buscopan',
                           '12.00',
-                          'assets/images/multivitamins.png',
+                          'assets/images/buscopan.png',
                           1),
                     ],
                   ),
@@ -199,17 +201,17 @@ class MedicineMenuState extends State<MedicineMenu> {
               height: imageHeight,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 5),
             Text(
               name,
               style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.black),
             ),
             Text(
               price,
-              style: const TextStyle(fontSize: 14, color: Colors.black54),
+              style: const TextStyle(fontSize: 20, color: Colors.black54),
             ),
             const Spacer(),
             Row(
@@ -218,13 +220,13 @@ class MedicineMenuState extends State<MedicineMenu> {
                 Text(
                   'Recommended: $recommendedQuantity pcs.',
                   style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 19,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0D2A5E)),
                 ),
               ],
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 30),
             SizedBox(
               width: 150,
               height: 50,

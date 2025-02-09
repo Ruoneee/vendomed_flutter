@@ -1,10 +1,8 @@
 // ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
 
-import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'dart:async';
-
-import 'rfid_screen.dart'; // Import for handling timeouts and delays
+import 'package:flutter/material.dart';
+import 'user_selection_screen.dart'; // This screen will ask if the user has RFID or is a guest
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,97 +12,63 @@ class SplashScreen extends StatefulWidget {
 }
 
 class SplashScreenState extends State<SplashScreen> {
-  FlutterBluePlus flutterBlue = FlutterBluePlus();
-  BluetoothDevice? connectedDevice;
-  bool isConnected = false;
-  int dotCount = 0; // Track the number of dots for the loading effect
+  int dotCount = 0; // For loading dots animation
 
   @override
   void initState() {
     super.initState();
-    // Start Bluetooth connection process
-    _connectToDevice();
-
-    // Change the number of dots every 500 milliseconds
+    // Start a timer for a simple loading effect.
     Timer.periodic(const Duration(milliseconds: 500), (Timer timer) {
       setState(() {
-        dotCount = (dotCount + 1) % 4; // Cycle through 0-3 dots
+        dotCount = (dotCount + 1) % 4;
       });
     });
-  }
-
-  Future<void> _connectToDevice() async {
-    // Avoid reconnecting if already connected
-    if (isConnected) return;
-
-    // Start scanning for BLE devices
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 300));
-
-    FlutterBluePlus.scanResults.listen((scanResult) {
-      for (ScanResult result in scanResult) {
-        if (result.advertisementData.advName == 'VendoMed' || result.device.remoteId.toString() == "8:A6:F7:22:D3:AE") {
-          FlutterBluePlus.stopScan();
-          _connect(result.device);
-          break;
-        }
-      }
-    });
-  }
-
-  Future<void> _connect(BluetoothDevice device) async {
-    if (isConnected) return; // Avoid re-connecting if already connected
-
-    try {
-      await device.connect();
-      setState(() {
-        connectedDevice = device;
-        isConnected = true;
-      });
-      await device.discoverServices();
-      _navigateToNextScreen();
-    } catch (e) {
-      print('Failed to connect: $e');
-      // Handle connection failure
-    }
-  }
-
-  void _navigateToNextScreen() {
-    if (isConnected) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const RfidScreen()),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Wrap the entire Scaffold in a GestureDetector.
     return WillPopScope(
-        onWillPop: () async {
-      // Returning false prevents the back button from working
-      return false;
-    },
-
-      child: Scaffold(
-      body: Center(
-        child: Container(
-          width: 1080, // Width for resolution
-          height: 2400, // Height for resolution
-          decoration: const BoxDecoration(
-            color: Color(0xfffffe4e5), // Background color
-          ),
-          child: Center(
+      onWillPop: () async => false, // Prevent back button.
+      child: GestureDetector(
+        onTap: () {
+          // Navigate to the User Selection Screen when tapped.
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const UserSelectionScreen(),
+            ),
+          );
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFFFFFFF), // White background
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFFFFF), // White background
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Image at the top of the screen
+                // Splash logo image.
                 Image.asset(
-                  'assets/images/splash_logo.png', // Ensure this path matches your assets folder
-                  height: 280, // Adjust height as needed
+                  'assets/images/splash_logo.png', // Ensure the asset path is correct.
+                  height: 600,
                 ),
-                const SizedBox(height: 50), // Space between image and dots
-
-                // Dots for loading effect
+                const SizedBox(height: 30),
+                // Catchy phrase to enhance user experience.
+                const Text(
+                  "Tap to Proceed!",
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D2A5E),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 50),
+                // Optionally, you can still show loading dots:
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(3, (index) {
@@ -114,36 +78,17 @@ class SplashScreenState extends State<SplashScreen> {
                       height: 10,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF1E5D6F).withOpacity(dotCount == index ? 1.0 : 0.3), // Change opacity based on active dot
+                        color: const Color(0xFF1E5D6F)
+                            .withOpacity(dotCount == index ? 1.0 : 0.3),
                       ),
                     );
                   }),
                 ),
-                const SizedBox(height: 20), // Space between dots and text
-                const Text(
-                  'Connecting!',
-                  style: TextStyle(
-                    fontSize: 30, // Adjust font size as needed
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E5D6F), // Text color
-                  ),
-                ),
-
-                const SizedBox(height: 10), // Space between messages
-                if (isConnected) // Show message if connected
-                  const Text(
-                    'Connected to ESP32! Redirecting...',
-                    style: TextStyle(
-                      fontSize: 20, // Adjust font size as needed
-                      color: Color(0xFF1E5D6F), // Message text color
-                    ),
-                  )
               ],
             ),
           ),
         ),
       ),
-     )
     );
   }
 }

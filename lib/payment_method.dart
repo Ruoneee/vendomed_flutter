@@ -18,7 +18,7 @@ class PaymentOptionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double imageHeight = 140.0;
+    const double imageHeight = 270.0;
 
     return GestureDetector(
       onTap: onTap,

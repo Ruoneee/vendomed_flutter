@@ -1,13 +1,13 @@
 // main.dart
 import 'package:flutter/material.dart';
-import 'rfid_screen.dart';
 import 'splash_screen.dart';
+import 'user_selection_screen.dart';
+import 'rfid_screen.dart';
 import 'medicine_menu.dart';
 import 'payment.dart';
-// import 'confirmation_screen.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -22,12 +22,14 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => RfidScreen(),
-        '/splash_screen': (context) => SplashScreen(),
-        '/medicine_menu': (context) => MedicineMenu(rfidData: '',),
-        //'/payment': (context) => PaymentPage(orders: const [], medicinesToBeDisabled: [],),
-        '/rfid_screen': (context) => RfidScreen(),
+        // Set the initial route to the splash screen.
+        '/': (context) => const SplashScreen(),
+        '/user_selection': (context) => const UserSelectionScreen(),
+        '/rfid_screen': (context) => const RfidScreen(),
+        '/medicine_menu': (context) => MedicineMenu(rfidData: ''),
+        // Add any other routes you need here.
       },
+      debugShowCheckedModeBanner: false,
     );
   }
 }
