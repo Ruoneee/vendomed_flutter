@@ -14,10 +14,11 @@ class MedicineMenu extends StatefulWidget {
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
+  // Updated to include 6 medicines (indices 0 through 5)
   static final Map<String, Map<int, bool>> userMedicineStatus = {};
 
   List<Map<String, String>> orders = [];
-  List<bool> buttonStates = [true, true, true, true];
+  List<bool> buttonStates = [true, true, true, true, true, true];
 
   @override
   void initState() {
@@ -26,11 +27,14 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _initializeButtonStates() {
+    // Initialize the status map with 6 items for each medicine
     final userStatus = userMedicineStatus.putIfAbsent(widget.rfidData, () => {
       0: true,
       1: true,
       2: true,
       3: true,
+      4: true,
+      5: true,
     });
     setState(() {
       buttonStates = List<bool>.from(userStatus.values);
@@ -133,6 +137,12 @@ class MedicineMenuState extends State<MedicineMenu> {
                             'Paracetamol', '5.00', 'assets/images/paracetamol.png', 4, 2),
                         _buildMedicineItem(
                             'Loperamide', '10.00', 'assets/images/loperamide.png', 2, 3),
+                        // New medicine: Antacid
+                        _buildMedicineItem(
+                            'Antacid', '8.00', 'assets/images/antacid.png', 3, 4),
+                        // New medicine: Multivitamins
+                        _buildMedicineItem(
+                            'Multivitamins', '12.00', 'assets/images/multivitamins.png', 1, 5),
                       ],
                     ),
                   ),
@@ -290,7 +300,6 @@ class MedicineMenuState extends State<MedicineMenu> {
             orders: orders,
             medicinesToBeDisabled: medicinesToBeDisabled,
             rfidData: widget.rfidData,
-
           ),
         ),
       ).then((medicinesToDisable) {
@@ -311,11 +320,14 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   int _getMedicineIndex(String medicineName) {
+    // Updated list to include the two new medicines
     const List<String> medicines = [
       'Ibuprofen',
       'Cetirizine',
       'Paracetamol',
-      'Loperamide'
+      'Loperamide',
+      'Antacid',
+      'Multivitamins'
     ];
     return medicines.indexOf(medicineName);
   }
