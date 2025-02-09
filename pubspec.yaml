@@ -30,7 +30,12 @@ flutter:
     - assets/images/paracetamol.png
     - assets/images/loperamide.png
     - assets/images/cetirizine.png
+    - assets/images/multivitamins.png
+    - assets/images/antacid.png
     - assets/userIcons/user_icon.png
+    - assets/images/cashcoins.png
+    - assets/images/gcashlogo.png
+    - assets/images/qrcode.png
   uses-material-design: true
 
 
