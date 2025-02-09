@@ -90,7 +90,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                                   vertical: 0.0, horizontal: 8.0),
                               child: Text(
                                 '${index + 1}. ${orders[index]['name']} - ${orders[index]['price']}',
-                                style: const TextStyle(fontSize: 16),
+                                style: const TextStyle(fontSize: 18),
                               ),
                             );
                           },
