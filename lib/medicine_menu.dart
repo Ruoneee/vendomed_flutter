@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'rfid_screen.dart';
-import 'payment_method.dart'; // Make sure this import is correct.
+import 'payment_method.dart'; // Import PaymentMethodPage
 
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
@@ -28,7 +28,8 @@ class MedicineMenuState extends State<MedicineMenu> {
           title: Row(
             children: [
               CircleAvatar(
-                backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
+                backgroundImage:
+                AssetImage('assets/userIcons/user_icon.png'),
                 radius: 20,
               ),
               const SizedBox(width: 10),
@@ -105,43 +106,37 @@ class MedicineMenuState extends State<MedicineMenu> {
                     crossAxisSpacing: 16,
                     children: [
                       _buildMedicineItem(
-                        'Ibuprofen',
-                        '10.00',
-                        'assets/images/ibuprofen.png',
-                        4,
-                      ),
+                          'Ibuprofen',
+                          '10.00',
+                          'assets/images/ibuprofen.png',
+                          4),
                       _buildMedicineItem(
-                        'Cetirizine',
-                        '18.00',
-                        'assets/images/cetirizine.png',
-                        1,
-                      ),
+                          'Cetirizine',
+                          '18.00',
+                          'assets/images/cetirizine.png',
+                          1),
                       _buildMedicineItem(
-                        'Paracetamol',
-                        '5.00',
-                        'assets/images/paracetamol.png',
-                        4,
-                      ),
+                          'Paracetamol',
+                          '5.00',
+                          'assets/images/paracetamol.png',
+                          4),
                       _buildMedicineItem(
-                        'Loperamide',
-                        '10.00',
-                        'assets/images/loperamide.png',
-                        2,
-                      ),
+                          'Loperamide',
+                          '10.00',
+                          'assets/images/loperamide.png',
+                          2),
                       // New medicine: Antacid
                       _buildMedicineItem(
-                        'Antacid',
-                        '8.00',
-                        'assets/images/antacid.png',
-                        3,
-                      ),
+                          'Antacid',
+                          '8.00',
+                          'assets/images/antacid.png',
+                          3),
                       // New medicine: Multivitamins
                       _buildMedicineItem(
-                        'Multivitamins',
-                        '12.00',
-                        'assets/images/multivitamins.png',
-                        1,
-                      ),
+                          'Multivitamins',
+                          '12.00',
+                          'assets/images/multivitamins.png',
+                          1),
                     ],
                   ),
                 ),
@@ -208,10 +203,9 @@ class MedicineMenuState extends State<MedicineMenu> {
             Text(
               name,
               style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black),
             ),
             Text(
               price,
@@ -224,10 +218,9 @@ class MedicineMenuState extends State<MedicineMenu> {
                 Text(
                   'Recommended: $recommendedQuantity pcs.',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D2A5E),
-                  ),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D2A5E)),
                 ),
               ],
             ),
@@ -300,9 +293,12 @@ class MedicineMenuState extends State<MedicineMenu> {
           ),
         ),
       ).then((result) {
-        setState(() {
-          orders.clear();
-        });
+        // Only clear orders if the result is true (successful payment).
+        if (result == true) {
+          setState(() {
+            orders.clear();
+          });
+        }
       });
     }
   }

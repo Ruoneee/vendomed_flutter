@@ -49,18 +49,18 @@ class GCashPaymentPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  "Please scan the GCash QR Code to complete payment.",
-                  style: TextStyle(fontSize: 18, color: Colors.black),
+                  "Please Scan GCash QR Code to complete payment.",
+                  style: TextStyle(fontSize: 29, color: Colors.black),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 80),
                 // Display the QR code image.
                 Image.asset(
                   'assets/images/qrcode.png',
-                  height: 200,
+                  height: 400,
                   fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 90),
                 ElevatedButton(
                   onPressed: () {
                     // When payment is completed, navigate back to PaymentMethodPage without clearing orders.
@@ -76,11 +76,11 @@ class GCashPaymentPage extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 20),
                   ),
                   child: const Text(
-                    "Payment Completed",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                    "PAYMENT COMPLETED",
+                    style: TextStyle(fontSize: 25, color: Colors.white),
                   ),
                 ),
               ],

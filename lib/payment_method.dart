@@ -1,5 +1,3 @@
-// payment_method.dart
-
 import 'package:flutter/material.dart';
 import 'gcash.dart';
 import 'payment.dart'; // Your existing payment page for Bill Acceptor / Coin Slot
@@ -20,16 +18,14 @@ class PaymentOptionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Set a fixed image height that fits comfortably inside the container.
-    const double imageHeight = 350.0;
+    const double imageHeight = 140.0;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 330, // Increased width for a larger button
-        height: 450, // Increased height for a square button
+        width: 320,
+        height: 400,
         decoration: BoxDecoration(
-          // Changed background color to cream instead of white.
           color: const Color(0xFFF2F2E8),
           borderRadius: BorderRadius.circular(30),
           boxShadow: const [
@@ -40,22 +36,20 @@ class PaymentOptionButton extends StatelessWidget {
             )
           ],
         ),
-        padding: const EdgeInsets.all(18.0),
+        padding: const EdgeInsets.all(28.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Display the payment method image.
             Image.asset(
               imagePath,
               height: imageHeight,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 5),
-            // Payment method label.
+            const SizedBox(height: 20),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 30, // Increased font size for readability
+                fontSize: 30,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
@@ -82,40 +76,40 @@ class PaymentMethodPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white), // White back arrow
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Select Payment Method",
-          style: TextStyle(color: Colors.white), // White title text
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2A5E),
       ),
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1000), // Limit width for tablets
+            constraints: const BoxConstraints(maxWidth: 1000),
             child: Padding(
               padding: const EdgeInsets.all(25.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 90),
+                  const SizedBox(height: 80),
                   const Text(
                     "WHICH PAYMENT WOULD YOU LIKE TO PROCEED FOR YOUR ORDER?",
                     style: TextStyle(
-                      fontSize: 35, // Larger prompt text for better readability
+                      fontSize: 35,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 150),
-                  // Row containing the two square payment options.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       PaymentOptionButton(
-                        imagePath: 'assets/images/gcashlogo.png', // Your GCash image asset
+                        imagePath: 'assets/images/gcashlogo.png',
                         label: 'GCash',
-                        onTap: () {
-                          Navigator.pushReplacement(
+                        onTap: () async {
+                          // Navigate to GCashPaymentPage and wait for its result.
+                          bool? result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => GCashPaymentPage(
@@ -127,14 +121,16 @@ class PaymentMethodPage extends StatelessWidget {
                               ),
                             ),
                           );
+                          // Propagate the result back to MedicineMenu.
+                          Navigator.pop(context, result);
                         },
                       ),
-                      const SizedBox(width: 60), // Increased spacing between the buttons
+                      const SizedBox(width: 60),
                       PaymentOptionButton(
-                        imagePath: 'assets/images/cashcoins.png', // Your Cash/Coin image asset
+                        imagePath: 'assets/images/cashcoins.png',
                         label: 'Cash/Coins',
-                        onTap: () {
-                          Navigator.pushReplacement(
+                        onTap: () async {
+                          bool? result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => PaymentPage(
@@ -146,19 +142,20 @@ class PaymentMethodPage extends StatelessWidget {
                               ),
                             ),
                           );
+                          Navigator.pop(context, result);
                         },
                       ),
                     ],
                   ),
                   const SizedBox(height: 150),
-                  // Cancel button centered below the payment options.
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(context, false); // Cancel returns false.
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[700],
-                      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                     ),
                     child: const Text(
                       "CANCEL",
