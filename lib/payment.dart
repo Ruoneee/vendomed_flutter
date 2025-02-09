@@ -248,14 +248,14 @@ class PaymentPageState extends State<PaymentPage> {
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 17,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
               ),
               const SizedBox(height: 8),
               Container(
-                height: 150,
+                height: 250,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: Colors.black),
@@ -269,6 +269,7 @@ class PaymentPageState extends State<PaymentPage> {
                         padding: const EdgeInsets.all(8.0),
                         child: Text(
                           '${widget.orders[index]['name']} - ${widget.orders[index]['price']}',
+                          style: const TextStyle(fontSize: 17), // Set your font size here.
                         ),
                       );
                     },
@@ -296,7 +297,7 @@ class PaymentPageState extends State<PaymentPage> {
                   hintText: 'Total amount will appear here',
                 ),
                 initialValue: '₱${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(color: Colors.black),
+                style: const TextStyle(color: Colors.black, fontSize: 17),
               ),
               const SizedBox(height: 20),
 
@@ -319,7 +320,7 @@ class PaymentPageState extends State<PaymentPage> {
                   ),
                   hintText: 'Number of coins inserted',
                 ),
-                style: const TextStyle(color: Colors.black),
+                style: const TextStyle(color: Colors.black, fontSize: 17),
               ),
               const SizedBox(height: 20),
 
