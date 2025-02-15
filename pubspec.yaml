@@ -26,6 +26,7 @@ dev_dependencies:
 flutter:
   assets: #for adding images (need to declare it here)
     - assets/images/splash_logo.png
+    - assets/images/tap_rfid.png
     - assets/images/ibuprofen.png
     - assets/images/paracetamol.png
     - assets/images/loperamide.png

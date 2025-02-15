@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'medicine_menu.dart'; // Screen to show medicine menu
+import 'splash_screen.dart'; // Import your splash screen
 
 class RfidScreen extends StatefulWidget {
   const RfidScreen({super.key});
@@ -13,42 +14,46 @@ class RfidScreen extends StatefulWidget {
 
 class _RfidScreenState extends State<RfidScreen> {
   final TextEditingController _rfidController = TextEditingController();
-  String? rfidData;
-  String? maskedRfid;
+  final FocusNode _rfidFocusNode = FocusNode();
   bool navigated = false; // To prevent multiple navigations
 
   @override
   void initState() {
     super.initState();
+    // Request focus for the hidden TextField after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rfidFocusNode.requestFocus();
+    });
+
     // Listen for changes in the TextField.
     _rfidController.addListener(() {
-      setState(() {
-        rfidData = _rfidController.text.trim();
-      });
+      final trimmed = _rfidController.text.trim();
       // Automatically process once 10 characters are entered.
-      if (rfidData?.length == 10 && !navigated) {
-        if (_isValidRfid(rfidData!)) {
-          // Mask the RFID (showing only the last 4 digits).
-          setState(() {
-            maskedRfid = "******" + rfidData!.substring(6);
-            navigated = true;
-          });
-          // Delay a moment so the user can see the masked RFID.
-          Timer(const Duration(milliseconds: 1000), () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MedicineMenu(rfidData: rfidData!),
-              ),
-            );
-          });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Invalid RFID. Please try again.")),
-          );
-        }
+      if (trimmed.length == 10 && !navigated) {
+        _processRfid(trimmed);
       }
     });
+  }
+
+  void _processRfid(String rfid) {
+    if (_isValidRfid(rfid)) {
+      setState(() {
+        navigated = true;
+      });
+      // Delay a moment before navigating.
+      Timer(const Duration(milliseconds: 1000), () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MedicineMenu(rfidData: rfid),
+          ),
+        );
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid RFID. Please try again.")),
+      );
+    }
   }
 
   bool _isValidRfid(String rfid) {
@@ -71,18 +76,29 @@ class _RfidScreenState extends State<RfidScreen> {
   @override
   void dispose() {
     _rfidController.dispose();
+    _rfidFocusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Prevent the back button if needed.
-      onWillPop: () async => false,
+      // Allow back navigation; we'll handle it manually via the back arrow.
+      onWillPop: () async => true,
       child: Scaffold(
-        // Set the scaffold background to white.
         backgroundColor: const Color(0xFFFFFFFF),
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              // Manually navigate back to the SplashScreen.
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const SplashScreen()),
+                    (Route<dynamic> route) => false,
+              );
+            },
+          ),
           title: const Text(
             "RFID Scan",
             style: TextStyle(color: Colors.white),
@@ -90,26 +106,47 @@ class _RfidScreenState extends State<RfidScreen> {
           backgroundColor: const Color(0xFF0D2A5E),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  "Please scan your RFID or enter it manually to proceed.",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D2A5E),
-                  ),
-                  textAlign: TextAlign.center,
+        // Wrap entire screen in GestureDetector to re-request focus.
+        body: GestureDetector(
+          onTap: () {
+            _rfidFocusNode.requestFocus();
+          },
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Display the RFID tap image with the correct asset path.
+                    Image.asset(
+                      'assets/images/tap_rfid.png', // Ensure this path is correct
+                      width: 700, // Adjust size as needed
+                      height: 400,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Please present your RFID to the reader.",
+                      style: TextStyle(
+                        fontSize: 35,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D2A5E),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 30),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 50),
+              ),
+              // The invisible TextField that still receives input.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Opacity(
+                  opacity: 0.0,
                   child: TextField(
                     controller: _rfidController,
+                    focusNode: _rfidFocusNode,
                     keyboardType: TextInputType.number,
                     maxLength: 10,
                     obscureText: true,
@@ -122,20 +159,8 @@ class _RfidScreenState extends State<RfidScreen> {
                     style: const TextStyle(fontSize: 24),
                   ),
                 ),
-                const SizedBox(height: 30),
-                // Display masked RFID if available.
-                if (maskedRfid != null)
-                  Text(
-                    "Scanned RFID: $maskedRfid",
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D2A5E),
-                    ),
-                  ),
-                // The Submit button is removed.
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

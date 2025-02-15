@@ -35,7 +35,7 @@ class MedicineMenuState extends State<MedicineMenu> {
               ),
               const SizedBox(width: 10),
               Text(
-                "Welcome, ${widget.rfidData}!!",
+                "Welcome, ${widget.rfidData}!",
                 style: const TextStyle(fontSize: 18, color: Colors.white),
               ),
             ],
