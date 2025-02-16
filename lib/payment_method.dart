@@ -10,11 +10,11 @@ class PaymentOptionButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const PaymentOptionButton({
-    Key? key,
+    super.key,
     required this.imagePath,
     required this.label,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +67,10 @@ class PaymentMethodPage extends StatelessWidget {
   final String rfidData;
 
   const PaymentMethodPage({
-    Key? key,
+    super.key,
     required this.orders,
     required this.rfidData,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

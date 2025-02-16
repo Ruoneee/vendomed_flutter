@@ -3,7 +3,7 @@ import 'rfid_screen.dart'; // RFID scanning screen
 import 'medicine_menu.dart'; // Medicine menu screen
 
 class UserSelectionScreen extends StatelessWidget {
-  const UserSelectionScreen({Key? key}) : super(key: key);
+  const UserSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +60,7 @@ class UserSelectionScreen extends StatelessWidget {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MedicineMenu(rfidData: "Guest"),
+                      builder: (context) => const MedicineMenu(rfidData: "Guest"),
                     ),
                   );
                 },

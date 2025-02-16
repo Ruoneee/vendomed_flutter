@@ -9,11 +9,11 @@ class PaymentPage extends StatefulWidget {
 
 
   const PaymentPage({
-    Key? key,
+    super.key,
     required this.orders,
     required this.medicinesToBeDisabled,
     required this.rfidData,
-  }) : super(key: key);
+  });
 
   @override
   PaymentPageState createState() => PaymentPageState();
@@ -223,14 +223,14 @@ class PaymentPageState extends State<PaymentPage> {
           automaticallyImplyLeading: false,
           title: Row(
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
                 radius: 20,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Text(
                 "Welcome,  ${widget.rfidData}!!",
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   color: Colors.white,
                 ),

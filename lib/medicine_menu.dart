@@ -1,23 +1,56 @@
 // ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'user_selection_screen.dart'; // For navigation back to the selection screen
-import 'rfid_screen.dart';
-import 'payment.dart';
-import 'payment_method.dart'; // Added import for PaymentMethodPage
+import 'user_selection_screen.dart';
+import 'payment_method.dart';
+import 'database_helper.dart';
 
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
 
-  const MedicineMenu({Key? key, required this.rfidData}) : super(key: key);
+  const MedicineMenu({super.key, required this.rfidData});
 
   @override
   MedicineMenuState createState() => MedicineMenuState();
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
-  // Orders now simply stores the list of items that the user selects.
   List<Map<String, String>> orders = [];
+  String _userName = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final db = await DatabaseHelper().db;
+      // Adjust table name and column names to match your actual database
+      final result = await db.query(
+        'users',             // <-- match your actual table name
+        columns: ['NAME'],  // <-- match the column name for the user's name
+        where: 'RFID = ?',  // <-- match the column name for the RFID
+        whereArgs: [widget.rfidData],
+      );
+      if (result.isNotEmpty) {
+        setState(() {
+          _userName = result.first['NAME'] as String;
+        });
+      } else {
+        // If no matching row is found, fallback to showing the RFID
+        setState(() {
+          _userName = widget.rfidData;
+        });
+      }
+    } catch (e) {
+      print("Error loading user name: $e");
+      setState(() {
+        _userName = widget.rfidData;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,13 +62,13 @@ class MedicineMenuState extends State<MedicineMenu> {
           automaticallyImplyLeading: false,
           title: Row(
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
                 radius: 20,
               ),
               const SizedBox(width: 10),
               Text(
-                "Welcome, ${widget.rfidData}!",
+                "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
                 style: const TextStyle(fontSize: 18, color: Colors.white),
               ),
             ],
@@ -44,7 +77,6 @@ class MedicineMenuState extends State<MedicineMenu> {
             IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () {
-                // Navigate back to the UserSelectionScreen instead of RfidScreen.
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
@@ -87,7 +119,9 @@ class MedicineMenuState extends State<MedicineMenu> {
                           itemBuilder: (context, index) {
                             return Container(
                               padding: const EdgeInsets.symmetric(
-                                  vertical: 0.0, horizontal: 8.0),
+                                vertical: 0.0,
+                                horizontal: 8.0,
+                              ),
                               child: Text(
                                 '${index + 1}. ${orders[index]['name']} - ${orders[index]['price']}',
                                 style: const TextStyle(fontSize: 18),
@@ -107,38 +141,12 @@ class MedicineMenuState extends State<MedicineMenu> {
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
                     children: [
-                      _buildMedicineItem(
-                          'Ibuprofen',
-                          '10.00',
-                          'assets/images/ibuprofen.png',
-                          4),
-                      _buildMedicineItem(
-                          'Cetirizine',
-                          '18.00',
-                          'assets/images/cetirizine.png',
-                          1),
-                      _buildMedicineItem(
-                          'Paracetamol',
-                          '5.00',
-                          'assets/images/paracetamol.png',
-                          4),
-                      _buildMedicineItem(
-                          'Loperamide',
-                          '10.00',
-                          'assets/images/loperamide.png',
-                          2),
-                      // New medicine: Antacid
-                      _buildMedicineItem(
-                          'Antacid',
-                          '8.00',
-                          'assets/images/antacid.png',
-                          3),
-                      // New medicine: Multivitamins
-                      _buildMedicineItem(
-                          'Buscopan',
-                          '12.00',
-                          'assets/images/buscopan.png',
-                          1),
+                      _buildMedicineItem('Ibuprofen', '10.00', 'assets/images/ibuprofen.png', 4),
+                      _buildMedicineItem('Cetirizine', '18.00', 'assets/images/cetirizine.png', 1),
+                      _buildMedicineItem('Paracetamol', '5.00', 'assets/images/paracetamol.png', 4),
+                      _buildMedicineItem('Loperamide', '10.00', 'assets/images/loperamide.png', 2),
+                      _buildMedicineItem('Antacid', '8.00', 'assets/images/antacid.png', 3),
+                      _buildMedicineItem('Buscopan', '12.00', 'assets/images/buscopan.png', 1),
                     ],
                   ),
                 ),
@@ -151,25 +159,17 @@ class MedicineMenuState extends State<MedicineMenu> {
                         onPressed: _resetOrders,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[700],
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 40, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                         ),
-                        child: const Text(
-                          "RESET",
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
+                        child: const Text("RESET", style: TextStyle(fontSize: 18, color: Colors.white)),
                       ),
                       ElevatedButton(
                         onPressed: _proceedToCheckout,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0D2A5E),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 40, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                         ),
-                        child: const Text(
-                          "CHECKOUT",
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
+                        child: const Text("CHECKOUT", style: TextStyle(fontSize: 18, color: Colors.white)),
                       ),
                     ],
                   ),
@@ -182,8 +182,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
-  Widget _buildMedicineItem(
-      String name, String price, String imagePath, int recommendedQuantity) {
+  Widget _buildMedicineItem(String name, String price, String imagePath, int recommendedQuantity) {
     final double imageHeight = MediaQuery.of(context).size.height * 0.20;
 
     return Container(
@@ -205,9 +204,10 @@ class MedicineMenuState extends State<MedicineMenu> {
             Text(
               name,
               style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             Text(
               price,
@@ -220,9 +220,10 @@ class MedicineMenuState extends State<MedicineMenu> {
                 Text(
                   'Recommended: $recommendedQuantity pcs.',
                   style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D2A5E)),
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D2A5E),
+                  ),
                 ),
               ],
             ),
@@ -237,8 +238,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 19, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 10),
                 ),
                 child: const Text(
                   'Add to Order',
@@ -271,8 +271,7 @@ class MedicineMenuState extends State<MedicineMenu> {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('No Orders'),
-            content: const Text(
-                'Please add items to your order before proceeding to checkout.'),
+            content: const Text('Please add items to your order before proceeding to checkout.'),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
@@ -285,7 +284,6 @@ class MedicineMenuState extends State<MedicineMenu> {
         },
       );
     } else {
-      // Navigate to the Payment Method Selection page.
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -295,7 +293,6 @@ class MedicineMenuState extends State<MedicineMenu> {
           ),
         ),
       ).then((result) {
-        // Only clear orders if the result is true (successful payment).
         if (result == true) {
           setState(() {
             orders.clear();

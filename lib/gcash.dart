@@ -9,11 +9,11 @@ class GCashPaymentPage extends StatelessWidget {
   final String rfidData;
 
   const GCashPaymentPage({
-    Key? key,
+    super.key,
     required this.orders,
     required this.medicinesToBeDisabled,
     required this.rfidData,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
