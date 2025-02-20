@@ -1,7 +1,7 @@
 // gcash.dart
 
 import 'package:flutter/material.dart';
-import 'payment_method.dart'; // Ensure this import is correct
+import 'splash_screen.dart'; // Import the SplashScreen widget
 
 class GCashPaymentPage extends StatelessWidget {
   final List<Map<String, String>> orders;
@@ -20,17 +20,11 @@ class GCashPaymentPage extends StatelessWidget {
     return WillPopScope(
       // Intercept back navigation.
       onWillPop: () async {
-        // Navigate back to PaymentMethodPage without clearing the orders.
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaymentMethodPage(
-              orders: orders,
-              rfidData: rfidData,
-            ),
-          ),
+        // Navigate back to SplashScreen and clear the navigation stack.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const SplashScreen()),
+              (Route<dynamic> route) => false,
         );
-        // Returning false prevents the default pop.
         return false;
       },
       child: Scaffold(
@@ -63,15 +57,10 @@ class GCashPaymentPage extends StatelessWidget {
                 const SizedBox(height: 90),
                 ElevatedButton(
                   onPressed: () {
-                    // When payment is completed, navigate back to PaymentMethodPage without clearing orders.
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PaymentMethodPage(
-                          orders: orders,
-                          rfidData: rfidData,
-                        ),
-                      ),
+                    // When payment is completed, navigate to SplashScreen and clear all routes.
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const SplashScreen()),
+                          (Route<dynamic> route) => false,
                     );
                   },
                   style: ElevatedButton.styleFrom(
