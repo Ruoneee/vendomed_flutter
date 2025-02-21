@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'confirmation_screen.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'database_helper.dart';
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, String>> orders;
-  final List<String> medicinesToBeDisabled; // New parameter
+  final List<String> medicinesToBeDisabled;
   final String rfidData;
-
 
   const PaymentPage({
     super.key,
@@ -20,203 +19,80 @@ class PaymentPage extends StatefulWidget {
 }
 
 class PaymentPageState extends State<PaymentPage> {
-  FlutterBluePlus flutterBlue = FlutterBluePlus();
-  BluetoothDevice? connectedDevice;
-  bool isConnected = false;
-  BluetoothCharacteristic? targetCharacteristic; // Store the characteristic for later use
-
-  final String serviceUUID = "1bf2a612-29c3-4a82-9b3d-b9abc9e81daa"; // Service UUID
-  final String characteristicUUID = "45088d05-aa3b-42da-aa75-bf85d5046829"; // Characteristic UUID
   final TextEditingController _coinsInsertedController = TextEditingController();
 
-  int coinInserted = 0; // Counter for inserted coins
-  String dataToSend = '';
-  String lastReceivedData = '';
+  int coinInserted = 0;
   bool coinEqualToAmount = false;
-  double totalAmount = 0.0; // Class-level variable for total amount
-
+  double totalAmount = 0.0;
+  String _userName = "";
 
   @override
   void initState() {
     super.initState();
-    _calculateTotalAmount(); // Calculate total amount on initialization
-    _connectToDevice(); // Start Bluetooth connection process
+    _calculateTotalAmount();
+    _loadUserName();
   }
 
-  // Method to calculate the total amount
+  Future<void> _loadUserName() async {
+    try {
+      final db = await DatabaseHelper().db;
+      final result = await db.query(
+        'users',
+        columns: ['NAME'],
+        where: 'RFID = ?',
+        whereArgs: [widget.rfidData],
+      );
+      if (result.isNotEmpty) {
+        setState(() {
+          _userName = result.first['NAME'] as String;
+        });
+      } else {
+        setState(() {
+          _userName = widget.rfidData;
+        });
+      }
+    } catch (e) {
+      print("Error loading user name: $e");
+      setState(() {
+        _userName = widget.rfidData;
+      });
+    }
+  }
+
   void _calculateTotalAmount() {
-    totalAmount = 0.0; // Reset total amount
+    totalAmount = 0.0;
     for (var order in widget.orders) {
       String priceString = order['price']!.replaceAll('₱', '').trim();
       totalAmount += double.parse(priceString);
     }
-    print('Total Amount: $totalAmount');
   }
 
-  Future<void> _connectToDevice() async {
-    // Start scanning for BLE devices
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
-
-    FlutterBluePlus.scanResults.listen((scanResult) {
-      for (ScanResult result in scanResult) {
-        if (result.advertisementData.advName == 'VendoMed') {
-          FlutterBluePlus.stopScan();
-          _connect(result.device);
-          break;
-        }
-      }
-    });
-  }
-
-  Future<void> _connect(BluetoothDevice device) async {
-    try {
-      await device.connect();
-      setState(() {
-        connectedDevice = device;
-        isConnected = true;
-      });
-
-      // Discover services and find the custom characteristic
-      await _discoverServicesAndCharacteristics(device);
-    } catch (e) {
-      print('Failed to connect: $e');
-    }
-  }
-
-  Future<void> _discoverServicesAndCharacteristics(BluetoothDevice device) async {
-    List<BluetoothService> services = await device.discoverServices();
-
-    for (var service in services) {
-      if (service.uuid.toString() == serviceUUID) {
-        _calculateTotalAmount();
-        for (var characteristic in service.characteristics) {
-          if (characteristic.uuid.toString() == characteristicUUID) {
-            targetCharacteristic = characteristic;
-            await targetCharacteristic!.setNotifyValue(true);
-            targetCharacteristic!.value.listen((value) {
-              String receivedData = String.fromCharCodes(value);
-              if(receivedData.isEmpty ||!(RegExp(r'^\d+$').hasMatch(receivedData))){
-                return;
-              }
-              print("Received data from ESP32: $receivedData");
-
-              _handleReceivedData(receivedData); // Handle received data
-            });
-          }
-        }
-      }
-    }
-  }
-
-  Future<void> sendData(String data) async {
-    if (isConnected && targetCharacteristic != null) {
-      try {
-        await targetCharacteristic!.write(data.codeUnits);
-        print("Data sent to ESP32: $data");
-      } catch (e) {
-        print("Failed to send data: $e");
-      }
-    } else {
-      print("Bluetooth is not connected or characteristic not found.");
-    }
-  }
-
-  // Handle received coin detection data
-  void _handleReceivedData(String data) {
-    if (mounted && data != lastReceivedData) {
-      lastReceivedData = data; // Check if the widget is still in the widget tree
-
-      if (data.isNotEmpty) {
-        setState(() {
-          coinInserted++; // Increment coin count
-          if(data == dataToSend || data == '0'){
-            dataToSend = '';
-            coinInserted = 0;
-          }
-          _coinsInsertedController.text = '₱${coinInserted.toString()}';
-
-          // Check if the inserted coins match the required total
-          if (coinInserted >= totalAmount) {
-            coinEqualToAmount = true;
-          }
-          print("Coin equal to amount: $coinEqualToAmount");
-        });
-      }
-    }
-  }
-
-  // Dispense the medicine
-  void _dispenseMedicine() {
-    for (var order in widget.orders) {
-      String medicineName = order['name']!;
-
-      if (medicineName == 'Ibuprofen') {
-        dataToSend += '1'; // Send '1' for Ibuprofen
-      } else if (medicineName == 'Cetirizine') {
-        dataToSend += '2'; // Send '2' for Cetirizine
-      } else if (medicineName == 'Paracetamol') {
-        dataToSend += '3'; // Send '3' for Paracetamol
-      } else if (medicineName == 'Loperamide') {
-        dataToSend += '4'; // Send '4' for Loperamide
-      }
-    }
-  }
   void _onProceedButtonPressed() {
     if (coinEqualToAmount) {
-      _dispenseMedicine();
-      sendData(dataToSend);
-
       setState(() {
         coinEqualToAmount = false;
         coinInserted = 0;
       });
+      print("Transaction Successful");
 
-      print("Data Successfully Sent");
-
-      if (connectedDevice != null) {
-        // Send medicinesToBeDisabled back to the previous screen first
-        Navigator.pop(context, widget.medicinesToBeDisabled);
-
-        // Then navigate to the confirmation screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ConfirmationScreen(device: connectedDevice!),
-          ),
-        );
-
-
-      } else {
-        print("No device connected");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No Bluetooth device connected')),
-        );
-      }
+      Navigator.pop(context, widget.medicinesToBeDisabled);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConfirmationScreen(),
+        ),
+      );
     } else {
-      print("Coins inserted do not equal total amount.");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Insufficient Coins Inserted')),
       );
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    double totalAmount = 0.0;
-
-    // Sum the total amount from the price in the orders list
-    for (var order in widget.orders) {
-      String priceString = order['price']!.replaceAll('₱', '').trim(); // Remove '₱' and any spaces
-      totalAmount += double.parse(priceString); // Convert to double and sum
-    }
-
     return WillPopScope(
-      onWillPop: () async {
-        // Returning false prevents the back button from working
-        return false;
-      },
+      onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
@@ -229,16 +105,12 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(width: 10),
               Text(
-                "Welcome,  ${widget.rfidData}!!",
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                ),
+                "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
+                style: const TextStyle(fontSize: 18, color: Colors.white),
               ),
             ],
           ),
         ),
-
         backgroundColor: const Color(0xFFFFFFFF),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -276,8 +148,6 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Total Amount
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
@@ -299,32 +169,6 @@ class PaymentPageState extends State<PaymentPage> {
                 style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 20),
-
-              // Coins Inserted
-              const Text(
-                'COINS INSERTED:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                enabled: false,
-                controller: _coinsInsertedController, // Set the controller
-                decoration: const InputDecoration(
-                  disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black),
-                  ),
-                  hintText: 'Number of coins inserted',
-                ),
-                style: const TextStyle(color: Colors.black),
-              ),
-              const SizedBox(height: 20),
-
-
-              // Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -337,12 +181,7 @@ class PaymentPageState extends State<PaymentPage> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () {
-                      if (connectedDevice != null) {
-                        connectedDevice!.disconnect();
-                        print('Disconnected from Bluetooth device.');
-                      }
-                      Navigator.pop(context); // Back button
-
+                      Navigator.pop(context);
                     },
                     child: const Text('CANCEL'),
                   ),
@@ -354,7 +193,7 @@ class PaymentPageState extends State<PaymentPage> {
                       ),
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: _onProceedButtonPressed, // Call the new function
+                    onPressed: _onProceedButtonPressed,
                     child: const Text('PROCEED'),
                   ),
                 ],
@@ -365,10 +204,5 @@ class PaymentPageState extends State<PaymentPage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

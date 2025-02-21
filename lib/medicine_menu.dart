@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'user_selection_screen.dart';
 import 'payment_method.dart';
 import 'database_helper.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
@@ -17,33 +19,44 @@ class MedicineMenu extends StatefulWidget {
 class MedicineMenuState extends State<MedicineMenu> {
   List<Map<String, String>> orders = [];
   String _userName = "";
+  List<Map<String, dynamic>> medicines = [];
+  Timer? _stockUpdateTimer;
+  Map<String, bool> _isTapped = {}; // Tracks the tap state of each item
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
+    _fetchMedicines();
+    _startStockListener();
   }
+
+  @override
+  void dispose() {
+    _stockUpdateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startStockListener() {
+    _stockUpdateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _fetchMedicines();
+    });
+  }
+
+// LOADING USER'S NAME FROM THE DATABASE
 
   Future<void> _loadUserName() async {
     try {
       final db = await DatabaseHelper().db;
-      // Adjust table name and column names to match your actual database
       final result = await db.query(
-        'users',             // <-- match your actual table name
-        columns: ['NAME'],  // <-- match the column name for the user's name
-        where: 'RFID = ?',  // <-- match the column name for the RFID
+        'users',
+        columns: ['NAME'],
+        where: 'RFID = ?',
         whereArgs: [widget.rfidData],
       );
-      if (result.isNotEmpty) {
-        setState(() {
-          _userName = result.first['NAME'] as String;
-        });
-      } else {
-        // If no matching row is found, fallback to showing the RFID
-        setState(() {
-          _userName = widget.rfidData;
-        });
-      }
+      setState(() {
+        _userName = result.isNotEmpty ? result.first['NAME'] as String : widget.rfidData;
+      });
     } catch (e) {
       print("Error loading user name: $e");
       setState(() {
@@ -52,10 +65,50 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
+// FETCHING MEDICINES FROM DATABASE
+
+  Future<void> _fetchMedicines() async {
+    try {
+      final db = await DatabaseHelper().db;
+      final List<Map<String, dynamic>> results = await db.query('stocks');
+
+      setState(() {
+        medicines = results.map((medicine) {
+          String medicineName = medicine['NAME'] ?? 'Unknown';
+          _isTapped.putIfAbsent(medicineName, () => false); // Initialize tap state
+          return {
+            'NAME': medicineName,
+            'AMOUNT': medicine['AMOUNT']?.toString() ?? '0',
+            'STOCKS': medicine['STOCKS'] ?? 0,
+          };
+        }).toList();
+      });
+
+    } catch (e) {
+      print("Error fetching medicines: $e");
+    }
+  }
+
+// MAPPING MEDICINE NAME TO IMAGE PATH
+
+  String _getImagePath(String name) {
+    final Map<String, String> imagePaths = {
+      'Ibuprofen': 'assets/images/Ibuprofen.png',
+      'Cetirizine': 'assets/images/Cetirizine.png',
+      'Paracetamol': 'assets/images/Paracetamol.png',
+      'Loperamide': 'assets/images/Loperamide.png',
+      'Antacid': 'assets/images/Antacid.png',
+      'Buscopan': 'assets/images/Buscopan.png',
+    };
+    return imagePaths[name] ?? 'assets/images/default.png';
+  }
+
+// APP BAR FUNCTION
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // Prevent the back button
+      onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
@@ -85,6 +138,9 @@ class MedicineMenuState extends State<MedicineMenu> {
             ),
           ],
         ),
+
+// LIST VIEW
+
         body: Container(
           color: const Color(0xF21588d),
           child: Padding(
@@ -100,7 +156,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                       child: Text(
                         "Your Orders:",
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 30,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
@@ -133,23 +189,31 @@ class MedicineMenuState extends State<MedicineMenu> {
                     ),
                   ],
                 ),
+
+// MEDICINE CONTENTS
+
                 const SizedBox(height: 30),
                 Expanded(
-                  child: GridView.count(
+                  child: medicines.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : GridView.count(
                     crossAxisCount: 2,
                     childAspectRatio: 0.75,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    children: [
-                      _buildMedicineItem('Ibuprofen', '10.00', 'assets/images/ibuprofen.png', 4),
-                      _buildMedicineItem('Cetirizine', '18.00', 'assets/images/cetirizine.png', 1),
-                      _buildMedicineItem('Paracetamol', '5.00', 'assets/images/paracetamol.png', 4),
-                      _buildMedicineItem('Loperamide', '10.00', 'assets/images/loperamide.png', 2),
-                      _buildMedicineItem('Antacid', '8.00', 'assets/images/antacid.png', 3),
-                      _buildMedicineItem('Buscopan', '12.00', 'assets/images/buscopan.png', 1),
-                    ],
+                    children: medicines.map((medicine) {
+                      return _buildMedicineItem(
+                        medicine['NAME'],
+                        medicine['AMOUNT'].toString(),
+                        _getImagePath(medicine['NAME']),
+                        medicine['STOCKS'],
+                      );
+                    }).toList(),
                   ),
                 ),
+
+// RESET AND CHECKOUT BUTTON DESIGN
+
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 25),
                   child: Row(
@@ -182,75 +246,91 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
-  Widget _buildMedicineItem(String name, String price, String imagePath, int recommendedQuantity) {
-    final double imageHeight = MediaQuery.of(context).size.height * 0.20;
+  Widget _buildMedicineItem(String? name, String? price, String imagePath, int? stocks) {
+    final double imageHeight = MediaQuery.of(context).size.height * 0.18;
+    bool isTapped = _isTapped[name] ?? false;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              imagePath,
-              height: imageHeight,
-              fit: BoxFit.contain,
+    return GestureDetector(
+      onTapDown: (_) {
+        setState(() {
+          _isTapped[name!] = true; // Set tapped state
+        });
+      },
+      onTapUp: (_) {
+        Future.delayed(const Duration(milliseconds: 150), () {
+          setState(() {
+            _isTapped[name!] = false; // Reset animation after tap
+          });
+        });
+
+        if (stocks != null && stocks > 0) {
+          _addToOrder(name!, price ?? '0.00');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Out of stock!"),
+              backgroundColor: Colors.red,
             ),
-            const SizedBox(height: 5),
-            Text(
-              name,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            Text(
-              price,
-              style: const TextStyle(fontSize: 20, color: Colors.black54),
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          );
+        }
+      },
+      onTapCancel: () {
+        setState(() {
+          _isTapped[name!] = false; // Reset animation if tap is canceled
+        });
+      },
+      child: AnimatedScale(
+        scale: isTapped ? 0.95 : 1.0, // Shrink slightly when tapped
+        duration: const Duration(milliseconds: 150),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
               children: [
+                const Spacer(), // Push content down
+                Image.asset(
+                  imagePath,
+                  height: imageHeight,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 15),
                 Text(
-                  'Recommended: $recommendedQuantity pcs.',
+                  name ?? 'Unknown Medicine',
                   style: const TextStyle(
-                    fontSize: 19,
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                Text(
+                  '₱${price ?? "0.00"}',
+                  style: const TextStyle(fontSize: 30, color: Colors.black54),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Remaining: ${stocks ?? 0} pc/s',
+                  style: const TextStyle(
+                    fontSize: 30,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF0D2A5E),
                   ),
                 ),
+                const Spacer(), // Push content upward slightly
               ],
             ),
-            const SizedBox(height: 30),
-            SizedBox(
-              width: 150,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () => _addToOrder(name, price),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D2A5E),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 10),
-                ),
-                child: const Text(
-                  'Add to Order',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+
+//BUTTON FUNCTIONALITIES
 
   void _addToOrder(String name, String price) {
     setState(() {
@@ -265,40 +345,14 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _proceedToCheckout() {
-    if (orders.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('No Orders'),
-            content: const Text('Please add items to your order before proceeding to checkout.'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaymentMethodPage(
-            orders: orders,
-            rfidData: widget.rfidData,
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentMethodPage(
+          orders: orders,
+          rfidData: widget.rfidData,
         ),
-      ).then((result) {
-        if (result == true) {
-          setState(() {
-            orders.clear();
-          });
-        }
-      });
-    }
+      ),
+    ).then((_) => setState(() => orders.clear()));
   }
 }

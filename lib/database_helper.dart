@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'package:sqflite/sqflite.dart';
@@ -7,8 +8,11 @@ class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
   static Database? _db;
+  Timer? _updateTimer;
 
-  DatabaseHelper._internal();
+  DatabaseHelper._internal() {
+    _startAutoUpdate();
+  }
 
   Future<Database> get db async {
     if (_db != null) return _db!;
@@ -34,5 +38,21 @@ class DatabaseHelper {
       print("Failed to connect to database at: $path. Error: $error");
       rethrow;
     }
+  }
+
+  void _startAutoUpdate() {
+    _updateTimer = Timer.periodic(Duration(seconds: 2), (timer) async {
+      await _refreshDatabase();
+    });
+  }
+
+  Future<void> _refreshDatabase() async {
+    _db?.close();
+    _db = await _initDb();
+    print("Database refreshed");
+  }
+
+  void dispose() {
+    _updateTimer?.cancel();
   }
 }

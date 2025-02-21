@@ -10,14 +10,7 @@ class UserSelectionScreen extends StatelessWidget {
     return Scaffold(
       // Set the scaffold background to white.
       backgroundColor: const Color(0xFFFFFFFF),
-      appBar: AppBar(
-        title: const Text(
-          "User Selection",
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0D2A5E),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      // Removed the appBar
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

@@ -26,7 +26,7 @@ class PaymentOptionButton extends StatelessWidget {
         width: 320,
         height: 400,
         decoration: BoxDecoration(
-          color: const Color(0xFFF2F2E8),
+          color: Colors.white, // Updated background color to white
           borderRadius: BorderRadius.circular(30),
           boxShadow: const [
             BoxShadow(
@@ -75,14 +75,6 @@ class PaymentMethodPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          "Select Payment Method",
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0D2A5E),
-      ),
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
@@ -91,16 +83,28 @@ class PaymentMethodPage extends StatelessWidget {
               padding: const EdgeInsets.all(25.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 200),
                   const Text(
-                    "WHICH PAYMENT WOULD YOU LIKE TO PROCEED FOR YOUR ORDER?",
+                    "Please Select Your",
                     style: TextStyle(
-                      fontSize: 35,
+                      fontSize: 50,
+                      color: Color(0xFF0D2A5E),
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 150),
+
+                  const Text(
+                    "Payment Method",
+                    style: TextStyle(
+                      fontSize: 50,
+                      color: Color(0xFF0D2A5E),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 100),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -147,18 +151,18 @@ class PaymentMethodPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 150),
+                  const SizedBox(height: 100),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context, false); // Cancel returns false.
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[700],
+                      backgroundColor: Color(0xFF0D2A5E),
                       padding:
                       const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                     ),
                     child: const Text(
-                      "CANCEL",
+                      "Back",
                       style: TextStyle(fontSize: 30, color: Colors.white),
                     ),
                   ),

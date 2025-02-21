@@ -29,13 +29,13 @@ flutter:
   assets: #for adding images (need to declare it here)
     - assets/images/splash_logo.png
     - assets/images/tap_rfid.png
-    - assets/images/ibuprofen.png
-    - assets/images/paracetamol.png
-    - assets/images/loperamide.png
-    - assets/images/cetirizine.png
+    - assets/images/Ibuprofen.png
+    - assets/images/Paracetamol.png
+    - assets/images/Loperamide.png
+    - assets/images/Cetirizine.png
     - assets/images/multivitamins.png
-    - assets/images/buscopan.png
-    - assets/images/antacid.png
+    - assets/images/Buscopan.png
+    - assets/images/Antacid.png
     - assets/userIcons/user_icon.png
     - assets/images/cashcoins.png
     - assets/images/gcashlogo.png
