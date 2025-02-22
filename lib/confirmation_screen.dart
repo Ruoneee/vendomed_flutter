@@ -1,15 +1,15 @@
-import 'dart:async'; // Import this for Timer
+import 'dart:async'; // For Timer
 import 'package:flutter/material.dart';
-import 'package:vendomed_flutter/rfid_screen.dart';
+import 'thankyou_screen.dart'; // Import your ThankYouScreen
 
 class ConfirmationScreen extends StatefulWidget {
   const ConfirmationScreen({super.key});
 
   @override
-  _ConfirmationScreenState createState() => _ConfirmationScreenState();
+  ConfirmationScreenState createState() => ConfirmationScreenState();
 }
 
-class _ConfirmationScreenState extends State<ConfirmationScreen> {
+class ConfirmationScreenState extends State<ConfirmationScreen> {
   String _dispensingMessage = "Order Confirmed!";
   Timer? _autoNavigateTimer; // Timer for auto navigation
 
@@ -20,13 +20,14 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   }
 
   void _startAutoNavigateTimer() {
-    _autoNavigateTimer?.cancel(); // Cancel existing timer, if any
+    _autoNavigateTimer?.cancel();
     _autoNavigateTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
-        Navigator.pop(context); // Pop ConfirmationScreen
+        // After 5s, pop this screen then navigate to ThankYouScreen
+        Navigator.pop(context);
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const RfidScreen()),
+          MaterialPageRoute(builder: (context) => const ThankYouScreen()),
         );
       }
     });
@@ -34,17 +35,15 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
   @override
   void dispose() {
-    _autoNavigateTimer?.cancel(); // Cancel the timer when widget is disposed
+    _autoNavigateTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Confirmation'),
-        backgroundColor: const Color(0xfffffffff),
-      ),
+      // Remove the AppBar entirely
+      backgroundColor: const Color(0xFFFFFFFF), // Match your design colors, if needed
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -57,14 +56,22 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                _autoNavigateTimer?.cancel(); // Cancel timer if manually pressed
+                // If user presses PROCEED before 5s, skip the timer and go to ThankYouScreen
+                _autoNavigateTimer?.cancel();
                 Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const RfidScreen()),
+                  MaterialPageRoute(builder: (context) => const ThankYouScreen()),
                 );
               },
-              child: const Text('Back to Menu'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2A5E),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+              ),
+              child: const Text(
+                'PROCEED',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),

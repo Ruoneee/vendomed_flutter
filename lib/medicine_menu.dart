@@ -1,11 +1,8 @@
-// ignore_for_file: use_full_hex_values_for_flutter_colors, deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'user_selection_screen.dart';
 import 'payment_method.dart';
 import 'database_helper.dart';
 import 'dart:async';
-import 'package:flutter/material.dart';
 
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
@@ -17,7 +14,10 @@ class MedicineMenu extends StatefulWidget {
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
+  // Each item in orders will now include: name, quantity, and price
+  // 'price' here represents total cost for that line (quantity * unit price).
   List<Map<String, String>> orders = [];
+
   String _userName = "";
   List<Map<String, dynamic>> medicines = [];
   Timer? _stockUpdateTimer;
@@ -38,13 +38,14 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _startStockListener() {
+    // This fetches from the database every 2 seconds.
+    // If your DB or device is slow, it can cause UI stuttering. Adjust as needed.
     _stockUpdateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _fetchMedicines();
     });
   }
 
-// LOADING USER'S NAME FROM THE DATABASE
-
+  // LOAD USER NAME FROM DB
   Future<void> _loadUserName() async {
     try {
       final db = await DatabaseHelper().db;
@@ -55,7 +56,9 @@ class MedicineMenuState extends State<MedicineMenu> {
         whereArgs: [widget.rfidData],
       );
       setState(() {
-        _userName = result.isNotEmpty ? result.first['NAME'] as String : widget.rfidData;
+        _userName = result.isNotEmpty
+            ? result.first['NAME'] as String
+            : widget.rfidData;
       });
     } catch (e) {
       print("Error loading user name: $e");
@@ -65,8 +68,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
-// FETCHING MEDICINES FROM DATABASE
-
+  // FETCH MEDICINES FROM DB
   Future<void> _fetchMedicines() async {
     try {
       final db = await DatabaseHelper().db;
@@ -74,8 +76,9 @@ class MedicineMenuState extends State<MedicineMenu> {
 
       setState(() {
         medicines = results.map((medicine) {
-          String medicineName = medicine['NAME'] ?? 'Unknown';
-          _isTapped.putIfAbsent(medicineName, () => false); // Initialize tap state
+          final String medicineName = medicine['NAME'] ?? 'Unknown';
+          // Initialize tap state if not present
+          _isTapped.putIfAbsent(medicineName, () => false);
           return {
             'NAME': medicineName,
             'AMOUNT': medicine['AMOUNT']?.toString() ?? '0',
@@ -83,14 +86,12 @@ class MedicineMenuState extends State<MedicineMenu> {
           };
         }).toList();
       });
-
     } catch (e) {
       print("Error fetching medicines: $e");
     }
   }
 
-// MAPPING MEDICINE NAME TO IMAGE PATH
-
+  // MAP MEDICINE NAME TO IMAGE PATH
   String _getImagePath(String name) {
     final Map<String, String> imagePaths = {
       'Ibuprofen': 'assets/images/Ibuprofen.png',
@@ -103,12 +104,10 @@ class MedicineMenuState extends State<MedicineMenu> {
     return imagePaths[name] ?? 'assets/images/default.png';
   }
 
-// APP BAR FUNCTION
-
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false,
+      onWillPop: () async => false, // Prevent Android back button
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
@@ -119,7 +118,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                 backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
                 radius: 20,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Text(
                 "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
                 style: const TextStyle(fontSize: 18, color: Colors.white),
@@ -132,139 +131,148 @@ class MedicineMenuState extends State<MedicineMenu> {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const UserSelectionScreen(),
+                  ),
                 );
               },
             ),
           ],
         ),
 
-// LIST VIEW
-
         body: Container(
           color: const Color(0xF21588d),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8.0),
-                      child: Text(
-                        "Your Orders:",
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      height: 95,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Scrollbar(
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          itemCount: orders.length,
-                          itemBuilder: (context, index) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 0.0,
-                                horizontal: 8.0,
-                              ),
-                              child: Text(
-                                '${index + 1}. ${orders[index]['name']} - ${orders[index]['price']}',
-                                style: const TextStyle(fontSize: 18),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+          child: ListView(
+            padding: const EdgeInsets.all(12.0),
+            children: [
+              // "Your Orders" header
+              const Text(
+                "Your Orders:",
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
+              ),
+              const SizedBox(height: 8),
 
-// MEDICINE CONTENTS
+              // Orders List Container
+              Container(
+                height: 100, // Increase if you expect many items
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Scrollbar(
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: orders.length,
+                    itemBuilder: (context, index) {
+                      // Each item now has name, quantity, price
+                      final orderName = orders[index]['name'] ?? 'Unknown';
+                      final orderQuantity = orders[index]['quantity'] ?? '1';
+                      final orderPrice = orders[index]['price'] ?? '0.00';
 
-                const SizedBox(height: 30),
-                Expanded(
-                  child: medicines.isEmpty
-                      ? const Center(child: CircularProgressIndicator())
-                      : GridView.count(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.75,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    children: medicines.map((medicine) {
-                      return _buildMedicineItem(
-                        medicine['NAME'],
-                        medicine['AMOUNT'].toString(),
-                        _getImagePath(medicine['NAME']),
-                        medicine['STOCKS'],
+                      // Show something like:
+                      // 1) Ibuprofen (Qty: 2) - ₱40.00
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+                        child: Text(
+                          '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       );
-                    }).toList(),
+                    },
                   ),
                 ),
+              ),
 
-// RESET AND CHECKOUT BUTTON DESIGN
+              const SizedBox(height: 16),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 25),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _resetOrders,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[700],
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                        ),
-                        child: const Text("RESET", style: TextStyle(fontSize: 18, color: Colors.white)),
-                      ),
-                      ElevatedButton(
-                        onPressed: _proceedToCheckout,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D2A5E),
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                        ),
-                        child: const Text("CHECKOUT", style: TextStyle(fontSize: 18, color: Colors.white)),
-                      ),
-                    ],
-                  ),
+              // Grid of medicines
+              if (medicines.isEmpty)
+                const Center(child: CircularProgressIndicator())
+              else
+                GridView.count(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.75,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: medicines.map((medicine) {
+                    return _buildMedicineItem(
+                      medicine['NAME'],
+                      medicine['AMOUNT'].toString(),
+                      _getImagePath(medicine['NAME']),
+                      medicine['STOCKS'],
+                    );
+                  }).toList(),
                 ),
-              ],
-            ),
+
+              const SizedBox(height: 20),
+
+              // RESET & CHECKOUT BUTTONS
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: _resetOrders,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[700],
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+                    ),
+                    child: const Text(
+                      "RESET",
+                      style: TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _proceedToCheckout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF0D2A5E),
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+                    ),
+                    child: const Text(
+                      "CHECKOUT",
+                      style: TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMedicineItem(String? name, String? price, String imagePath, int? stocks) {
+  Widget _buildMedicineItem(
+      String? name,
+      String? unitPrice,
+      String imagePath,
+      int? stocks,
+      ) {
     final double imageHeight = MediaQuery.of(context).size.height * 0.18;
     bool isTapped = _isTapped[name] ?? false;
 
     return GestureDetector(
       onTapDown: (_) {
         setState(() {
-          _isTapped[name!] = true; // Set tapped state
+          _isTapped[name!] = true;
         });
       },
       onTapUp: (_) {
         Future.delayed(const Duration(milliseconds: 150), () {
           setState(() {
-            _isTapped[name!] = false; // Reset animation after tap
+            _isTapped[name!] = false;
           });
         });
 
         if (stocks != null && stocks > 0) {
-          _addToOrder(name!, price ?? '0.00');
+          // Add or update the order dynamically
+          _addToOrder(name!, unitPrice ?? '0.00');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -276,65 +284,87 @@ class MedicineMenuState extends State<MedicineMenu> {
       },
       onTapCancel: () {
         setState(() {
-          _isTapped[name!] = false; // Reset animation if tap is canceled
+          _isTapped[name!] = false;
         });
       },
       child: AnimatedScale(
-        scale: isTapped ? 0.95 : 1.0, // Shrink slightly when tapped
+        scale: isTapped ? 0.95 : 1.0,
         duration: const Duration(milliseconds: 150),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              children: [
-                const Spacer(), // Push content down
-                Image.asset(
-                  imagePath,
-                  height: imageHeight,
-                  fit: BoxFit.contain,
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            children: [
+              const Spacer(),
+              Image.asset(
+                imagePath,
+                height: imageHeight,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                name ?? 'Unknown',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
-                const SizedBox(height: 15),
-                Text(
-                  name ?? 'Unknown Medicine',
-                  style: const TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                  textAlign: TextAlign.center,
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                '₱${unitPrice ?? "0.00"}',
+                style: const TextStyle(fontSize: 18, color: Colors.black54),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Remaining: ${stocks ?? 0} pc/s',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2A5E),
                 ),
-                Text(
-                  '₱${price ?? "0.00"}',
-                  style: const TextStyle(fontSize: 30, color: Colors.black54),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Remaining: ${stocks ?? 0} pc/s',
-                  style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D2A5E),
-                  ),
-                ),
-                const Spacer(), // Push content upward slightly
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+              const Spacer(),
+            ],
           ),
         ),
       ),
     );
   }
 
-
-//BUTTON FUNCTIONALITIES
-
-  void _addToOrder(String name, String price) {
+  // Add or update the item in orders. If it's already in the list, increment quantity.
+  // 'price' in orders is the total cost: quantity * unitPrice
+  void _addToOrder(String name, String unitPriceStr) {
     setState(() {
-      orders.add({'name': name, 'price': price});
+      final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
+
+      // Check if we already have this item in the orders
+      final existingIndex = orders.indexWhere((item) => item['name'] == name);
+
+      if (existingIndex != -1) {
+        // Already in the list: increment the quantity
+        final oldQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        final newQuantity = oldQuantity + 1;
+
+        // Update the total price for this line item
+        final double newTotalPrice = unitPrice * newQuantity;
+
+        orders[existingIndex]['quantity'] = newQuantity.toString();
+        orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
+      } else {
+        // Not in the list yet; add a new line
+        // quantity defaults to 1
+        orders.add({
+          'name': name,
+          'quantity': '1',
+          'price': unitPrice.toStringAsFixed(2),
+        });
+      }
     });
   }
 

@@ -1,7 +1,7 @@
 // gcash.dart
-
 import 'package:flutter/material.dart';
-import 'payment_method.dart'; // Ensure this import is correct
+import 'payment_method.dart';
+import 'thankyou_screen.dart'; // Import the new screen
 
 class GCashPaymentPage extends StatelessWidget {
   final List<Map<String, String>> orders;
@@ -18,9 +18,9 @@ class GCashPaymentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Intercept back navigation.
+      // Intercept back navigation
       onWillPop: () async {
-        // Navigate back to PaymentMethodPage without clearing the orders.
+        // Navigate back to PaymentMethodPage without clearing the orders
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -30,16 +30,16 @@ class GCashPaymentPage extends StatelessWidget {
             ),
           ),
         );
-        // Returning false prevents the default pop.
-        return false;
+        return false; // Prevent default pop
       },
       child: Scaffold(
+        // Match background color with your other screens
+        backgroundColor: const Color(0xFFFFFFFF),
         appBar: AppBar(
-          // Set the arrow (back icon) color to white.
           iconTheme: const IconThemeData(color: Colors.white),
           title: const Text(
             "GCash Payment",
-            style: TextStyle(color: Colors.white), // Force title text to white
+            style: TextStyle(color: Colors.white),
           ),
           backgroundColor: const Color(0xFF0D2A5E),
         ),
@@ -54,7 +54,7 @@ class GCashPaymentPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 80),
-                // Display the QR code image.
+                // Display your GCash QR code
                 Image.asset(
                   'assets/images/qrcode.png',
                   height: 400,
@@ -63,20 +63,20 @@ class GCashPaymentPage extends StatelessWidget {
                 const SizedBox(height: 90),
                 ElevatedButton(
                   onPressed: () {
-                    // When payment is completed, navigate back to PaymentMethodPage without clearing orders.
+                    // After tapping "PAYMENT COMPLETED", go directly to ThankYouScreen
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PaymentMethodPage(
-                          orders: orders,
-                          rfidData: rfidData,
-                        ),
+                        builder: (context) => const ThankYouScreen(),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
-                    padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 35,
+                      vertical: 20,
+                    ),
                   ),
                   child: const Text(
                     "PAYMENT COMPLETED",

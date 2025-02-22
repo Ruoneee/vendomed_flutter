@@ -61,9 +61,17 @@ class PaymentPageState extends State<PaymentPage> {
 
   void _calculateTotalAmount() {
     totalAmount = 0.0;
+
+    // We expect each item in widget.orders to have:
+    // 'name': 'Ibuprofen',
+    // 'quantity': '2',
+    // 'price': '40.00' (the total cost, not per item)
     for (var order in widget.orders) {
-      String priceString = order['price']!.replaceAll('₱', '').trim();
-      totalAmount += double.parse(priceString);
+      // If 'price' is already the total, we can parse it directly:
+      String rawPrice = order['price'] ?? '0.00';
+      // Remove any leading '₱' if it exists, then parse to double.
+      rawPrice = rawPrice.replaceAll('₱', '').trim();
+      totalAmount += double.parse(rawPrice);
     }
   }
 
@@ -75,7 +83,10 @@ class PaymentPageState extends State<PaymentPage> {
       });
       print("Transaction Successful");
 
+      // Return to previous screen (MedicineMenu) with the list of disabled medicines
       Navigator.pop(context, widget.medicinesToBeDisabled);
+
+      // Navigate to the confirmation screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -92,7 +103,7 @@ class PaymentPageState extends State<PaymentPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false,
+      onWillPop: () async => false, // disable device back button
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
@@ -117,17 +128,20 @@ class PaymentPageState extends State<PaymentPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Orders label
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.bold, // Keep label bold if you like
                   color: Colors.black,
                 ),
               ),
               const SizedBox(height: 8),
+
+              // Orders list
               Container(
-                height: 150,
+                height: 300,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: Colors.black),
@@ -137,10 +151,21 @@ class PaymentPageState extends State<PaymentPage> {
                   child: ListView.builder(
                     itemCount: widget.orders.length,
                     itemBuilder: (context, index) {
+                      // We display:
+                      //   {name} (Qty: {quantity}) - ₱{price}
+                      final orderName = widget.orders[index]['name'] ?? 'Unknown';
+                      final orderQuantity = widget.orders[index]['quantity'] ?? '1';
+                      final orderPrice = widget.orders[index]['price'] ?? '0.00';
+
                       return Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Text(
-                          '${widget.orders[index]['name']} - ${widget.orders[index]['price']}',
+                          '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                          ),
+                          softWrap: true,
                         ),
                       );
                     },
@@ -148,6 +173,8 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // Total amount label
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
@@ -157,6 +184,8 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 8),
+
+              // Display total in a disabled TextFormField
               TextFormField(
                 enabled: false,
                 decoration: const InputDecoration(
@@ -169,6 +198,8 @@ class PaymentPageState extends State<PaymentPage> {
                 style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 20),
+
+              // CANCEL + PROCEED
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -187,7 +218,7 @@ class PaymentPageState extends State<PaymentPage> {
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E),
+                      backgroundColor: Color(0xFF0D2A5E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),

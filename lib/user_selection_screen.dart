@@ -7,10 +7,12 @@ class UserSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Using a fixed size for the buttons.
+    const buttonWidth = 300.0;
+    const buttonHeight = 55.0;
+
     return Scaffold(
-      // Set the scaffold background to white.
       backgroundColor: const Color(0xFFFFFFFF),
-      // Removed the appBar
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -27,9 +29,11 @@ class UserSelectionScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 50),
+
+              // FIRST BUTTON
               ElevatedButton(
                 onPressed: () {
-                  // Navigate to the RFID scanning screen.
+                  // Navigate to the RFID scanning screen
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -39,7 +43,7 @@ class UserSelectionScreen extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0D2A5E),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  fixedSize: const Size(buttonWidth, buttonHeight),
                 ),
                 child: const Text(
                   "Yes, I have RFID",
@@ -47,6 +51,8 @@ class UserSelectionScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 30),
+
+              // SECOND BUTTON
               ElevatedButton(
                 onPressed: () {
                   // Navigate directly to MedicineMenu as Guest.
@@ -59,7 +65,7 @@ class UserSelectionScreen extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  fixedSize: const Size(buttonWidth, buttonHeight),
                 ),
                 child: const Text(
                   "No, Enter as Guest",
