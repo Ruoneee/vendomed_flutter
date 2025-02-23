@@ -17,7 +17,6 @@ class PaymentOptionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reduced sizes to help avoid overflow.
     const double buttonWidth = 240;
     const double buttonHeight = 340;
     const double imageHeight = 200;
@@ -51,7 +50,7 @@ class PaymentOptionButton extends StatelessWidget {
             Text(
               label,
               style: const TextStyle(
-                fontSize: 26, // Slightly smaller font
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
@@ -79,7 +78,6 @@ class PaymentMethodPage extends StatelessWidget {
     return Scaffold(
       body: SingleChildScrollView(
         child: Center(
-          // ConstrainedBox ensures that on large screens the content doesn't stretch too wide.
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1000),
             child: Padding(
@@ -109,15 +107,17 @@ class PaymentMethodPage extends StatelessWidget {
 
                   const SizedBox(height: 80),
 
-                  // Use a Row with narrower buttons and smaller spacing
+                  // Payment Options
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // GCash Payment Option
                       PaymentOptionButton(
                         imagePath: 'assets/images/gcashlogo.png',
                         label: 'GCash',
                         onTap: () async {
-                          bool? result = await Navigator.push(
+                          // Navigate to GCashPaymentPage
+                          final result = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
                               builder: (context) => GCashPaymentPage(
@@ -129,16 +129,23 @@ class PaymentMethodPage extends StatelessWidget {
                               ),
                             ),
                           );
-                          // Propagate the result back to MedicineMenu.
-                          Navigator.pop(context, result);
+
+                          // If user actually came back from GCash (i.e. no success?), pop
+                          if (result == false) {
+                            // They probably canceled or something else
+                            Navigator.pop(context, false);
+                          }
+
+                          // If result is true or null, do nothing so user doesn't get forced back
                         },
                       ),
                       const SizedBox(width: 20),
+                      // Cash/Coins Payment Option
                       PaymentOptionButton(
                         imagePath: 'assets/images/cashcoins.png',
                         label: 'Cash/Coins',
                         onTap: () async {
-                          bool? result = await Navigator.push(
+                          final result = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
                               builder: (context) => PaymentPage(
@@ -150,7 +157,10 @@ class PaymentMethodPage extends StatelessWidget {
                               ),
                             ),
                           );
-                          Navigator.pop(context, result);
+                          // If they canceled or something, pop
+                          if (result == false) {
+                            Navigator.pop(context, false);
+                          }
                         },
                       ),
                     ],
@@ -159,7 +169,8 @@ class PaymentMethodPage extends StatelessWidget {
                   const SizedBox(height: 80),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context, false); // Cancel returns false
+                      // Cancel button => user doesn't want to continue
+                      Navigator.pop(context, false);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),

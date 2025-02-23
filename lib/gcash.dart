@@ -1,7 +1,7 @@
 // gcash.dart
 import 'package:flutter/material.dart';
 import 'payment_method.dart';
-import 'thankyou_screen.dart'; // Import the new screen
+import 'thankyou_screen.dart';
 
 class GCashPaymentPage extends StatelessWidget {
   final List<Map<String, String>> orders;
@@ -20,6 +20,7 @@ class GCashPaymentPage extends StatelessWidget {
     return WillPopScope(
       // Intercept back navigation
       onWillPop: () async {
+        debugPrint("GCashPaymentPage: Device back button or app bar back pressed. Going to PaymentMethodPage.");
         // Navigate back to PaymentMethodPage without clearing the orders
         Navigator.pushReplacement(
           context,
@@ -33,7 +34,6 @@ class GCashPaymentPage extends StatelessWidget {
         return false; // Prevent default pop
       },
       child: Scaffold(
-        // Match background color with your other screens
         backgroundColor: const Color(0xFFFFFFFF),
         appBar: AppBar(
           iconTheme: const IconThemeData(color: Colors.white),
@@ -54,7 +54,7 @@ class GCashPaymentPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 80),
-                // Display your GCash QR code
+                // GCash QR code
                 Image.asset(
                   'assets/images/qrcode.png',
                   height: 400,
@@ -63,7 +63,7 @@ class GCashPaymentPage extends StatelessWidget {
                 const SizedBox(height: 90),
                 ElevatedButton(
                   onPressed: () {
-                    // After tapping "PAYMENT COMPLETED", go directly to ThankYouScreen
+                    debugPrint("GCashPaymentPage: 'PAYMENT COMPLETED' button pressed. Navigating to ThankYouScreen.");
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(

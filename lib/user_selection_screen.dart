@@ -7,9 +7,9 @@ class UserSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Using a fixed size for the buttons.
-    const buttonWidth = 300.0;
-    const buttonHeight = 55.0;
+    // Increase the fixed size for the buttons.
+    const double buttonWidth = 350.0;
+    const double buttonHeight = 65.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
@@ -19,16 +19,17 @@ class UserSelectionScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Larger header text
               const Text(
                 "Are you an RFID user?",
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 32, // bigger than 28
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E5D6F),
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 60),
 
               // FIRST BUTTON
               ElevatedButton(
@@ -43,14 +44,15 @@ class UserSelectionScreen extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0D2A5E),
+                  // bigger fixed size
                   fixedSize: const Size(buttonWidth, buttonHeight),
                 ),
                 child: const Text(
                   "Yes, I have RFID",
-                  style: TextStyle(fontSize: 25, color: Colors.white),
+                  style: TextStyle(fontSize: 30, color: Colors.white), // bigger font
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 40),
 
               // SECOND BUTTON
               ElevatedButton(
@@ -59,7 +61,8 @@ class UserSelectionScreen extends StatelessWidget {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const MedicineMenu(rfidData: "Guest"),
+                      builder: (context) =>
+                      const MedicineMenu(rfidData: "Guest"),
                     ),
                   );
                 },
@@ -69,7 +72,7 @@ class UserSelectionScreen extends StatelessWidget {
                 ),
                 child: const Text(
                   "No, Enter as Guest",
-                  style: TextStyle(fontSize: 25, color: Colors.white),
+                  style: TextStyle(fontSize: 30, color: Colors.white), // bigger font
                 ),
               ),
             ],
