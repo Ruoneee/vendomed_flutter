@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'user_selection_screen.dart';
 import 'payment_method.dart';
 import 'database_helper.dart';
+import 'dashboard.dart'; // Import the dashboard screen.
 import 'dart:async';
 
 class MedicineMenu extends StatefulWidget {
@@ -14,14 +15,13 @@ class MedicineMenu extends StatefulWidget {
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
-  // Each item in orders will now include: name, quantity, and price
-  // 'price' here represents total cost for that line (quantity * unit price).
+  // Each order now includes: name, quantity, and price.
   List<Map<String, String>> orders = [];
 
   String _userName = "";
   List<Map<String, dynamic>> medicines = [];
   Timer? _stockUpdateTimer;
-  Map<String, bool> _isTapped = {}; // Tracks the tap state of each item
+  Map<String, bool> _isTapped = {}; // Tracks the tap state of each item.
 
   @override
   void initState() {
@@ -38,14 +38,13 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _startStockListener() {
-    // This fetches from the database every 2 seconds.
-    // If your DB or device is slow, it can cause UI stuttering. Adjust as needed.
+    // Fetches from the database every 2 seconds.
     _stockUpdateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _fetchMedicines();
     });
   }
 
-  // LOAD USER NAME FROM DB
+  // Load user name from DB.
   Future<void> _loadUserName() async {
     try {
       final db = await DatabaseHelper().db;
@@ -68,7 +67,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
-  // FETCH MEDICINES FROM DB
+  // Fetch medicines from DB.
   Future<void> _fetchMedicines() async {
     try {
       final db = await DatabaseHelper().db;
@@ -77,7 +76,6 @@ class MedicineMenuState extends State<MedicineMenu> {
       setState(() {
         medicines = results.map((medicine) {
           final String medicineName = medicine['NAME'] ?? 'Unknown';
-          // Initialize tap state if not present
           _isTapped.putIfAbsent(medicineName, () => false);
           return {
             'NAME': medicineName,
@@ -91,15 +89,15 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
-  // MAP MEDICINE NAME TO IMAGE PATH
+  // Map medicine name to image path.
   String _getImagePath(String name) {
     final Map<String, String> imagePaths = {
-      'Ibuprofen': 'assets/images/Ibuprofen.png',
-      'Cetirizine': 'assets/images/Cetirizine.png',
-      'Paracetamol': 'assets/images/Paracetamol.png',
-      'Loperamide': 'assets/images/Loperamide.png',
-      'Antacid': 'assets/images/Antacid.png',
-      'Buscopan': 'assets/images/Buscopan.png',
+      'Ibuprofen': 'assets/images/ibuprofen.png',
+      'Cetirizine': 'assets/images/cetirizine.png',
+      'Paracetamol': 'assets/images/paracetamol.png',
+      'Loperamide': 'assets/images/loperamide.png',
+      'Antacid': 'assets/images/antacid.png',
+      'Buscopan': 'assets/images/buscopan.png',
     };
     return imagePaths[name] ?? 'assets/images/default.png';
   }
@@ -107,7 +105,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // Prevent Android back button
+      onWillPop: () async => false, // Prevent Android back button.
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
@@ -139,13 +137,12 @@ class MedicineMenuState extends State<MedicineMenu> {
             ),
           ],
         ),
-
         body: Container(
           color: const Color(0xF21588d),
           child: ListView(
             padding: const EdgeInsets.all(12.0),
             children: [
-              // "Your Orders" header
+              // "Your Orders" header.
               const Text(
                 "Your Orders:",
                 style: TextStyle(
@@ -155,10 +152,9 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ),
               ),
               const SizedBox(height: 8),
-
-              // Orders List Container
+              // Orders List Container.
               Container(
-                height: 100, // Increase if you expect many items
+                height: 100,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
@@ -168,15 +164,12 @@ class MedicineMenuState extends State<MedicineMenu> {
                     padding: EdgeInsets.zero,
                     itemCount: orders.length,
                     itemBuilder: (context, index) {
-                      // Each item now has name, quantity, price
                       final orderName = orders[index]['name'] ?? 'Unknown';
                       final orderQuantity = orders[index]['quantity'] ?? '1';
                       final orderPrice = orders[index]['price'] ?? '0.00';
-
-                      // Show something like:
-                      // 1) Ibuprofen (Qty: 2) - ₱40.00
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6.0, vertical: 3.0),
                         child: Text(
                           '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
                           style: const TextStyle(fontSize: 16),
@@ -186,10 +179,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // Grid of medicines
+              // Grid of medicines.
               if (medicines.isEmpty)
                 const Center(child: CircularProgressIndicator())
               else
@@ -209,29 +200,44 @@ class MedicineMenuState extends State<MedicineMenu> {
                     );
                   }).toList(),
                 ),
-
               const SizedBox(height: 20),
-
-              // RESET & CHECKOUT BUTTONS
+              // DASHBOARD, RESET & CHECKOUT BUTTONS (RESET in the middle).
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // DASHBOARD Button.
+                  ElevatedButton(
+                    onPressed: _navigateToDashboard,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D2A5E),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                    ),
+                    child: const Text(
+                      "DASHBOARD",
+                      style: TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                  ),
+                  // RESET Button.
                   ElevatedButton(
                     onPressed: _resetOrders,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[700],
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                     ),
                     child: const Text(
                       "RESET",
                       style: TextStyle(fontSize: 18, color: Colors.white),
                     ),
                   ),
+                  // CHECKOUT Button.
                   ElevatedButton(
                     onPressed: _proceedToCheckout,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF0D2A5E),
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+                      backgroundColor: const Color(0xFF0D2A5E),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                     ),
                     child: const Text(
                       "CHECKOUT",
@@ -269,9 +275,7 @@ class MedicineMenuState extends State<MedicineMenu> {
             _isTapped[name!] = false;
           });
         });
-
         if (stocks != null && stocks > 0) {
-          // Add or update the order dynamically
           _addToOrder(name!, unitPrice ?? '0.00');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -337,28 +341,20 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
-  // Add or update the item in orders. If it's already in the list, increment quantity.
-  // 'price' in orders is the total cost: quantity * unitPrice
+  // Add or update the item in orders.
   void _addToOrder(String name, String unitPriceStr) {
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-
-      // Check if we already have this item in the orders
-      final existingIndex = orders.indexWhere((item) => item['name'] == name);
-
+      final existingIndex =
+      orders.indexWhere((item) => item['name'] == name);
       if (existingIndex != -1) {
-        // Already in the list: increment the quantity
-        final oldQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        final oldQuantity =
+            int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
         final newQuantity = oldQuantity + 1;
-
-        // Update the total price for this line item
         final double newTotalPrice = unitPrice * newQuantity;
-
         orders[existingIndex]['quantity'] = newQuantity.toString();
         orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
       } else {
-        // Not in the list yet; add a new line
-        // quantity defaults to 1
         orders.add({
           'name': name,
           'quantity': '1',
@@ -384,5 +380,15 @@ class MedicineMenuState extends State<MedicineMenu> {
         ),
       ),
     ).then((_) => setState(() => orders.clear()));
+  }
+
+  // Navigate to DashboardScreen.
+  void _navigateToDashboard() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DashboardScreen(),
+      ),
+    );
   }
 }

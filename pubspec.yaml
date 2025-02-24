@@ -15,32 +15,27 @@ dependencies:
   usb_serial: ^0.5.2
   sqflite: ^2.0.0+3
   path: ^1.8.0
-
   cupertino_icons: ^1.0.8
-
+  syncfusion_flutter_charts: ^28.2.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^4.0.0
 
 flutter:
-  assets: #for adding images (need to declare it here)
+  assets: # for adding images (need to declare it here)
     - assets/images/splash_logo.png
     - assets/images/tap_rfid.png
-    - assets/images/Ibuprofen.png
-    - assets/images/Paracetamol.png
-    - assets/images/Loperamide.png
-    - assets/images/Cetirizine.png
-    - assets/images/multivitamins.png
-    - assets/images/Buscopan.png
-    - assets/images/Antacid.png
+    - assets/images/ibuprofen.png
+    - assets/images/paracetamol.png
+    - assets/images/loperamide.png
+    - assets/images/cetirizine.png
+    - assets/images/buscopan.png
+    - assets/images/antacid.png
     - assets/userIcons/user_icon.png
     - assets/images/cashcoins.png
     - assets/images/gcashlogo.png
     - assets/images/qrcode.png
     - assets/vendomed.db
   uses-material-design: true
-
-
