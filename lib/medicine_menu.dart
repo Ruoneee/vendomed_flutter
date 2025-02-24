@@ -94,12 +94,12 @@ class MedicineMenuState extends State<MedicineMenu> {
   // MAP MEDICINE NAME TO IMAGE PATH
   String _getImagePath(String name) {
     final Map<String, String> imagePaths = {
-      'Ibuprofen': 'assets/images/Ibuprofen.png',
-      'Cetirizine': 'assets/images/Cetirizine.png',
-      'Paracetamol': 'assets/images/Paracetamol.png',
-      'Loperamide': 'assets/images/Loperamide.png',
-      'Antacid': 'assets/images/Antacid.png',
-      'Buscopan': 'assets/images/Buscopan.png',
+      'Ibuprofen': 'assets/images/ibuprofen.png',
+      'Cetirizine': 'assets/images/cetirizine.png',
+      'Paracetamol': 'assets/images/paracetamol.png',
+      'Loperamide': 'assets/images/loperamide.png',
+      'Antacid': 'assets/images/antacid.png',
+      'Buscopan': 'assets/images/buscopan.png',
     };
     return imagePaths[name] ?? 'assets/images/default.png';
   }
