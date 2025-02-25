@@ -43,11 +43,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ChartData(x: 5, y: 300),
   ];
 
-  // Reset function (here you can update the data if needed).
+  // Reset function (if you need to update data dynamically).
   void _resetDashboard() {
     setState(() {
-      // For this example, our default data is constant.
-      // You could reload data from your database if needed.
+      // For this example, the default data remains constant.
     });
   }
 
@@ -62,48 +61,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // Line Chart Card.
-          Expanded(
-            child: Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SfCartesianChart(
-                  title: ChartTitle(text: 'Transaction Line Chart'),
-                  primaryXAxis: NumericAxis(),
-                  primaryYAxis: NumericAxis(),
-                  series: <CartesianSeries<ChartData, num>>[
-                    LineSeries<ChartData, num>(
-                      dataSource: data,
-                      xValueMapper: (ChartData d, _) => d.x,
-                      yValueMapper: (ChartData d, _) => d.y,
-                      markerSettings: const MarkerSettings(isVisible: true),
-                    )
-                  ],
+          // Line Chart Card with a fixed height and width.
+          Center(
+            child: SizedBox(
+              height: 400,
+              width: 650, // Adjust width as needed.
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SfCartesianChart(
+                    title: ChartTitle(text: 'Transaction Line Chart'),
+                    primaryXAxis: NumericAxis(),
+                    primaryYAxis: NumericAxis(),
+                    series: <CartesianSeries<ChartData, num>>[
+                      LineSeries<ChartData, num>(
+                        color: const Color(0xFFA52A2A), // #A52A2A
+                        dataSource: data,
+                        xValueMapper: (ChartData d, _) => d.x,
+                        yValueMapper: (ChartData d, _) => d.y,
+                        markerSettings: const MarkerSettings(isVisible: true),
+                      )
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          // Bar Chart Card.
-          Expanded(
-            child: Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SfCartesianChart(
-                  title: ChartTitle(text: 'Transaction Bar Chart'),
-                  primaryXAxis: NumericAxis(),
-                  primaryYAxis: NumericAxis(),
-                  series: <CartesianSeries<ChartData, num>>[
-                    ColumnSeries<ChartData, num>(
-                      dataSource: data,
-                      xValueMapper: (ChartData d, _) => d.x,
-                      yValueMapper: (ChartData d, _) => d.y,
-                      dataLabelSettings:
-                      const DataLabelSettings(isVisible: true),
-                    )
-                  ],
+          // Bar Chart Card with a fixed height and width.
+          Center(
+            child: SizedBox(
+              height: 400,
+              width: 650, // Adjust width as needed.
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SfCartesianChart(
+                    title: ChartTitle(text: 'Transaction Bar Chart'),
+                    primaryXAxis: NumericAxis(),
+                    primaryYAxis: NumericAxis(),
+                    series: <CartesianSeries<ChartData, num>>[
+                      ColumnSeries<ChartData, num>(
+                        color: const Color(0xFFA52A2A), // #A52A2A
+                        dataSource: data,
+                        xValueMapper: (ChartData d, _) => d.x,
+                        yValueMapper: (ChartData d, _) => d.y,
+                        dataLabelSettings:
+                        const DataLabelSettings(isVisible: true),
+                      )
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -150,9 +159,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       length: 3, // Days, Weeks, Months.
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Dashboard"),
-          backgroundColor: Colors.blueAccent,
+          title: const Text(
+            "Dashboard",
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF0D2A5E),
           bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
             tabs: [
               Tab(text: "Days"),
               Tab(text: "Weeks"),
