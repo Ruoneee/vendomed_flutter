@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'splash_screen.dart'; // Import SplashScreen to navigate to Home
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -112,9 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     CategoryData(category: 'Guest', value: 40),
   ];
 
-  // --- Helper functions ---
-
-  // Generic function to show a chart dialog.
+  // --- Helper function to show chart dialog ---
   void _showChartDialog(String title, Widget chartContent) {
     showDialog(
       context: context,
@@ -158,14 +157,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _resetDashboard() {
-    setState(() {
-      // Add reset logic if needed.
-    });
-  }
-
-  void _navigateToMedicineMenu() {
-    Navigator.pushReplacementNamed(context, '/medicine_menu');
+  // Navigate to Home (SplashScreen).
+  void _navigateToHome() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const SplashScreen()),
+    );
   }
 
   int _currentTabIndex = 0;
@@ -229,7 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     xValueMapper: (ChartData data, _) => data.x,
                     yValueMapper: (ChartData data, _) => data.y,
                     markerSettings: const MarkerSettings(isVisible: true),
-                    color: const Color(0xFF3674B5), // #3674B5
+                    color: const Color(0xFF3674B5),
                   )
                 ],
               ),
@@ -318,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (ChartData data, _) => data.x,
                 yValueMapper: (ChartData data, _) => data.y,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFF578FCA), // #578FCA
+                color: const Color(0xFF578FCA),
               )
             ],
           ),
@@ -363,7 +360,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (ChartData data, _) => data.x,
                 yValueMapper: (ChartData data, _) => data.y,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFFA1E3F9), // #A1E3F9
+                color: const Color(0xFFA1E3F9),
               )
             ],
           ),
@@ -408,9 +405,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 yValueMapper: (CategoryData data, _) => data.value,
                 pointColorMapper: (CategoryData data, _) {
                   if (data.category == 'Gcash') {
-                    return const Color(0xFFD1F8EF); // #D1F8EF
+                    return const Color(0xFFD1F8EF);
                   } else {
-                    return const Color(0xFFA6F1E0); // #A6F1E0
+                    return const Color(0xFFA6F1E0);
                   }
                 },
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
@@ -463,7 +460,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (CategoryData data, _) => data.category,
                 yValueMapper: (CategoryData data, _) => data.value,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFF73C7C7), // #73C7C7
+                color: const Color(0xFF73C7C7),
               )
             ],
           ),
@@ -502,34 +499,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _buildTotalSalesChart(),
           _buildPaymentChart(),
           _buildUserTypeChart(),
+          // Home Button to navigate to SplashScreen.
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: _navigateToMedicineMenu,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2A5E),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  ),
-                  child: const Text(
-                    "Medicine Menu",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: _resetDashboard,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  ),
-                  child: const Text(
-                    "Reset",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
-                ),
-              ],
+            child: ElevatedButton(
+              onPressed: _navigateToHome,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2A5E),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              child: const Text(
+                "Home",
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
             ),
           ),
         ],
