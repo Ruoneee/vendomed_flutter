@@ -50,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ChartData(x: 5, y: 370),
   ];
 
-  // 2. Frequency of Each Medicine (Bar Chart)
+  // 2. Frequency of Each Medicine (Area Chart)
   final List<ChartData> frequencyDataDays = [
     ChartData(x: 0, y: 5),
     ChartData(x: 1, y: 8),
@@ -114,6 +114,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- Helper functions ---
 
+  // Generic function to show a chart dialog.
+  void _showChartDialog(String title, Widget chartContent) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with title and close button.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        )),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  )
+                ],
+              ),
+              // Chart content.
+              Container(
+                height: 400,
+                width: 600,
+                padding: const EdgeInsets.all(8.0),
+                child: chartContent,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _resetDashboard() {
     setState(() {
       // Add reset logic if needed.
@@ -165,52 +209,94 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // --- Chart Builders ---
+  // --- Chart Builders with GestureDetector wrapping ---
 
   Widget _buildSalesChart() {
     return Column(
       children: [
         // Line Chart for Sales.
-        Card(
-          elevation: 4,
-          margin: const EdgeInsets.all(16.0),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SfCartesianChart(
-              title: ChartTitle(text: 'Sales of Each Medicine'),
-              primaryXAxis: NumericAxis(),
-              primaryYAxis: NumericAxis(),
-              series: <CartesianSeries>[
-                LineSeries<ChartData, num>(
-                  dataSource: currentSalesData,
-                  xValueMapper: (ChartData data, _) => data.x,
-                  yValueMapper: (ChartData data, _) => data.y,
-                  markerSettings: const MarkerSettings(isVisible: true),
-                  color: const Color(0xFF3674B5), // #3674B5
-                )
-              ],
+        GestureDetector(
+          onTap: () {
+            _showChartDialog(
+              'Sales of Each Medicine - Line Chart',
+              SfCartesianChart(
+                title: ChartTitle(text: 'Sales of Each Medicine - Line Chart'),
+                primaryXAxis: NumericAxis(),
+                primaryYAxis: NumericAxis(),
+                series: <CartesianSeries>[
+                  LineSeries<ChartData, num>(
+                    dataSource: currentSalesData,
+                    xValueMapper: (ChartData data, _) => data.x,
+                    yValueMapper: (ChartData data, _) => data.y,
+                    markerSettings: const MarkerSettings(isVisible: true),
+                    color: const Color(0xFF3674B5), // #3674B5
+                  )
+                ],
+              ),
+            );
+          },
+          child: Card(
+            elevation: 4,
+            margin: const EdgeInsets.all(16.0),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SfCartesianChart(
+                title: ChartTitle(text: 'Sales of Each Medicine - Line Chart'),
+                primaryXAxis: NumericAxis(),
+                primaryYAxis: NumericAxis(),
+                series: <CartesianSeries>[
+                  LineSeries<ChartData, num>(
+                    dataSource: currentSalesData,
+                    xValueMapper: (ChartData data, _) => data.x,
+                    yValueMapper: (ChartData data, _) => data.y,
+                    markerSettings: const MarkerSettings(isVisible: true),
+                    color: const Color(0xFF3674B5),
+                  )
+                ],
+              ),
             ),
           ),
         ),
         // Bar Chart for Sales.
-        Card(
-          elevation: 4,
-          margin: const EdgeInsets.all(16.0),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SfCartesianChart(
-              title: ChartTitle(text: 'Sales of Each Medicine'),
-              primaryXAxis: NumericAxis(),
-              primaryYAxis: NumericAxis(),
-              series: <CartesianSeries>[
-                ColumnSeries<ChartData, num>(
-                  dataSource: currentSalesData,
-                  xValueMapper: (ChartData data, _) => data.x,
-                  yValueMapper: (ChartData data, _) => data.y,
-                  dataLabelSettings: const DataLabelSettings(isVisible: true),
-                  color: const Color(0xFF3674B5), // #3674B5
-                )
-              ],
+        GestureDetector(
+          onTap: () {
+            _showChartDialog(
+              'Sales of Each Medicine - Bar Chart',
+              SfCartesianChart(
+                title: ChartTitle(text: 'Sales of Each Medicine - Bar Chart'),
+                primaryXAxis: NumericAxis(),
+                primaryYAxis: NumericAxis(),
+                series: <CartesianSeries>[
+                  ColumnSeries<ChartData, num>(
+                    dataSource: currentSalesData,
+                    xValueMapper: (ChartData data, _) => data.x,
+                    yValueMapper: (ChartData data, _) => data.y,
+                    dataLabelSettings: const DataLabelSettings(isVisible: true),
+                    color: const Color(0xFF3674B5),
+                  )
+                ],
+              ),
+            );
+          },
+          child: Card(
+            elevation: 4,
+            margin: const EdgeInsets.all(16.0),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SfCartesianChart(
+                title: ChartTitle(text: 'Sales of Each Medicine - Bar Chart'),
+                primaryXAxis: NumericAxis(),
+                primaryYAxis: NumericAxis(),
+                series: <CartesianSeries>[
+                  ColumnSeries<ChartData, num>(
+                    dataSource: currentSalesData,
+                    xValueMapper: (ChartData data, _) => data.x,
+                    yValueMapper: (ChartData data, _) => data.y,
+                    dataLabelSettings: const DataLabelSettings(isVisible: true),
+                    color: const Color(0xFF3674B5),
+                  )
+                ],
+              ),
             ),
           ),
         ),
@@ -219,103 +305,189 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFrequencyChart() {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.all(16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: SfCartesianChart(
-          title: ChartTitle(text: 'Frequency of Each Medicine'),
-          primaryXAxis: NumericAxis(),
-          primaryYAxis: NumericAxis(),
-          series: <CartesianSeries>[
-            ColumnSeries<ChartData, num>(
-              dataSource: currentFrequencyData,
-              xValueMapper: (ChartData data, _) => data.x,
-              yValueMapper: (ChartData data, _) => data.y,
-              dataLabelSettings: const DataLabelSettings(isVisible: true),
-              color: const Color(0xFF578FCA), // #578FCA
-            )
-          ],
+    return GestureDetector(
+      onTap: () {
+        _showChartDialog(
+          'Frequency of Each Medicine',
+          SfCartesianChart(
+            primaryXAxis: NumericAxis(),
+            primaryYAxis: NumericAxis(),
+            series: <CartesianSeries>[
+              AreaSeries<ChartData, num>(
+                dataSource: currentFrequencyData,
+                xValueMapper: (ChartData data, _) => data.x,
+                yValueMapper: (ChartData data, _) => data.y,
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                color: const Color(0xFF578FCA), // #578FCA
+              )
+            ],
+          ),
+        );
+      },
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: SfCartesianChart(
+            title: ChartTitle(text: 'Frequency of Each Medicine'),
+            primaryXAxis: NumericAxis(),
+            primaryYAxis: NumericAxis(),
+            series: <CartesianSeries>[
+              AreaSeries<ChartData, num>(
+                dataSource: currentFrequencyData,
+                xValueMapper: (ChartData data, _) => data.x,
+                yValueMapper: (ChartData data, _) => data.y,
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                color: const Color(0xFF578FCA),
+              )
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTotalSalesChart() {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.all(16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: SfCartesianChart(
-          title: ChartTitle(text: 'Total Sales of All Medicines'),
-          primaryXAxis: NumericAxis(),
-          primaryYAxis: NumericAxis(),
-          series: <CartesianSeries>[
-            ColumnSeries<ChartData, num>(
-              dataSource: currentTotalSalesData,
-              xValueMapper: (ChartData data, _) => data.x,
-              yValueMapper: (ChartData data, _) => data.y,
-              dataLabelSettings: const DataLabelSettings(isVisible: true),
-              color: const Color(0xFFA1E3F9), // #A1E3F9
-            )
-          ],
+    return GestureDetector(
+      onTap: () {
+        _showChartDialog(
+          'Total Sales of All Medicines',
+          SfCartesianChart(
+            primaryXAxis: NumericAxis(),
+            primaryYAxis: NumericAxis(),
+            title: ChartTitle(text: 'Total Sales of All Medicines'),
+            series: <CartesianSeries>[
+              ColumnSeries<ChartData, num>(
+                dataSource: currentTotalSalesData,
+                xValueMapper: (ChartData data, _) => data.x,
+                yValueMapper: (ChartData data, _) => data.y,
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                color: const Color(0xFFA1E3F9), // #A1E3F9
+              )
+            ],
+          ),
+        );
+      },
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: SfCartesianChart(
+            title: ChartTitle(text: 'Total Sales of All Medicines'),
+            primaryXAxis: NumericAxis(),
+            primaryYAxis: NumericAxis(),
+            series: <CartesianSeries>[
+              ColumnSeries<ChartData, num>(
+                dataSource: currentTotalSalesData,
+                xValueMapper: (ChartData data, _) => data.x,
+                yValueMapper: (ChartData data, _) => data.y,
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                color: const Color(0xFFA1E3F9),
+              )
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildPaymentChart() {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.all(16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: SfCircularChart(
-          title: ChartTitle(text: 'Type of Payments Used'),
-          legend: Legend(isVisible: true),
-          series: <CircularSeries>[
-            PieSeries<CategoryData, String>(
-              dataSource: paymentData,
-              xValueMapper: (CategoryData data, _) => data.category,
-              yValueMapper: (CategoryData data, _) => data.value,
-              // For Payment Chart, assign colors from the provided palette:
-              // Gcash: #D1F8EF, Cash/Coins: #A6F1E0.
-              pointColorMapper: (CategoryData data, _) {
-                if (data.category == 'Gcash') {
-                  return const Color(0xFFD1F8EF); // #D1F8EF
-                } else {
-                  return const Color(0xFFA6F1E0); // #A6F1E0
-                }
-              },
-              dataLabelSettings: const DataLabelSettings(isVisible: true),
-            )
-          ],
+    return GestureDetector(
+      onTap: () {
+        _showChartDialog(
+          'Type of Payments Used',
+          SfCircularChart(
+            title: ChartTitle(text: 'Type of Payments Used'),
+            legend: Legend(isVisible: true),
+            series: <CircularSeries>[
+              PieSeries<CategoryData, String>(
+                dataSource: paymentData,
+                xValueMapper: (CategoryData data, _) => data.category,
+                yValueMapper: (CategoryData data, _) => data.value,
+                pointColorMapper: (CategoryData data, _) {
+                  if (data.category == 'Gcash') {
+                    return const Color(0xFFD1F8EF); // #D1F8EF
+                  } else {
+                    return const Color(0xFFA6F1E0); // #A6F1E0
+                  }
+                },
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+              )
+            ],
+          ),
+        );
+      },
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: SfCircularChart(
+            title: ChartTitle(text: 'Type of Payments Used'),
+            legend: Legend(isVisible: true),
+            series: <CircularSeries>[
+              PieSeries<CategoryData, String>(
+                dataSource: paymentData,
+                xValueMapper: (CategoryData data, _) => data.category,
+                yValueMapper: (CategoryData data, _) => data.value,
+                pointColorMapper: (CategoryData data, _) {
+                  if (data.category == 'Gcash') {
+                    return const Color(0xFFD1F8EF);
+                  } else {
+                    return const Color(0xFFA6F1E0);
+                  }
+                },
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+              )
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildUserTypeChart() {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.all(16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: SfCartesianChart(
-          title: ChartTitle(text: 'Type of Users'),
-          primaryXAxis: CategoryAxis(),
-          primaryYAxis: NumericAxis(),
-          series: <CartesianSeries>[
-            ColumnSeries<CategoryData, String>(
-              dataSource: userTypeData,
-              xValueMapper: (CategoryData data, _) => data.category,
-              yValueMapper: (CategoryData data, _) => data.value,
-              dataLabelSettings: const DataLabelSettings(isVisible: true),
-              color: const Color(0xFF73C7C7), // #73C7C7
-            )
-          ],
+    return GestureDetector(
+      onTap: () {
+        _showChartDialog(
+          'Type of Users',
+          SfCartesianChart(
+            title: ChartTitle(text: 'Type of Users'),
+            primaryXAxis: CategoryAxis(),
+            primaryYAxis: NumericAxis(),
+            series: <CartesianSeries>[
+              ColumnSeries<CategoryData, String>(
+                dataSource: userTypeData,
+                xValueMapper: (CategoryData data, _) => data.category,
+                yValueMapper: (CategoryData data, _) => data.value,
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                color: const Color(0xFF73C7C7), // #73C7C7
+              )
+            ],
+          ),
+        );
+      },
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: SfCartesianChart(
+            title: ChartTitle(text: 'Type of Users'),
+            primaryXAxis: CategoryAxis(),
+            primaryYAxis: NumericAxis(),
+            series: <CartesianSeries>[
+              ColumnSeries<CategoryData, String>(
+                dataSource: userTypeData,
+                xValueMapper: (CategoryData data, _) => data.category,
+                yValueMapper: (CategoryData data, _) => data.value,
+                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                color: const Color(0xFF73C7C7),
+              )
+            ],
+          ),
         ),
       ),
     );
@@ -372,7 +544,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       initialIndex: _currentTabIndex,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Dashboard", style: TextStyle(color: Colors.white)),
+          centerTitle: true,
+          title: const Text("DASHBOARD ADMIN", style: TextStyle(color: Colors.white)),
           backgroundColor: const Color(0xFF0D2A5E),
           bottom: TabBar(
             onTap: (index) {
