@@ -82,7 +82,7 @@ class _RfidScreenState extends State<RfidScreen> {
       if (result.isNotEmpty) {
         final roleValue = result.first['ROLE']?.toString();
         print("ROLE column value: $roleValue");
-        // Compare exactly to "Admin"
+        // Compare exactly to "Admin" since your DB stores it as "Admin".
         return (roleValue == 'Admin');
       }
       return false;
