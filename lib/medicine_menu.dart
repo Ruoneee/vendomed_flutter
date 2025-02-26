@@ -8,7 +8,7 @@ import 'dart:async';
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
 
-  const MedicineMenu({super.key, required this.rfidData});
+  const MedicineMenu({Key? key, required this.rfidData}) : super(key: key);
 
   @override
   MedicineMenuState createState() => MedicineMenuState();
@@ -38,7 +38,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _startStockListener() {
-    // Fetches from the database every 2 seconds.
+    // Fetch from the database every 2 seconds.
     _stockUpdateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _fetchMedicines();
     });
@@ -201,23 +201,10 @@ class MedicineMenuState extends State<MedicineMenu> {
                   }).toList(),
                 ),
               const SizedBox(height: 20),
-              // DASHBOARD, RESET & CHECKOUT BUTTONS (RESET in the middle).
+              // RESET & CHECKOUT BUTTONS (Dashboard button removed).
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // DASHBOARD Button.
-                  ElevatedButton(
-                    onPressed: _navigateToDashboard,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                    ),
-                    child: const Text(
-                      "DASHBOARD",
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
-                  ),
                   // RESET Button.
                   ElevatedButton(
                     onPressed: _resetOrders,
@@ -341,7 +328,6 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
-  // Add or update the item in orders.
   void _addToOrder(String name, String unitPriceStr) {
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
@@ -380,15 +366,5 @@ class MedicineMenuState extends State<MedicineMenu> {
         ),
       ),
     ).then((_) => setState(() => orders.clear()));
-  }
-
-  // Navigate to DashboardScreen.
-  void _navigateToDashboard() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const DashboardScreen(),
-      ),
-    );
   }
 }
