@@ -24,14 +24,23 @@ class DatabaseHelper {
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, "vendomed.db");
 
-    // Always copy the vendomed.db from assets to the device
+    // Create the directory if it doesn't exist.
     await Directory(dirname(path)).create(recursive: true);
-    ByteData data = await rootBundle.load("assets/vendomed.db");
-    List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-    await File(path).writeAsBytes(bytes, flush: true);
+
+    // Only copy the database from assets if it does not exist.
+    if (!await File(path).exists()) {
+      ByteData data = await rootBundle.load("assets/vendomed.db");
+      List<int> bytes =
+      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      await File(path).writeAsBytes(bytes, flush: true);
+      print("Database copied from assets");
+    } else {
+      print("Database already exists at: $path");
+    }
 
     try {
-      final database = await openDatabase(path, version: 1, onCreate: _onCreate);
+      final database =
+      await openDatabase(path, version: 1, onCreate: _onCreate);
       print("Database connected: vendomed.db located at: $path");
       return database;
     } catch (error) {
@@ -40,7 +49,7 @@ class DatabaseHelper {
     }
   }
 
-  // Updated onCreate with IF NOT EXISTS so that it won't error if the table exists
+  // Create transactions table if it doesn't exist.
   Future _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
