@@ -8,11 +8,8 @@ class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
   static Database? _db;
-  Timer? _updateTimer;
 
-  DatabaseHelper._internal() {
-    _startAutoUpdate();
-  }
+  DatabaseHelper._internal();
 
   Future<Database> get db async {
     if (_db != null) return _db!;
@@ -27,11 +24,10 @@ class DatabaseHelper {
     // Create the directory if it doesn't exist.
     await Directory(dirname(path)).create(recursive: true);
 
-    // Only copy the database from assets if it does not exist.
+    // Copy the database from assets only if it doesn't exist.
     if (!await File(path).exists()) {
       ByteData data = await rootBundle.load("assets/vendomed.db");
-      List<int> bytes =
-      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
       await File(path).writeAsBytes(bytes, flush: true);
       print("Database copied from assets");
     } else {
@@ -39,8 +35,7 @@ class DatabaseHelper {
     }
 
     try {
-      final database =
-      await openDatabase(path, version: 1, onCreate: _onCreate);
+      final database = await openDatabase(path, version: 1, onCreate: _onCreate);
       print("Database connected: vendomed.db located at: $path");
       return database;
     } catch (error) {
@@ -49,7 +44,7 @@ class DatabaseHelper {
     }
   }
 
-  // Create transactions table if it doesn't exist.
+  // Create the transactions table if it doesn't exist.
   Future _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
@@ -65,25 +60,16 @@ class DatabaseHelper {
     ''');
   }
 
-  void _startAutoUpdate() {
-    _updateTimer = Timer.periodic(Duration(seconds: 2), (timer) async {
-      await _refreshDatabase();
-    });
-  }
-
-  Future<void> _refreshDatabase() async {
-    _db?.close();
-    _db = await _initDb();
-    print("Database refreshed");
-  }
-
-  // Inserts a transaction row into the transactions table.
+  // Insert a transaction row into the transactions table.
   Future<int> insertTransaction(Map<String, dynamic> transaction) async {
     final database = await db;
-    return await database.insert("transactions", transaction);
+    int id = await database.insert("transactions", transaction);
+    print("Inserted transaction id: $id");
+    return id;
   }
 
+  // Call this when you want to close the database (e.g., when the app is closing).
   void dispose() {
-    _updateTimer?.cancel();
+    _db?.close();
   }
 }
