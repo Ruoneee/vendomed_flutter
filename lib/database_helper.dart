@@ -24,7 +24,7 @@ class DatabaseHelper {
     // Create the directory if it doesn't exist.
     await Directory(dirname(path)).create(recursive: true);
 
-    // Copy the database from assets only if it doesn't exist.
+    // Copy the database from assets only if it does not exist.
     if (!await File(path).exists()) {
       ByteData data = await rootBundle.load("assets/vendomed.db");
       List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
@@ -35,7 +35,29 @@ class DatabaseHelper {
     }
 
     try {
-      final database = await openDatabase(path, version: 1, onCreate: _onCreate);
+      // Open the database with version 2.
+      final database = await openDatabase(
+        path,
+        version: 2,
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await db.execute('''
+              CREATE TABLE IF NOT EXISTS transactions (
+                transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                medicine TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                unit_price NUMERIC NOT NULL,
+                total_amount NUMERIC NOT NULL,
+                date TEXT NOT NULL,
+                payment_method TEXT NOT NULL CHECK (payment_method IN ('GCash', 'Cash/Coins')),
+                user_type TEXT NOT NULL CHECK (user_type IN ('RFID User', 'Guest'))
+              )
+            ''');
+            print("Transactions table created via onUpgrade");
+          }
+        },
+        onCreate: _onCreate,
+      );
       print("Database connected: vendomed.db located at: $path");
       return database;
     } catch (error) {
@@ -44,7 +66,7 @@ class DatabaseHelper {
     }
   }
 
-  // Create the transactions table if it doesn't exist.
+  // Called when the database is first created.
   Future _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
@@ -58,9 +80,10 @@ class DatabaseHelper {
         user_type TEXT NOT NULL CHECK (user_type IN ('RFID User', 'Guest'))
       )
     ''');
+    print("Transactions table created in onCreate");
   }
 
-  // Insert a transaction row into the transactions table.
+  // Inserts a transaction row into the transactions table.
   Future<int> insertTransaction(Map<String, dynamic> transaction) async {
     final database = await db;
     int id = await database.insert("transactions", transaction);
@@ -68,7 +91,14 @@ class DatabaseHelper {
     return id;
   }
 
-  // Call this when you want to close the database (e.g., when the app is closing).
+  // Debug function to query and print all transactions.
+  Future<void> debugPrintTransactions() async {
+    final dbInstance = await db;
+    List<Map<String, dynamic>> results = await dbInstance.query("transactions");
+    print("Current transactions: $results");
+  }
+
+  // Call this when you want to close the database.
   void dispose() {
     _db?.close();
   }
