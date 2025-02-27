@@ -61,32 +61,52 @@ class PaymentPageState extends State<PaymentPage> {
 
   void _calculateTotalAmount() {
     totalAmount = 0.0;
-
-    // We expect each item in widget.orders to have:
-    // 'name': 'Ibuprofen',
-    // 'quantity': '2',
-    // 'price': '40.00' (the total cost, not per item)
     for (var order in widget.orders) {
-      // If 'price' is already the total, we can parse it directly:
       String rawPrice = order['price'] ?? '0.00';
-      // Remove any leading '₱' if it exists, then parse to double.
       rawPrice = rawPrice.replaceAll('₱', '').trim();
       totalAmount += double.parse(rawPrice);
     }
   }
 
-  void _onProceedButtonPressed() {
+  Future<void> _insertTransactions() async {
+    // Determine user type: if _userName equals widget.rfidData, assume Guest.
+    String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
+
+    for (var order in widget.orders) {
+      String medicine = order['name'] ?? "Unknown";
+      int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
+      double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
+      double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
+      String date = DateTime.now().toIso8601String();
+
+      Map<String, dynamic> transaction = {
+        'medicine': medicine,
+        'quantity': quantity,
+        'unit_price': unitPrice,
+        'total_amount': totalCost,
+        'date': date,
+        'payment_method': 'Cash/Coins',
+        'user_type': userType,
+      };
+
+      await DatabaseHelper().insertTransaction(transaction);
+    }
+  }
+
+  Future<void> _onProceedButtonPressed() async {
     if (coinEqualToAmount) {
+      await _insertTransactions();
+
       setState(() {
         coinEqualToAmount = false;
         coinInserted = 0;
       });
       print("Transaction Successful");
 
-      // Return to previous screen (MedicineMenu) with the list of disabled medicines
+      // Return to previous screen with disabled medicines list.
       Navigator.pop(context, widget.medicinesToBeDisabled);
 
-      // Navigate to the confirmation screen
+      // Navigate to the confirmation screen.
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -128,18 +148,15 @@ class PaymentPageState extends State<PaymentPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Orders label
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold, // Keep label bold if you like
+                  fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
               ),
               const SizedBox(height: 8),
-
-              // Orders list
               Container(
                 height: 300,
                 decoration: BoxDecoration(
@@ -151,8 +168,6 @@ class PaymentPageState extends State<PaymentPage> {
                   child: ListView.builder(
                     itemCount: widget.orders.length,
                     itemBuilder: (context, index) {
-                      // We display:
-                      //   {name} (Qty: {quantity}) - ₱{price}
                       final orderName = widget.orders[index]['name'] ?? 'Unknown';
                       final orderQuantity = widget.orders[index]['quantity'] ?? '1';
                       final orderPrice = widget.orders[index]['price'] ?? '0.00';
@@ -173,8 +188,6 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Total amount label
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
@@ -184,8 +197,6 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 8),
-
-              // Display total in a disabled TextFormField
               TextFormField(
                 enabled: false,
                 decoration: const InputDecoration(
@@ -198,8 +209,6 @@ class PaymentPageState extends State<PaymentPage> {
                 style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 20),
-
-              // CANCEL + PROCEED
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

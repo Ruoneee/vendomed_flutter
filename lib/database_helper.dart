@@ -31,13 +31,29 @@ class DatabaseHelper {
     await File(path).writeAsBytes(bytes, flush: true);
 
     try {
-      final database = await openDatabase(path, version: 1);
+      final database = await openDatabase(path, version: 1, onCreate: _onCreate);
       print("Database connected: vendomed.db located at: $path");
       return database;
     } catch (error) {
       print("Failed to connect to database at: $path. Error: $error");
       rethrow;
     }
+  }
+
+  // Updated onCreate with IF NOT EXISTS so that it won't error if the table exists
+  Future _onCreate(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS transactions (
+        transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        medicine TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit_price NUMERIC NOT NULL,
+        total_amount NUMERIC NOT NULL,
+        date TEXT NOT NULL,
+        payment_method TEXT NOT NULL CHECK (payment_method IN ('GCash', 'Cash/Coins')),
+        user_type TEXT NOT NULL CHECK (user_type IN ('RFID User', 'Guest'))
+      )
+    ''');
   }
 
   void _startAutoUpdate() {
@@ -50,6 +66,12 @@ class DatabaseHelper {
     _db?.close();
     _db = await _initDb();
     print("Database refreshed");
+  }
+
+  // Inserts a transaction row into the transactions table.
+  Future<int> insertTransaction(Map<String, dynamic> transaction) async {
+    final database = await db;
+    return await database.insert("transactions", transaction);
   }
 
   void dispose() {
