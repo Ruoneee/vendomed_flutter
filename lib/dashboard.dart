@@ -26,7 +26,7 @@ class CategoryData {
 class _DashboardScreenState extends State<DashboardScreen> {
   // --- Sample Data for Different Time Filters ---
 
-  // 1. Sales of Each Medicine (Line & Bar Chart)
+  // 1. Sales of Each Medicine (Line Chart)
   final List<ChartData> salesDataDays = [
     ChartData(x: 0, y: 10),
     ChartData(x: 1, y: 20),
@@ -208,96 +208,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- Chart Builders with GestureDetector wrapping ---
 
+  // Build Sales Line Chart
   Widget _buildSalesChart() {
-    return Column(
-      children: [
-        // Line Chart for Sales.
-        GestureDetector(
-          onTap: () {
-            _showChartDialog(
-              'Sales of Each Medicine - Line Chart',
-              SfCartesianChart(
-                title: ChartTitle(text: 'Sales of Each Medicine - Line Chart'),
-                primaryXAxis: NumericAxis(),
-                primaryYAxis: NumericAxis(),
-                series: <CartesianSeries>[
-                  LineSeries<ChartData, num>(
-                    dataSource: currentSalesData,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    markerSettings: const MarkerSettings(isVisible: true),
-                    color: const Color(0xFF3674B5),
-                  )
-                ],
-              ),
-            );
-          },
-          child: Card(
-            elevation: 4,
-            margin: const EdgeInsets.all(16.0),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SfCartesianChart(
-                title: ChartTitle(text: 'Sales of Each Medicine - Line Chart'),
-                primaryXAxis: NumericAxis(),
-                primaryYAxis: NumericAxis(),
-                series: <CartesianSeries>[
-                  LineSeries<ChartData, num>(
-                    dataSource: currentSalesData,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    markerSettings: const MarkerSettings(isVisible: true),
-                    color: const Color(0xFF3674B5),
-                  )
-                ],
-              ),
-            ),
+    return GestureDetector(
+      onTap: () {
+        _showChartDialog(
+          'Sales of Each Medicine - Line Chart',
+          SfCartesianChart(
+            title: ChartTitle(text: 'Sales of Each Medicine - Line Chart'),
+            primaryXAxis: NumericAxis(),
+            primaryYAxis: NumericAxis(),
+            series: <CartesianSeries>[
+              LineSeries<ChartData, num>(
+                dataSource: currentSalesData,
+                xValueMapper: (ChartData data, _) => data.x,
+                yValueMapper: (ChartData data, _) => data.y,
+                markerSettings: const MarkerSettings(isVisible: true),
+                color: const Color(0xFF27667B), // Updated to #27667B
+              )
+            ],
+          ),
+        );
+      },
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: SfCartesianChart(
+            title: ChartTitle(text: 'Sales of Each Medicine - Line Chart'),
+            primaryXAxis: NumericAxis(),
+            primaryYAxis: NumericAxis(),
+            series: <CartesianSeries>[
+              LineSeries<ChartData, num>(
+                dataSource: currentSalesData,
+                xValueMapper: (ChartData data, _) => data.x,
+                yValueMapper: (ChartData data, _) => data.y,
+                markerSettings: const MarkerSettings(isVisible: true),
+                color: const Color(0xFF27667B), // Updated to #27667B
+              )
+            ],
           ),
         ),
-        // Bar Chart for Sales.
-        GestureDetector(
-          onTap: () {
-            _showChartDialog(
-              'Sales of Each Medicine - Bar Chart',
-              SfCartesianChart(
-                title: ChartTitle(text: 'Sales of Each Medicine - Bar Chart'),
-                primaryXAxis: NumericAxis(),
-                primaryYAxis: NumericAxis(),
-                series: <CartesianSeries>[
-                  ColumnSeries<ChartData, num>(
-                    dataSource: currentSalesData,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    dataLabelSettings: const DataLabelSettings(isVisible: true),
-                    color: const Color(0xFF3674B5),
-                  )
-                ],
-              ),
-            );
-          },
-          child: Card(
-            elevation: 4,
-            margin: const EdgeInsets.all(16.0),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SfCartesianChart(
-                title: ChartTitle(text: 'Sales of Each Medicine - Bar Chart'),
-                primaryXAxis: NumericAxis(),
-                primaryYAxis: NumericAxis(),
-                series: <CartesianSeries>[
-                  ColumnSeries<ChartData, num>(
-                    dataSource: currentSalesData,
-                    xValueMapper: (ChartData data, _) => data.x,
-                    yValueMapper: (ChartData data, _) => data.y,
-                    dataLabelSettings: const DataLabelSettings(isVisible: true),
-                    color: const Color(0xFF3674B5),
-                  )
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -315,7 +268,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (ChartData data, _) => data.x,
                 yValueMapper: (ChartData data, _) => data.y,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFF578FCA),
+                color: const Color(0xFF143D60), // Updated to #143D60
               )
             ],
           ),
@@ -336,7 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (ChartData data, _) => data.x,
                 yValueMapper: (ChartData data, _) => data.y,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFF578FCA),
+                color: const Color(0xFF143D60), // Updated to #143D60
               )
             ],
           ),
@@ -360,7 +313,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (ChartData data, _) => data.x,
                 yValueMapper: (ChartData data, _) => data.y,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFFA1E3F9),
+                color: const Color(0xFF00879E), // Updated to #00879E
               )
             ],
           ),
@@ -381,7 +334,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (ChartData data, _) => data.x,
                 yValueMapper: (ChartData data, _) => data.y,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFFA1E3F9),
+                color: const Color(0xFF00879E), // Updated to #00879E
               )
             ],
           ),
@@ -405,12 +358,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 yValueMapper: (CategoryData data, _) => data.value,
                 pointColorMapper: (CategoryData data, _) {
                   if (data.category == 'Gcash') {
-                    return const Color(0xFFD1F8EF);
+                    return const Color(0xFF578FCA); // Updated to #578FCA for Gcash
                   } else {
-                    return const Color(0xFFA6F1E0);
+                    return const Color(0xFF3674B5); // Updated to #3674B5 for Cash/Coins
                   }
                 },
-                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                dataLabelSettings: DataLabelSettings(
+                  isVisible: true,
+                  labelPosition: ChartDataLabelPosition.outside,
+                ),
+                dataLabelMapper: (CategoryData data, int index) {
+                  return '${data.category}: ${data.value}%';
+                },
               )
             ],
           ),
@@ -431,12 +390,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 yValueMapper: (CategoryData data, _) => data.value,
                 pointColorMapper: (CategoryData data, _) {
                   if (data.category == 'Gcash') {
-                    return const Color(0xFFD1F8EF);
+                    return const Color(0xFF578FCA); // Updated to #578FCA for Gcash
                   } else {
-                    return const Color(0xFFA6F1E0);
+                    return const Color(0xFF3674B5); // Updated to #3674B5 for Cash/Coins
                   }
                 },
-                dataLabelSettings: const DataLabelSettings(isVisible: true),
+                dataLabelSettings: DataLabelSettings(
+                  isVisible: true,
+                  labelPosition: ChartDataLabelPosition.outside,
+                ),
+                dataLabelMapper: (CategoryData data, int index) {
+                  return '${data.category}: ${data.value}%';
+                },
               )
             ],
           ),
@@ -460,7 +425,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (CategoryData data, _) => data.category,
                 yValueMapper: (CategoryData data, _) => data.value,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFF73C7C7),
+                color: const Color(0xFF27445D), // Updated to #27445D
               )
             ],
           ),
@@ -481,7 +446,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 xValueMapper: (CategoryData data, _) => data.category,
                 yValueMapper: (CategoryData data, _) => data.value,
                 dataLabelSettings: const DataLabelSettings(isVisible: true),
-                color: const Color(0xFF73C7C7),
+                color: const Color(0xFF27445D), // Updated to #27445D
               )
             ],
           ),
