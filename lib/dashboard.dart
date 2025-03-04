@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-// Import the transaction screen file
 import 'transaction.dart';
+import 'splash_screen.dart';  // Import for splash_screen.dart
+
+// Model for chart data
+class ChartData {
+  final String label;
+  final num value;
+  ChartData({required this.label, required this.value});
+}
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  // Removed 'const' from the constructor.
+  DashboardScreen({Key? key}) : super(key: key);
 
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
@@ -13,18 +21,43 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedTabIndex = 0;
   int _selectedTimeFilter = 2; // Default to "Month"
+  bool _isDarkMode = false; // Dark mode state
 
-  List<String> timeFilters = ["Day", "Week", "Month", "Year"];
+  // Time filter options
+  final List<String> timeFilters = ["Day", "Week", "Month", "Year"];
 
-  // Sample data for sales and medicine frequency charts
-  final List<ChartData> salesData = [
+  // Sales data sets
+  final List<ChartData> _daySalesData = [
+    ChartData(label: "Day 1", value: 45),
+    ChartData(label: "Day 2", value: 32),
+    ChartData(label: "Day 3", value: 60),
+  ];
+  final List<ChartData> _weekSalesData = [
     ChartData(label: "Week 1", value: 120),
     ChartData(label: "Week 2", value: 200),
     ChartData(label: "Week 3", value: 48),
     ChartData(label: "Week 4", value: 209),
   ];
+  final List<ChartData> _monthSalesData = [
+    ChartData(label: "Week 1", value: 120),
+    ChartData(label: "Week 2", value: 200),
+    ChartData(label: "Week 3", value: 48),
+    ChartData(label: "Week 4", value: 209),
+  ];
+  final List<ChartData> _yearSalesData = [
+    ChartData(label: "Q1", value: 400),
+    ChartData(label: "Q2", value: 350),
+    ChartData(label: "Q3", value: 600),
+    ChartData(label: "Q4", value: 450),
+  ];
 
-  final List<ChartData> frequencyData = [
+  // Frequency data sets
+  final List<ChartData> _dayFrequencyData = [
+    ChartData(label: "Paracetamol", value: 10),
+    ChartData(label: "Ibuprofen", value: 15),
+    ChartData(label: "Cefixime", value: 8),
+  ];
+  final List<ChartData> _weekFrequencyData = [
     ChartData(label: "Loperamide", value: 20),
     ChartData(label: "Paracetamol", value: 35),
     ChartData(label: "Cefixime", value: 30),
@@ -32,18 +65,150 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ChartData(label: "Amoxicil", value: 70),
     ChartData(label: "Buscopan", value: 80),
   ];
+  final List<ChartData> _monthFrequencyData = [
+    ChartData(label: "Loperamide", value: 20),
+    ChartData(label: "Paracetamol", value: 35),
+    ChartData(label: "Cefixime", value: 30),
+    ChartData(label: "Ibuprofen", value: 50),
+    ChartData(label: "Amoxicil", value: 70),
+    ChartData(label: "Buscopan", value: 80),
+  ];
+  final List<ChartData> _yearFrequencyData = [
+    ChartData(label: "Paracetamol", value: 300),
+    ChartData(label: "Ibuprofen", value: 220),
+    ChartData(label: "Cefixime", value: 180),
+  ];
+
+  // These lists hold the current data displayed in the charts.
+  List<ChartData> _salesData = [];
+  List<ChartData> _frequencyData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Default to "Month" data (since _selectedTimeFilter = 2)
+    _salesData = _monthSalesData;
+    _frequencyData = _monthFrequencyData;
+  }
+
+  /// Helper function to show a pop-up dialog with an enlarged chart.
+  void _showBigChart(String title, Widget chartWidget) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            color: _isDarkMode ? Colors.black : Colors.white,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with title and close icon.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close,
+                          color: _isDarkMode ? Colors.white : Colors.black),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                chartWidget,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Settings dialog using AlertDialog with a StatefulBuilder for immediate update.
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Settings"),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setStateDialog) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Dark Mode toggle
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Dark Mode"),
+                      Switch(
+                        value: _isDarkMode,
+                        onChanged: (bool value) {
+                          setState(() {
+                            _isDarkMode = value;
+                          });
+                          // Update the dialog's state to reflect the new theme immediately.
+                          setStateDialog(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Log Out button
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D2A5E),
+                    ),
+                    onPressed: _logOut,
+                    child: const Text(
+                      "Log Out",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Log-out function that navigates to SplashScreen.
+  void _logOut() {
+    Navigator.pop(context); // Close settings dialog
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => SplashScreen()),
+    );
+  }
 
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
     });
-
-    // If the user taps the Payments item (index = 1),
-    // navigate to the transaction screen.
     if (index == 1) {
+      // Navigate to TransactionScreen when the Payments tab is selected.
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const TransactionScreen()),
+        MaterialPageRoute(builder: (context) => TransactionScreen()),
       );
     }
   }
@@ -51,18 +216,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _onTimeFilterSelected(int index) {
     setState(() {
       _selectedTimeFilter = index;
+      if (index == 0) {
+        _salesData = _daySalesData;
+        _frequencyData = _dayFrequencyData;
+      } else if (index == 1) {
+        _salesData = _weekSalesData;
+        _frequencyData = _weekFrequencyData;
+      } else if (index == 2) {
+        _salesData = _monthSalesData;
+        _frequencyData = _monthFrequencyData;
+      } else {
+        _salesData = _yearSalesData;
+        _frequencyData = _yearFrequencyData;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text(
+          "Welcome, Admin!",
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF0D2A5E),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            onPressed: _showSettingsDialog,
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedTabIndex,
         onTap: _onTabSelected,
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
+        iconSize: 28,
+        selectedFontSize: 14,
+        unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
           BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
@@ -71,67 +266,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              _buildBalanceCard(),
-              _buildSalesStatistics(),
-              _buildSalesChart(),
-              _buildFrequencyChart(),
-            ],
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildBalanceCard(),
+                const SizedBox(height: 20),
+                _buildSalesStatistics(),
+                const SizedBox(height: 20),
+                _buildSalesChart(),
+                const SizedBox(height: 20),
+                _buildFrequencyChart(),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          "Welcome, Admin!",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue),
-        ),
-        IconButton(
-          icon: const Icon(Icons.settings, color: Colors.blue),
-          onPressed: () {},
-        ),
-      ],
-    );
-  }
-
   Widget _buildBalanceCard() {
     return Card(
       elevation: 4,
+      color: _isDarkMode ? Colors.grey[800] : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Active Balance", style: TextStyle(fontSize: 14, color: Colors.grey)),
-            const SizedBox(height: 5),
+            Text(
+              "Active Balance",
+              style: TextStyle(
+                fontSize: 18,
+                color: _isDarkMode ? Colors.white70 : Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "₱6,890.00",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    // If you also want this button to navigate to transaction.dart:
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(builder: (context) => const TransactionScreen()),
-                    // );
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                  child: const Text("Withdraw", style: TextStyle(color: Colors.white)),
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D2A5E),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text("Withdraw", style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ],
             ),
@@ -145,117 +336,226 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 16),
-        const Text("Sales Statistics", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          "Sales Statistics",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: _isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: timeFilters
-              .asMap()
-              .entries
-              .map(
-                (entry) => _buildTimeFilterButton(entry.key, entry.value),
-          )
-              .toList(),
+          children: timeFilters.asMap().entries.map((entry) {
+            return _buildTimeFilterButton(entry.key, entry.value);
+          }).toList(),
         ),
-        const SizedBox(height: 10),
       ],
     );
   }
 
   Widget _buildTimeFilterButton(int index, String label) {
+    final bool isSelected = _selectedTimeFilter == index;
     return GestureDetector(
       onTap: () => _onTimeFilterSelected(index),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: _selectedTimeFilter == index ? Colors.blue : Colors.grey[300],
+          color: isSelected ? const Color(0xFF0D2A5E) : Colors.grey[300],
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: _selectedTimeFilter == index ? Colors.white : Colors.black,
+            color: isSelected ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
+            fontSize: 16,
           ),
         ),
       ),
     );
   }
 
+  // SALES CHART with dynamic color for dark mode vs. light mode.
   Widget _buildSalesChart() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              "Sales for the Month of February",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 200,
-              child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(),
-                series: <CartesianSeries<ChartData, String>>[
-                  ColumnSeries<ChartData, String>(
-                    dataSource: salesData,
-                    xValueMapper: (ChartData data, _) => data.label,
-                    yValueMapper: (ChartData data, _) => data.value,
-                    color: Colors.blueAccent,
-                  )
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
 
-  Widget _buildFrequencyChart() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              "Frequency of Medicine Sales",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return GestureDetector(
+      onTap: () {
+        _showBigChart(
+          _selectedTimeFilter == 0
+              ? "Sales for Today"
+              : _selectedTimeFilter == 1
+              ? "Sales for This Week"
+              : _selectedTimeFilter == 2
+              ? "Sales for This Month"
+              : "Sales for This Year",
+          SizedBox(
+            height: 500,
+            child: SfCartesianChart(
+              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+              primaryXAxis: CategoryAxis(
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+              ),
+              primaryYAxis: NumericAxis(
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+              ),
+              series: <CartesianSeries<ChartData, String>>[
+                ColumnSeries<ChartData, String>(
+                  dataSource: _salesData,
+                  xValueMapper: (ChartData data, _) => data.label,
+                  yValueMapper: (ChartData data, _) => data.value,
+                  color: chartBarColor,
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 200,
-              child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(),
-                primaryYAxis: NumericAxis(),
-                series: <CartesianSeries<ChartData, String>>[
-                  LineSeries<ChartData, String>(
-                    dataSource: frequencyData,
-                    xValueMapper: (ChartData data, _) => data.label,
-                    yValueMapper: (ChartData data, _) => data.value,
-                    markerSettings: const MarkerSettings(isVisible: true),
-                    color: Colors.blue,
+          ),
+        );
+      },
+      child: Card(
+        elevation: 4,
+        color: _isDarkMode ? Colors.grey[800] : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              Text(
+                _selectedTimeFilter == 0
+                    ? "Sales for Today"
+                    : _selectedTimeFilter == 1
+                    ? "Sales for This Week"
+                    : _selectedTimeFilter == 2
+                    ? "Sales for This Month"
+                    : "Sales for This Year",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 300,
+                child: SfCartesianChart(
+                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                  primaryXAxis: CategoryAxis(
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
                   ),
-                ],
+                  primaryYAxis: NumericAxis(
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                  ),
+                  series: <CartesianSeries<ChartData, String>>[
+                    ColumnSeries<ChartData, String>(
+                      dataSource: _salesData,
+                      xValueMapper: (ChartData data, _) => data.label,
+                      yValueMapper: (ChartData data, _) => data.value,
+                      color: chartBarColor,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-// Model for chart data
-class ChartData {
-  final String label;
-  final num value;
+  // FREQUENCY CHART with dynamic color for dark mode vs. light mode.
+  Widget _buildFrequencyChart() {
+    final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
 
-  ChartData({required this.label, required this.value});
+    return GestureDetector(
+      onTap: () {
+        _showBigChart(
+          _selectedTimeFilter == 0
+              ? "Frequency of Medicine Sales (Day)"
+              : _selectedTimeFilter == 1
+              ? "Frequency of Medicine Sales (Week)"
+              : _selectedTimeFilter == 2
+              ? "Frequency of Medicine Sales (Month)"
+              : "Frequency of Medicine Sales (Year)",
+          SizedBox(
+            height: 500,
+            child: SfCartesianChart(
+              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+              primaryXAxis: CategoryAxis(
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+              ),
+              primaryYAxis: NumericAxis(
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+              ),
+              series: <CartesianSeries<ChartData, String>>[
+                LineSeries<ChartData, String>(
+                  dataSource: _frequencyData,
+                  xValueMapper: (ChartData data, _) => data.label,
+                  yValueMapper: (ChartData data, _) => data.value,
+                  markerSettings: const MarkerSettings(isVisible: true),
+                  color: chartLineColor,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      child: Card(
+        elevation: 4,
+        color: _isDarkMode ? Colors.grey[800] : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              Text(
+                _selectedTimeFilter == 0
+                    ? "Frequency of Medicine Sales (Day)"
+                    : _selectedTimeFilter == 1
+                    ? "Frequency of Medicine Sales (Week)"
+                    : _selectedTimeFilter == 2
+                    ? "Frequency of Medicine Sales (Month)"
+                    : "Frequency of Medicine Sales (Year)",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 300,
+                child: SfCartesianChart(
+                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                  primaryXAxis: CategoryAxis(
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                  ),
+                  primaryYAxis: NumericAxis(
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                  ),
+                  series: <CartesianSeries<ChartData, String>>[
+                    LineSeries<ChartData, String>(
+                      dataSource: _frequencyData,
+                      xValueMapper: (ChartData data, _) => data.label,
+                      yValueMapper: (ChartData data, _) => data.value,
+                      markerSettings: const MarkerSettings(isVisible: true),
+                      color: chartLineColor,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

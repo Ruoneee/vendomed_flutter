@@ -44,7 +44,7 @@ class _RfidScreenState extends State<RfidScreen> {
       Timer(const Duration(milliseconds: 1000), () {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          MaterialPageRoute(builder: (context) => DashboardScreen()),
         );
       });
     } else if (await _isValidRfid(rfid)) {
@@ -75,14 +75,12 @@ class _RfidScreenState extends State<RfidScreen> {
         whereArgs: [rfid],
       );
 
-      // Debug prints to confirm what's retrieved from the DB.
       print("Checking RFID: $rfid");
       print("Result from 'users' table: $result");
 
       if (result.isNotEmpty) {
         final roleValue = result.first['ROLE']?.toString();
         print("ROLE column value: $roleValue");
-        // Compare exactly to "Admin" since your DB stores it as "Admin".
         return (roleValue == 'Admin');
       }
       return false;
@@ -162,7 +160,7 @@ class _RfidScreenState extends State<RfidScreen> {
                     focusNode: _rfidFocusNode,
                     keyboardType: TextInputType.number,
                     maxLength: 10,
-                    obscureText: true, // Hides the typed characters.
+                    obscureText: true,
                     autofocus: true,
                     decoration: const InputDecoration(
                       labelText: "Enter RFID",
