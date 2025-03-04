@@ -17,11 +17,13 @@ dependencies:
   path: ^1.8.0
   cupertino_icons: ^1.0.8
   syncfusion_flutter_charts: ^28.2.6
+  pdf: ^3.9.0
+  printing: ^5.9.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   assets: # for adding images (need to declare it here)
