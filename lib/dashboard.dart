@@ -1,9 +1,12 @@
+// dashboard.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'transaction.dart';
-import 'splash_screen.dart';  // Import for splash_screen.dart
+import 'splash_screen.dart';
+import 'database_helper.dart';
 
-// Model for chart data
+// Model for chart data.
 class ChartData {
   final String label;
   final num value;
@@ -11,7 +14,6 @@ class ChartData {
 }
 
 class DashboardScreen extends StatefulWidget {
-  // Removed 'const' from the constructor.
   DashboardScreen({Key? key}) : super(key: key);
 
   @override
@@ -22,73 +24,202 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedTabIndex = 0;
   int _selectedTimeFilter = 2; // Default to "Month"
   bool _isDarkMode = false; // Dark mode state
-
-  // Time filter options
-  final List<String> timeFilters = ["Day", "Week", "Month", "Year"];
-
-  // Sales data sets
-  final List<ChartData> _daySalesData = [
-    ChartData(label: "Day 1", value: 45),
-    ChartData(label: "Day 2", value: 32),
-    ChartData(label: "Day 3", value: 60),
-  ];
-  final List<ChartData> _weekSalesData = [
-    ChartData(label: "Week 1", value: 120),
-    ChartData(label: "Week 2", value: 200),
-    ChartData(label: "Week 3", value: 48),
-    ChartData(label: "Week 4", value: 209),
-  ];
-  final List<ChartData> _monthSalesData = [
-    ChartData(label: "Week 1", value: 120),
-    ChartData(label: "Week 2", value: 200),
-    ChartData(label: "Week 3", value: 48),
-    ChartData(label: "Week 4", value: 209),
-  ];
-  final List<ChartData> _yearSalesData = [
-    ChartData(label: "Q1", value: 400),
-    ChartData(label: "Q2", value: 350),
-    ChartData(label: "Q3", value: 600),
-    ChartData(label: "Q4", value: 450),
-  ];
-
-  // Frequency data sets
-  final List<ChartData> _dayFrequencyData = [
-    ChartData(label: "Paracetamol", value: 10),
-    ChartData(label: "Ibuprofen", value: 15),
-    ChartData(label: "Cefixime", value: 8),
-  ];
-  final List<ChartData> _weekFrequencyData = [
-    ChartData(label: "Loperamide", value: 20),
-    ChartData(label: "Paracetamol", value: 35),
-    ChartData(label: "Cefixime", value: 30),
-    ChartData(label: "Ibuprofen", value: 50),
-    ChartData(label: "Amoxicil", value: 70),
-    ChartData(label: "Buscopan", value: 80),
-  ];
-  final List<ChartData> _monthFrequencyData = [
-    ChartData(label: "Loperamide", value: 20),
-    ChartData(label: "Paracetamol", value: 35),
-    ChartData(label: "Cefixime", value: 30),
-    ChartData(label: "Ibuprofen", value: 50),
-    ChartData(label: "Amoxicil", value: 70),
-    ChartData(label: "Buscopan", value: 80),
-  ];
-  final List<ChartData> _yearFrequencyData = [
-    ChartData(label: "Paracetamol", value: 300),
-    ChartData(label: "Ibuprofen", value: 220),
-    ChartData(label: "Cefixime", value: 180),
-  ];
+  int totalTransactions = 0; // Total transaction count from DB
+  double _activeBalance = 0.0; // Active balance (sum of total_amount)
 
   // These lists hold the current data displayed in the charts.
   List<ChartData> _salesData = [];
   List<ChartData> _frequencyData = [];
 
+  // All transactions fetched from DB.
+  List<Map<String, dynamic>> _transactions = [];
+
+  // Time filter options.
+  final List<String> timeFilters = ["Day", "Week", "Month", "Year"];
+
   @override
   void initState() {
     super.initState();
-    // Default to "Month" data (since _selectedTimeFilter = 2)
-    _salesData = _monthSalesData;
-    _frequencyData = _monthFrequencyData;
+    // Fetch all data from the database when the screen loads.
+    _fetchDashboardData();
+  }
+
+  // Fetch transactions from the database and compute active balance and count.
+  Future<void> _fetchDashboardData() async {
+    _transactions = await DatabaseHelper().getTransactions();
+    double sum = 0.0;
+    for (var tx in _transactions) {
+      sum += (tx['total_amount'] as num).toDouble();
+    }
+    setState(() {
+      totalTransactions = _transactions.length;
+      _activeBalance = sum;
+    });
+    // After fetching transactions, update chart data.
+    _updateChartData();
+  }
+
+  // Update chart data based on the selected time filter.
+  void _updateChartData() {
+    DateTime now = DateTime.now();
+    List<Map<String, dynamic>> filtered = [];
+
+    // Filter transactions based on the selected time filter.
+    if (_selectedTimeFilter == 0) { // Day: transactions for today.
+      filtered = _transactions.where((tx) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+      }).toList();
+    } else if (_selectedTimeFilter == 1) { // Week: transactions in current week.
+      int weekday = now.weekday;
+      DateTime startOfWeek = now.subtract(Duration(days: weekday - 1));
+      DateTime endOfWeek = startOfWeek.add(Duration(days: 6));
+      filtered = _transactions.where((tx) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        return dt.isAfter(startOfWeek.subtract(Duration(days: 1))) &&
+            dt.isBefore(endOfWeek.add(Duration(days: 1)));
+      }).toList();
+    } else if (_selectedTimeFilter == 2) { // Month: transactions in current month.
+      filtered = _transactions.where((tx) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        return dt.year == now.year && dt.month == now.month;
+      }).toList();
+    } else { // Year: transactions in current year.
+      filtered = _transactions.where((tx) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        return dt.year == now.year;
+      }).toList();
+    }
+
+    // Aggregate sales data (sum of total_amount) based on time grouping.
+    Map<String, double> salesMap = {};
+    if (_selectedTimeFilter == 0) { // Group by hour for today.
+      for (var tx in filtered) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        String key = dt.hour.toString();
+        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
+      }
+    } else if (_selectedTimeFilter == 1) { // Group by weekday for current week.
+      for (var tx in filtered) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        String key = _weekdayName(dt.weekday);
+        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
+      }
+    } else if (_selectedTimeFilter == 2) { // Group by day (of month) for current month.
+      for (var tx in filtered) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        String key = dt.day.toString();
+        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
+      }
+    } else { // Group by month for current year.
+      for (var tx in filtered) {
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        String key = _monthName(dt.month);
+        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
+      }
+    }
+
+    // Convert aggregated sales data to ChartData.
+    List<ChartData> salesData = [];
+    if (_selectedTimeFilter == 0) {
+      var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+      for (var key in keys) {
+        salesData.add(ChartData(label: "$key:00", value: salesMap[key]!));
+      }
+    } else if (_selectedTimeFilter == 1) {
+      // Use a fixed weekday order.
+      List<String> weekdayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      for (var day in weekdayOrder) {
+        if (salesMap.containsKey(day)) {
+          salesData.add(ChartData(label: day, value: salesMap[day]!));
+        }
+      }
+    } else if (_selectedTimeFilter == 2) {
+      var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+      for (var key in keys) {
+        salesData.add(ChartData(label: "Day $key", value: salesMap[key]!));
+      }
+    } else {
+      List<String> monthOrder = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      for (var month in monthOrder) {
+        if (salesMap.containsKey(month)) {
+          salesData.add(ChartData(label: month, value: salesMap[month]!));
+        }
+      }
+    }
+
+    // Frequency Chart: Group by medicine to sum the quantity sold.
+    Map<String, int> freqMap = {};
+    for (var tx in _transactions) {
+      String med = tx['medicine'];
+      freqMap[med] = (freqMap[med] ?? 0) + (tx['quantity'] as int);
+    }
+    List<ChartData> freqData = [];
+    freqMap.forEach((med, qty) {
+      freqData.add(ChartData(label: med, value: qty));
+    });
+
+    setState(() {
+      _salesData = salesData;
+      _frequencyData = freqData;
+    });
+  }
+
+  // Helper: Get weekday name from integer.
+  String _weekdayName(int weekday) {
+    switch (weekday) {
+      case 1:
+        return "Monday";
+      case 2:
+        return "Tuesday";
+      case 3:
+        return "Wednesday";
+      case 4:
+        return "Thursday";
+      case 5:
+        return "Friday";
+      case 6:
+        return "Saturday";
+      case 7:
+        return "Sunday";
+      default:
+        return "";
+    }
+  }
+
+  // Helper: Get month name from integer.
+  String _monthName(int month) {
+    switch (month) {
+      case 1:
+        return "January";
+      case 2:
+        return "February";
+      case 3:
+        return "March";
+      case 4:
+        return "April";
+      case 5:
+        return "May";
+      case 6:
+        return "June";
+      case 7:
+        return "July";
+      case 8:
+        return "August";
+      case 9:
+        return "September";
+      case 10:
+        return "October";
+      case 11:
+        return "November";
+      case 12:
+        return "December";
+      default:
+        return "";
+    }
   }
 
   /// Helper function to show a pop-up dialog with an enlarged chart.
@@ -135,7 +266,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Settings dialog using AlertDialog with a StatefulBuilder for immediate update.
+  // Settings dialog.
   void _showSettingsDialog() {
     showDialog(
       context: context,
@@ -147,7 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Dark Mode toggle
+                  // Dark Mode toggle.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -158,14 +289,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           setState(() {
                             _isDarkMode = value;
                           });
-                          // Update the dialog's state to reflect the new theme immediately.
                           setStateDialog(() {});
                         },
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  // Log Out button
+                  // Log Out button.
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),
@@ -193,7 +323,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Log-out function that navigates to SplashScreen.
   void _logOut() {
-    Navigator.pop(context); // Close settings dialog
+    Navigator.pop(context); // Close settings dialog.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => SplashScreen()),
@@ -205,31 +335,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _selectedTabIndex = index;
     });
     if (index == 1) {
-      // Navigate to TransactionScreen when the Payments tab is selected.
+      // Navigate to TransactionScreen when Payments tab is selected.
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => TransactionScreen()),
       );
     }
+    // Extend for other tabs as needed.
   }
 
+  // Update time filter selection and recalc chart data.
   void _onTimeFilterSelected(int index) {
     setState(() {
       _selectedTimeFilter = index;
-      if (index == 0) {
-        _salesData = _daySalesData;
-        _frequencyData = _dayFrequencyData;
-      } else if (index == 1) {
-        _salesData = _weekSalesData;
-        _frequencyData = _weekFrequencyData;
-      } else if (index == 2) {
-        _salesData = _monthSalesData;
-        _frequencyData = _monthFrequencyData;
-      } else {
-        _salesData = _yearSalesData;
-        _frequencyData = _yearFrequencyData;
-      }
     });
+    _updateChartData();
   }
 
   @override
@@ -287,6 +407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Build the Active Balance card using the computed _activeBalance.
   Widget _buildBalanceCard() {
     return Card(
       elevation: 4,
@@ -309,7 +430,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "₱6,890.00",
+                  "₱${_activeBalance.toStringAsFixed(2)}",
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -332,6 +453,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Sales Statistics section, including dynamic total transactions.
   Widget _buildSalesStatistics() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,6 +472,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: timeFilters.asMap().entries.map((entry) {
             return _buildTimeFilterButton(entry.key, entry.value);
           }).toList(),
+        ),
+        const SizedBox(height: 20),
+        // Dynamic total transactions display.
+        Row(
+          children: [
+            const Text(
+              "Total Transactions: ",
+              style: TextStyle(fontSize: 20, color: Colors.grey),
+            ),
+            Text(
+              "$totalTransactions",
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
       ],
     );
@@ -377,10 +513,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // SALES CHART with dynamic color for dark mode vs. light mode.
+  // Sales Chart using dynamic _salesData.
   Widget _buildSalesChart() {
     final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
-
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -467,10 +602,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // FREQUENCY CHART with dynamic color for dark mode vs. light mode.
+  // Frequency Chart using dynamic _frequencyData.
   Widget _buildFrequencyChart() {
     final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
-
     return GestureDetector(
       onTap: () {
         _showBigChart(

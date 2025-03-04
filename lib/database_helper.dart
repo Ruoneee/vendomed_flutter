@@ -1,3 +1,4 @@
+// database_helper.dart
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart' show ByteData, rootBundle;
@@ -89,6 +90,12 @@ class DatabaseHelper {
     int id = await database.insert("transactions", transaction);
     print("Inserted transaction id: $id");
     return id;
+  }
+
+  // Query all transactions.
+  Future<List<Map<String, dynamic>>> getTransactions() async {
+    final database = await db;
+    return await database.query("transactions");
   }
 
   // Debug function to query and print all transactions.
