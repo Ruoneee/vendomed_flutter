@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'transaction.dart';
 import 'splash_screen.dart';
 import 'database_helper.dart';
@@ -26,7 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int totalTransactions = 0; // Total transaction count from DB
   double _activeBalance = 0.0; // Active balance (sum of total_amount)
 
-  // These lists hold the current data displayed in the charts.
+  // Chart data lists.
   List<ChartData> _salesData = [];
   List<ChartData> _frequencyData = [];
 
@@ -41,9 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch all data from the database when the screen loads.
     _fetchDashboardData();
-    // Set up a timer to refresh data every minute.
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       _fetchDashboardData();
     });
@@ -55,28 +56,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  // Fetch transactions from the database and compute active balance and count.
+  // Fetch transactions and compute active balance.
   Future<void> _fetchDashboardData() async {
     _transactions = await DatabaseHelper().getTransactions();
-
     double sum = 0.0;
     for (var tx in _transactions) {
       sum += (tx['total_amount'] as num).toDouble();
     }
-
     setState(() {
       totalTransactions = _transactions.length;
       _activeBalance = sum;
     });
-
-    // After fetching transactions, update chart data.
     _updateChartData();
   }
 
-  // Update chart data based on the selected time filter.
+  // Update chart data based on selected time filter.
   void _updateChartData() {
     if (_transactions.isEmpty) {
-      // No transactions to process.
       setState(() {
         _salesData = [];
         _frequencyData = [];
@@ -84,26 +80,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    // 1) Find the earliest transaction date (this becomes our "base date").
     DateTime earliestTxDate = _transactions
         .map((row) => DateTime.tryParse(row['date']) ?? DateTime.now())
         .reduce((a, b) => a.isBefore(b) ? a : b);
 
-    // 2) Filter transactions based on the selected time filter, but relative to earliestTxDate.
     List<Map<String, dynamic>> filtered = [];
-
-    if (_selectedTimeFilter == 0) {
-      // Day: show transactions that match earliestTxDate's exact day/month/year
+    if (_selectedTimeFilter == 0) { // Day
       filtered = _transactions.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         return dt.year == earliestTxDate.year &&
             dt.month == earliestTxDate.month &&
             dt.day == earliestTxDate.day;
       }).toList();
-    } else if (_selectedTimeFilter == 1) {
-      // Week: show transactions in the same "week" as earliestTxDate
-      // For example, if earliestTxDate is 2025-03-01 (a Saturday),
-      // we find the Monday of that week and the Sunday of that week
+    } else if (_selectedTimeFilter == 1) { // Week
       DateTime startOfWeek = _startOfWeek(earliestTxDate);
       DateTime endOfWeek = _endOfWeek(earliestTxDate);
       filtered = _transactions.where((tx) {
@@ -111,47 +100,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return dt.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
             dt.isBefore(endOfWeek.add(const Duration(seconds: 1)));
       }).toList();
-    } else if (_selectedTimeFilter == 2) {
-      // Month: show transactions that match earliestTxDate's month/year
+    } else if (_selectedTimeFilter == 2) { // Month
       filtered = _transactions.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         return dt.year == earliestTxDate.year && dt.month == earliestTxDate.month;
       }).toList();
-    } else {
-      // Year: show transactions that match earliestTxDate's year
+    } else { // Year
       filtered = _transactions.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         return dt.year == earliestTxDate.year;
       }).toList();
     }
 
-    // 3) Aggregate sales data (sum of total_amount) in a simple manner
-    //    For "Day," group by hour, for "Week," group by weekday name, etc.
     Map<String, double> salesMap = {};
-
     if (_selectedTimeFilter == 0) {
-      // Group by hour
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = dt.hour.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else if (_selectedTimeFilter == 1) {
-      // Group by weekday name
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = _weekdayName(dt.weekday);
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else if (_selectedTimeFilter == 2) {
-      // Group by day of month
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = dt.day.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else {
-      // Group by month name
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = _monthName(dt.month);
@@ -159,16 +139,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // Convert aggregated sales data to ChartData
     List<ChartData> salesData = [];
     if (_selectedTimeFilter == 0) {
-      // Sort hours numerically
       var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
       for (var key in keys) {
         salesData.add(ChartData(label: "$key:00", value: salesMap[key]!));
       }
     } else if (_selectedTimeFilter == 1) {
-      // Use a fixed weekday order
       List<String> weekdayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
       for (var day in weekdayOrder) {
         if (salesMap.containsKey(day)) {
@@ -176,13 +153,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
     } else if (_selectedTimeFilter == 2) {
-      // Sort day-of-month numerically
       var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
       for (var key in keys) {
         salesData.add(ChartData(label: "Day $key", value: salesMap[key]!));
       }
     } else {
-      // Month order
       List<String> monthOrder = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -194,7 +169,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // 4) Frequency Chart: group by medicine to sum the quantity sold
     Map<String, int> freqMap = {};
     for (var tx in filtered) {
       String med = tx['medicine'];
@@ -205,82 +179,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
       freqData.add(ChartData(label: med, value: qty));
     });
 
-    // 5) Update state
     setState(() {
       _salesData = salesData;
       _frequencyData = freqData;
     });
   }
 
-  // Helper: get start of the week for a given date (Monday as start)
+  // Helpers for week start/end and weekday/month names.
   DateTime _startOfWeek(DateTime date) {
-    // If Monday is the start of the week:
-    int dayOfWeek = date.weekday; // Monday=1 ... Sunday=7
+    int dayOfWeek = date.weekday;
     return DateTime(date.year, date.month, date.day).subtract(Duration(days: dayOfWeek - 1));
   }
 
-  // Helper: get end of the week (Sunday)
   DateTime _endOfWeek(DateTime date) {
     int dayOfWeek = date.weekday;
     DateTime start = _startOfWeek(date);
     return start.add(const Duration(days: 6));
   }
 
-  // Helper: Get weekday name from integer.
   String _weekdayName(int weekday) {
     switch (weekday) {
-      case 1:
-        return "Monday";
-      case 2:
-        return "Tuesday";
-      case 3:
-        return "Wednesday";
-      case 4:
-        return "Thursday";
-      case 5:
-        return "Friday";
-      case 6:
-        return "Saturday";
-      case 7:
-        return "Sunday";
-      default:
-        return "";
+      case 1: return "Monday";
+      case 2: return "Tuesday";
+      case 3: return "Wednesday";
+      case 4: return "Thursday";
+      case 5: return "Friday";
+      case 6: return "Saturday";
+      case 7: return "Sunday";
+      default: return "";
     }
   }
 
-  // Helper: Get month name from integer.
   String _monthName(int month) {
     switch (month) {
-      case 1:
-        return "January";
-      case 2:
-        return "February";
-      case 3:
-        return "March";
-      case 4:
-        return "April";
-      case 5:
-        return "May";
-      case 6:
-        return "June";
-      case 7:
-        return "July";
-      case 8:
-        return "August";
-      case 9:
-        return "September";
-      case 10:
-        return "October";
-      case 11:
-        return "November";
-      case 12:
-        return "December";
-      default:
-        return "";
+      case 1: return "January";
+      case 2: return "February";
+      case 3: return "March";
+      case 4: return "April";
+      case 5: return "May";
+      case 6: return "June";
+      case 7: return "July";
+      case 8: return "August";
+      case 9: return "September";
+      case 10: return "October";
+      case 11: return "November";
+      case 12: return "December";
+      default: return "";
     }
   }
 
-  /// Helper function to show a pop-up dialog with an enlarged chart.
+  // _showBigChart shows an enlarged chart in a dialog.
   void _showBigChart(String title, Widget chartWidget) {
     showDialog(
       context: context,
@@ -293,7 +241,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header with title and close icon.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -306,8 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close,
-                          color: _isDarkMode ? Colors.white : Colors.black),
+                      icon: Icon(Icons.close, color: _isDarkMode ? Colors.white : Colors.black),
                       onPressed: () {
                         Navigator.pop(context);
                       },
@@ -324,7 +270,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Settings dialog.
+  // Function to generate PDF from transactions.
+  Future<pw.Document> _generatePDF() async {
+    final transactions = await DatabaseHelper().getTransactions();
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Text("Transactions Backup", style: pw.TextStyle(fontSize: 24)),
+              pw.SizedBox(height: 20),
+              pw.Table.fromTextArray(
+                headers: ['ID', 'Medicine', 'Quantity', 'Unit Price', 'Total', 'Date', 'Payment', 'User'],
+                data: transactions.map((tx) {
+                  return [
+                    tx['transaction_id'].toString(),
+                    tx['medicine'],
+                    tx['quantity'].toString(),
+                    tx['unit_price'].toString(),
+                    tx['total_amount'].toString(),
+                    tx['date'],
+                    tx['payment_method'],
+                    tx['user_type']
+                  ];
+                }).toList(),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    return pdf;
+  }
+
+  // Export data as PDF using the printing package.
+  Future<void> _exportDataAsPDF() async {
+    final pdf = await _generatePDF();
+    await Printing.sharePdf(bytes: await pdf.save(), filename: 'transactions_backup.pdf');
+  }
+
+  // Settings dialog with Dark Mode, Export, and Log Out options.
   void _showSettingsDialog() {
     showDialog(
       context: context,
@@ -336,7 +322,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Dark Mode toggle.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -353,16 +338,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  // Log Out button.
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                    ),
+                    onPressed: () {
+                      _exportDataAsPDF();
+                    },
+                    child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
+                  ),
+                  const SizedBox(height: 10),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),
                     ),
                     onPressed: _logOut,
-                    child: const Text(
-                      "Log Out",
-                      style: TextStyle(color: Colors.white),
-                    ),
+                    child: const Text("Log Out", style: TextStyle(color: Colors.white)),
                   ),
                 ],
               );
@@ -379,30 +370,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Log-out function that navigates to SplashScreen.
+  // Log-out function.
   void _logOut() {
-    Navigator.pop(context); // Close settings dialog.
+    Navigator.pop(context);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => SplashScreen()),
     );
   }
 
+  // Bottom navigation tab selection.
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
     });
-    if (index == 1) {
-      // Navigate to TransactionScreen when Payments tab is selected.
-      Navigator.push(
+    if (index == 0) {
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => TransactionScreen()),
+        MaterialPageRoute(builder: (context) => DashboardScreen()),
       );
     }
-    // Extend for other tabs as needed.
   }
 
-  // Update time filter selection and recalc chart data.
+  // Update time filter and recalc chart data.
   void _onTimeFilterSelected(int index) {
     setState(() {
       _selectedTimeFilter = index;
@@ -465,7 +455,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Build the Active Balance card using the computed _activeBalance.
+  // Active Balance card.
   Widget _buildBalanceCard() {
     return Card(
       elevation: 4,
@@ -511,7 +501,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Sales Statistics section, including dynamic total transactions.
+  // Sales Statistics section.
   Widget _buildSalesStatistics() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,7 +522,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }).toList(),
         ),
         const SizedBox(height: 20),
-        // Dynamic total transactions display.
         Row(
           children: [
             const Text(
@@ -571,7 +560,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Sales Chart using dynamic _salesData.
+  // Sales Chart.
   Widget _buildSalesChart() {
     final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
@@ -660,7 +649,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Frequency Chart using dynamic _frequencyData.
+  // Frequency Chart.
   Widget _buildFrequencyChart() {
     final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
