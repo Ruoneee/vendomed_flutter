@@ -25,38 +25,15 @@ class DatabaseHelper {
     // Create the directory if it doesn't exist.
     await Directory(dirname(path)).create(recursive: true);
 
-    // Copy the database from assets only if it does not exist.
-    if (!await File(path).exists()) {
-      ByteData data = await rootBundle.load("assets/vendomed.db");
-      List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-      await File(path).writeAsBytes(bytes, flush: true);
-      print("Database copied from assets");
-    } else {
-      print("Database already exists at: $path");
-    }
+    // Always copy the database from assets (this will overwrite the existing local database).
+    await _copyDatabaseFromAssets(path);
+    print("Database copied from assets to: $path");
 
     try {
-      // Open the database with version 2.
+      // Open the database.
       final database = await openDatabase(
         path,
-        version: 2,
-        onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 2) {
-            await db.execute('''
-              CREATE TABLE IF NOT EXISTS transactions (
-                transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                medicine TEXT NOT NULL,
-                quantity INTEGER NOT NULL,
-                unit_price NUMERIC NOT NULL,
-                total_amount NUMERIC NOT NULL,
-                date TEXT NOT NULL,
-                payment_method TEXT NOT NULL CHECK (payment_method IN ('GCash', 'Cash/Coins')),
-                user_type TEXT NOT NULL CHECK (user_type IN ('RFID User', 'Guest'))
-              )
-            ''');
-            print("Transactions table created via onUpgrade");
-          }
-        },
+        version: 1,
         onCreate: _onCreate,
       );
       print("Database connected: vendomed.db located at: $path");
@@ -67,8 +44,16 @@ class DatabaseHelper {
     }
   }
 
+  // Copy the vendomed.db file from assets to the specified path.
+  Future<void> _copyDatabaseFromAssets(String path) async {
+    ByteData data = await rootBundle.load("assets/vendomed.db");
+    List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    await File(path).writeAsBytes(bytes, flush: true);
+  }
+
   // Called when the database is first created.
   Future _onCreate(Database db, int version) async {
+    // This may not be used if your vendomed.db is fully pre-populated.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
         transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,

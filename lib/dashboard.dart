@@ -1,4 +1,3 @@
-// dashboard.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -37,97 +36,139 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Time filter options.
   final List<String> timeFilters = ["Day", "Week", "Month", "Year"];
 
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     // Fetch all data from the database when the screen loads.
     _fetchDashboardData();
+    // Set up a timer to refresh data every minute.
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _fetchDashboardData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   // Fetch transactions from the database and compute active balance and count.
   Future<void> _fetchDashboardData() async {
     _transactions = await DatabaseHelper().getTransactions();
+
     double sum = 0.0;
     for (var tx in _transactions) {
       sum += (tx['total_amount'] as num).toDouble();
     }
+
     setState(() {
       totalTransactions = _transactions.length;
       _activeBalance = sum;
     });
+
     // After fetching transactions, update chart data.
     _updateChartData();
   }
 
   // Update chart data based on the selected time filter.
   void _updateChartData() {
-    DateTime now = DateTime.now();
+    if (_transactions.isEmpty) {
+      // No transactions to process.
+      setState(() {
+        _salesData = [];
+        _frequencyData = [];
+      });
+      return;
+    }
+
+    // 1) Find the earliest transaction date (this becomes our "base date").
+    DateTime earliestTxDate = _transactions
+        .map((row) => DateTime.tryParse(row['date']) ?? DateTime.now())
+        .reduce((a, b) => a.isBefore(b) ? a : b);
+
+    // 2) Filter transactions based on the selected time filter, but relative to earliestTxDate.
     List<Map<String, dynamic>> filtered = [];
 
-    // Filter transactions based on the selected time filter.
-    if (_selectedTimeFilter == 0) { // Day: transactions for today.
+    if (_selectedTimeFilter == 0) {
+      // Day: show transactions that match earliestTxDate's exact day/month/year
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        return dt.year == earliestTxDate.year &&
+            dt.month == earliestTxDate.month &&
+            dt.day == earliestTxDate.day;
       }).toList();
-    } else if (_selectedTimeFilter == 1) { // Week: transactions in current week.
-      int weekday = now.weekday;
-      DateTime startOfWeek = now.subtract(Duration(days: weekday - 1));
-      DateTime endOfWeek = startOfWeek.add(Duration(days: 6));
+    } else if (_selectedTimeFilter == 1) {
+      // Week: show transactions in the same "week" as earliestTxDate
+      // For example, if earliestTxDate is 2025-03-01 (a Saturday),
+      // we find the Monday of that week and the Sunday of that week
+      DateTime startOfWeek = _startOfWeek(earliestTxDate);
+      DateTime endOfWeek = _endOfWeek(earliestTxDate);
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.isAfter(startOfWeek.subtract(Duration(days: 1))) &&
-            dt.isBefore(endOfWeek.add(Duration(days: 1)));
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        return dt.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
+            dt.isBefore(endOfWeek.add(const Duration(seconds: 1)));
       }).toList();
-    } else if (_selectedTimeFilter == 2) { // Month: transactions in current month.
+    } else if (_selectedTimeFilter == 2) {
+      // Month: show transactions that match earliestTxDate's month/year
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.year == now.year && dt.month == now.month;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        return dt.year == earliestTxDate.year && dt.month == earliestTxDate.month;
       }).toList();
-    } else { // Year: transactions in current year.
+    } else {
+      // Year: show transactions that match earliestTxDate's year
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.year == now.year;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        return dt.year == earliestTxDate.year;
       }).toList();
     }
 
-    // Aggregate sales data (sum of total_amount) based on time grouping.
+    // 3) Aggregate sales data (sum of total_amount) in a simple manner
+    //    For "Day," group by hour, for "Week," group by weekday name, etc.
     Map<String, double> salesMap = {};
-    if (_selectedTimeFilter == 0) { // Group by hour for today.
+
+    if (_selectedTimeFilter == 0) {
+      // Group by hour
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = dt.hour.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
-    } else if (_selectedTimeFilter == 1) { // Group by weekday for current week.
+    } else if (_selectedTimeFilter == 1) {
+      // Group by weekday name
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = _weekdayName(dt.weekday);
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
-    } else if (_selectedTimeFilter == 2) { // Group by day (of month) for current month.
+    } else if (_selectedTimeFilter == 2) {
+      // Group by day of month
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = dt.day.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
-    } else { // Group by month for current year.
+    } else {
+      // Group by month name
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
         String key = _monthName(dt.month);
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     }
 
-    // Convert aggregated sales data to ChartData.
+    // Convert aggregated sales data to ChartData
     List<ChartData> salesData = [];
     if (_selectedTimeFilter == 0) {
+      // Sort hours numerically
       var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
       for (var key in keys) {
         salesData.add(ChartData(label: "$key:00", value: salesMap[key]!));
       }
     } else if (_selectedTimeFilter == 1) {
-      // Use a fixed weekday order.
+      // Use a fixed weekday order
       List<String> weekdayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
       for (var day in weekdayOrder) {
         if (salesMap.containsKey(day)) {
@@ -135,11 +176,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
     } else if (_selectedTimeFilter == 2) {
+      // Sort day-of-month numerically
       var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
       for (var key in keys) {
         salesData.add(ChartData(label: "Day $key", value: salesMap[key]!));
       }
     } else {
+      // Month order
       List<String> monthOrder = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -151,9 +194,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // Frequency Chart: Group by medicine to sum the quantity sold.
+    // 4) Frequency Chart: group by medicine to sum the quantity sold
     Map<String, int> freqMap = {};
-    for (var tx in _transactions) {
+    for (var tx in filtered) {
       String med = tx['medicine'];
       freqMap[med] = (freqMap[med] ?? 0) + (tx['quantity'] as int);
     }
@@ -162,10 +205,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
       freqData.add(ChartData(label: med, value: qty));
     });
 
+    // 5) Update state
     setState(() {
       _salesData = salesData;
       _frequencyData = freqData;
     });
+  }
+
+  // Helper: get start of the week for a given date (Monday as start)
+  DateTime _startOfWeek(DateTime date) {
+    // If Monday is the start of the week:
+    int dayOfWeek = date.weekday; // Monday=1 ... Sunday=7
+    return DateTime(date.year, date.month, date.day).subtract(Duration(days: dayOfWeek - 1));
+  }
+
+  // Helper: get end of the week (Sunday)
+  DateTime _endOfWeek(DateTime date) {
+    int dayOfWeek = date.weekday;
+    DateTime start = _startOfWeek(date);
+    return start.add(const Duration(days: 6));
   }
 
   // Helper: Get weekday name from integer.
