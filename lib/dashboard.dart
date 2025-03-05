@@ -282,6 +282,136 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // The "View Details" modal.
+  void _showViewDetailsModal() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            color: _isDarkMode ? Colors.black : Colors.white,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with title and close "X" button.
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Transaction Details",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: _isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close,
+                            color: _isDarkMode ? Colors.white : Colors.black),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Graphical Insights: a mini chart
+                  SizedBox(
+                    height: 200,
+                    child: SfCartesianChart(
+                      backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                      primaryXAxis: CategoryAxis(
+                        labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      ),
+                      primaryYAxis: NumericAxis(
+                        labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      ),
+                      series: <CartesianSeries>[
+                        ColumnSeries<ChartData, String>(
+                          dataSource: _salesData,
+                          xValueMapper: (ChartData data, _) => data.label,
+                          yValueMapper: (ChartData data, _) => data.value,
+                          color: _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Detailed Transaction List in a horizontal scrollable DataTable.
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: const [
+                        DataColumn(label: Text('ID')),
+                        DataColumn(label: Text('Medicine')),
+                        DataColumn(label: Text('Qty')),
+                        DataColumn(label: Text('Unit Price')),
+                        DataColumn(label: Text('Total')),
+                        DataColumn(label: Text('Date')),
+                        DataColumn(label: Text('Payment')),
+                        DataColumn(label: Text('User')),
+                      ],
+                      rows: _transactions.map((tx) {
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(tx['transaction_id'].toString())),
+                            DataCell(Text(tx['medicine'])),
+                            DataCell(Text(tx['quantity'].toString())),
+                            DataCell(Text(tx['unit_price'].toString())),
+                            DataCell(Text(tx['total_amount'].toString())),
+                            DataCell(Text(tx['date'])),
+                            DataCell(Text(tx['payment_method'])),
+                            DataCell(Text(tx['user_type'])),
+                          ],
+                          onSelectChanged: (selected) {
+                            if (selected == true) {
+                              _showDrillDownDetails(tx);
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Drill-down modal for individual transaction details.
+  void _showDrillDownDetails(Map<String, dynamic> transaction) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Transaction ${transaction['transaction_id']} Details"),
+          content: Text(
+            "Medicine: ${transaction['medicine']}\n"
+                "Quantity: ${transaction['quantity']}\n"
+                "Unit Price: ${transaction['unit_price']}\n"
+                "Total Amount: ${transaction['total_amount']}\n"
+                "Date: ${transaction['date']}\n"
+                "Payment Method: ${transaction['payment_method']}\n"
+                "User Type: ${transaction['user_type']}\n"
+                "Additional info or notes can be added here.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<pw.Document> _generatePDF() async {
     final transactions = await DatabaseHelper().getTransactions();
     final pdf = pw.Document();
@@ -290,20 +420,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         build: (pw.Context context) {
           return pw.Column(
             children: [
-              pw.Text("Transactions Backup",
-                  style: pw.TextStyle(fontSize: 24)),
+              pw.Text("Transactions Backup", style: pw.TextStyle(fontSize: 24)),
               pw.SizedBox(height: 20),
               pw.Table.fromTextArray(
-                headers: [
-                  'ID',
-                  'Medicine',
-                  'Quantity',
-                  'Unit Price',
-                  'Total',
-                  'Date',
-                  'Payment',
-                  'User'
-                ],
+                headers: ['ID', 'Medicine', 'Quantity', 'Unit Price', 'Total', 'Date', 'Payment', 'User'],
                 data: transactions.map((tx) {
                   return [
                     tx['transaction_id'].toString(),
@@ -327,8 +447,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _exportDataAsPDF() async {
     final pdf = await _generatePDF();
-    await Printing.sharePdf(
-        bytes: await pdf.save(), filename: 'transactions_backup.pdf');
+    await Printing.sharePdf(bytes: await pdf.save(), filename: 'transactions_backup.pdf');
   }
 
   void _showSettingsDialog() {
@@ -365,8 +484,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () {
                       _exportDataAsPDF();
                     },
-                    child: const Text("Export Data as PDF",
-                        style: TextStyle(color: Colors.white)),
+                    child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
@@ -374,8 +492,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       backgroundColor: const Color(0xFF0D2A5E),
                     ),
                     onPressed: _logOut,
-                    child: const Text("Log Out",
-                        style: TextStyle(color: Colors.white)),
+                    child: const Text("Log Out", style: TextStyle(color: Colors.white)),
                   ),
                 ],
               );
@@ -436,8 +553,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         automaticallyImplyLeading: false,
         title: const Text(
           "Welcome, Admin!",
-          style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2A5E),
         actions: [
@@ -457,18 +573,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -517,14 +630,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: _showViewDetailsModal,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
-                  child: const Text("Withdraw",
-                      style: TextStyle(color: Colors.white, fontSize: 16)),
+                  child: const Text("View Details", style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ],
             ),
@@ -562,8 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             Text(
               "$totalTransactions",
-              style:
-              const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -594,8 +704,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSalesChart() {
-    final Color chartBarColor =
-    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -609,19 +718,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor:
-              _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
-                labelStyle: TextStyle(
-                    color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(
-                    color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
               ),
               primaryYAxis: NumericAxis(
-                labelStyle: TextStyle(
-                    color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(
-                    color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
               ),
               series: <CartesianSeries<ChartData, String>>[
                 ColumnSeries<ChartData, String>(
@@ -638,8 +742,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -662,19 +765,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(
                 height: 300,
                 child: SfCartesianChart(
-                  backgroundColor:
-                  _isDarkMode ? Colors.grey[900] : Colors.white,
+                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
                   primaryXAxis: CategoryAxis(
-                    labelStyle: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(
-                        color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   primaryYAxis: NumericAxis(
-                    labelStyle: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(
-                        color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   series: <CartesianSeries<ChartData, String>>[
                     ColumnSeries<ChartData, String>(
@@ -694,8 +792,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFrequencyChart() {
-    final Color chartLineColor =
-    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -709,19 +806,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor:
-              _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
-                labelStyle: TextStyle(
-                    color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(
-                    color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
               ),
               primaryYAxis: NumericAxis(
-                labelStyle: TextStyle(
-                    color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(
-                    color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
               ),
               series: <CartesianSeries<ChartData, String>>[
                 LineSeries<ChartData, String>(
@@ -739,8 +831,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -763,19 +854,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(
                 height: 300,
                 child: SfCartesianChart(
-                  backgroundColor:
-                  _isDarkMode ? Colors.grey[900] : Colors.white,
+                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
                   primaryXAxis: CategoryAxis(
-                    labelStyle: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(
-                        color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   primaryYAxis: NumericAxis(
-                    labelStyle: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(
-                        color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   series: <CartesianSeries<ChartData, String>>[
                     LineSeries<ChartData, String>(
