@@ -25,20 +25,13 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedTabIndex = 0;
   int _selectedTimeFilter = 2; // Default to "Month"
-  bool _isDarkMode = false; // Dark mode state
-  int totalTransactions = 0; // Total transaction count from DB
-  double _activeBalance = 0.0; // Active balance (sum of total_amount)
-
-  // Chart data lists.
+  bool _isDarkMode = false;
+  int totalTransactions = 0;
+  double _activeBalance = 0.0;
   List<ChartData> _salesData = [];
   List<ChartData> _frequencyData = [];
-
-  // All transactions fetched from DB.
   List<Map<String, dynamic>> _transactions = [];
-
-  // Time filter options.
   final List<String> timeFilters = ["Day", "Week", "Month", "Year"];
-
   Timer? _timer;
 
   @override
@@ -56,7 +49,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  // Fetch transactions and compute active balance.
   Future<void> _fetchDashboardData() async {
     _transactions = await DatabaseHelper().getTransactions();
     double sum = 0.0;
@@ -70,7 +62,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _updateChartData();
   }
 
-  // Update chart data based on selected time filter.
   void _updateChartData() {
     if (_transactions.isEmpty) {
       setState(() {
@@ -185,7 +176,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // Helpers for week start/end and weekday/month names.
   DateTime _startOfWeek(DateTime date) {
     int dayOfWeek = date.weekday;
     return DateTime(date.year, date.month, date.day).subtract(Duration(days: dayOfWeek - 1));
@@ -228,7 +218,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // _showBigChart shows an enlarged chart in a dialog.
   void _showBigChart(String title, Widget chartWidget) {
     showDialog(
       context: context,
@@ -270,7 +259,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Function to generate PDF from transactions.
   Future<pw.Document> _generatePDF() async {
     final transactions = await DatabaseHelper().getTransactions();
     final pdf = pw.Document();
@@ -304,13 +292,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return pdf;
   }
 
-  // Export data as PDF using the printing package.
   Future<void> _exportDataAsPDF() async {
     final pdf = await _generatePDF();
     await Printing.sharePdf(bytes: await pdf.save(), filename: 'transactions_backup.pdf');
   }
 
-  // Settings dialog with Dark Mode, Export, and Log Out options.
   void _showSettingsDialog() {
     showDialog(
       context: context,
@@ -370,7 +356,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Log-out function.
   void _logOut() {
     Navigator.pop(context);
     Navigator.pushReplacement(
@@ -379,7 +364,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Bottom navigation tab selection.
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
@@ -389,10 +373,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         context,
         MaterialPageRoute(builder: (context) => DashboardScreen()),
       );
+    } else if (index == 1) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => TransactionScreen()),
+      );
     }
+    // Add conditions for additional tabs if needed.
   }
 
-  // Update time filter and recalc chart data.
   void _onTimeFilterSelected(int index) {
     setState(() {
       _selectedTimeFilter = index;
@@ -455,7 +444,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Active Balance card.
   Widget _buildBalanceCard() {
     return Card(
       elevation: 4,
@@ -501,7 +489,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Sales Statistics section.
   Widget _buildSalesStatistics() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,7 +547,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Sales Chart.
   Widget _buildSalesChart() {
     final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
@@ -649,7 +635,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Frequency Chart.
   Widget _buildFrequencyChart() {
     final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(

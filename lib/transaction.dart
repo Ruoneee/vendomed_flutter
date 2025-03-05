@@ -1,4 +1,3 @@
-// transaction.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -18,7 +17,6 @@ class TransactionItem {
   final String date;
   final double totalAmount;
   final String paymentMethod;
-
   TransactionItem({
     required this.medicine,
     required this.date,
@@ -56,7 +54,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
     super.dispose();
   }
 
-  // Fetch transactions from the database and convert to TransactionItem list.
   Future<List<TransactionItem>> _fetchTransactions() async {
     final dataList = await DatabaseHelper().getTransactions();
     return dataList.map((row) {
@@ -69,17 +66,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
         paymentMethod: row['payment_method'],
       );
     }).toList();
-  }
-
-  // Navigate back to Dashboard.
-  void _onTabSelected(BuildContext context, int index) {
-    if (index == 0) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => DashboardScreen()),
-      );
-    }
-    // Extend for other tabs if needed.
   }
 
   // Build a card for a single transaction.
@@ -115,31 +101,15 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
-  // Show the "See All" pop-up with integrated features.
-  void _showAllTransactionsPopup() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.85,
-        child: AllTransactionsPopup(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar.
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text(
-          'Transactions',
-          style: TextStyle(color: Colors.white, fontSize: 28),
-        ),
+        title:
+        const Text('Transactions', style: TextStyle(color: Colors.white, fontSize: 28)),
         backgroundColor: const Color(0xFF0D2A5E),
       ),
-      // Body.
       body: FutureBuilder<List<TransactionItem>>(
         future: _futureTransactions,
         builder: (context, snapshot) {
@@ -150,16 +120,18 @@ class _TransactionScreenState extends State<TransactionScreen> {
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('No transactions available'));
           }
-
           final transactions = snapshot.data!;
           final totalCount = transactions.length;
-          int cashCoinsCount = transactions.where((tx) => tx.paymentMethod == 'Cash/Coins').length;
+          int cashCoinsCount =
+              transactions.where((tx) => tx.paymentMethod == 'Cash/Coins').length;
           int gCashCount = transactions.where((tx) => tx.paymentMethod == 'GCash').length;
-          double percentCashCoins = totalCount > 0 ? (cashCoinsCount / totalCount * 100) : 0;
-          double percentGCash = totalCount > 0 ? (gCashCount / totalCount * 100) : 0;
-          String mostUsedMethod = cashCoinsCount >= gCashCount ? "Cash/Coins" : "GCash";
+          double percentCashCoins =
+          totalCount > 0 ? (cashCoinsCount / totalCount * 100) : 0;
+          double percentGCash =
+          totalCount > 0 ? (gCashCount / totalCount * 100) : 0;
+          String mostUsedMethod =
+          cashCoinsCount >= gCashCount ? "Cash/Coins" : "GCash";
 
-          // Build pie chart data.
           final List<PaymentMethodData> paymentMethods = [
             PaymentMethodData("Cash/Coins", percentCashCoins),
             PaymentMethodData("GCash", percentGCash),
@@ -175,7 +147,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
-                // Pie Chart (you can adjust height further if needed)
                 SizedBox(
                   height: 600,
                   child: SfCircularChart(
@@ -199,7 +170,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                // Row: Total Transactions & Most Used Method.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -213,7 +183,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         const SizedBox(height: 10),
                         Text(
                           "$totalCount",
-                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                          style:
+                          const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -238,7 +209,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             const SizedBox(width: 8),
                             Text(
                               mostUsedMethod,
-                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                              style:
+                              const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -247,7 +219,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   ],
                 ),
                 const SizedBox(height: 40),
-                // Transactions list header.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -255,9 +226,18 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       "Transactions",
                       style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                     ),
-                    // "See All" button to open the pop-up screen.
+                    // "See All" button launches the pop-up screen.
                     TextButton(
-                      onPressed: _showAllTransactionsPopup,
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (context) => SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.85,
+                            child: AllTransactionsPopup(),
+                          ),
+                        );
+                      },
                       child: const Text(
                         "See All",
                         style: TextStyle(fontSize: 18),
@@ -266,19 +246,28 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                // **Display ALL transactions** (no .take(3)).
                 Column(
-                  children: transactions.map((tx) => _buildTransactionCard(tx)).toList(),
+                  children:
+                  transactions.map((tx) => _buildTransactionCard(tx)).toList(),
                 ),
               ],
             ),
           );
         },
       ),
-      // Bottom navigation bar.
+      // Bottom Navigation Bar for TransactionScreen.
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1,
-        onTap: (index) => _onTabSelected(context, index),
+        currentIndex: 1, // Always show Payments as active.
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => DashboardScreen()),
+            );
+          }
+          // For index 1 (Payments) do nothing.
+          // Extend for additional tabs if needed.
+        },
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
         iconSize: 36,
@@ -297,11 +286,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
 /// --- AllTransactionsPopup ---
 /// This pop-up integrates:
-/// 1. A full transactions list
-/// 2. Sorting & filtering controls (dropdowns)
-/// 3. A date range picker
-/// 4. Transaction details on tap
-/// 5. Export/Print button (stubbed)
+/// • Advanced Filtering & Sorting (date range, payment method, medicine name, transaction amount, sorting options)
+/// • Search functionality (by medicine name or transaction ID)
+/// • Detailed Transaction View (tapping a transaction shows a detailed breakdown in a dialog)
 class AllTransactionsPopup extends StatefulWidget {
   const AllTransactionsPopup({Key? key}) : super(key: key);
 
@@ -314,6 +301,9 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
   String _sortOption = 'Date Ascending';
   String _filterPaymentMethod = 'All';
   DateTimeRange? _selectedDateRange;
+  String _searchQuery = '';
+  final TextEditingController _minAmountController = TextEditingController();
+  final TextEditingController _maxAmountController = TextEditingController();
 
   @override
   void initState() {
@@ -321,9 +311,16 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     _futureTransactions = DatabaseHelper().getTransactions();
   }
 
-  // Process transactions with sorting, filtering, and date range.
+  @override
+  void dispose() {
+    _minAmountController.dispose();
+    _maxAmountController.dispose();
+    super.dispose();
+  }
+
   Future<List<Map<String, dynamic>>> _getProcessedTransactions() async {
-    List<Map<String, dynamic>> txList = await DatabaseHelper().getTransactions();
+    List<Map<String, dynamic>> txList =
+    await DatabaseHelper().getTransactions();
 
     // Apply date range filter.
     if (_selectedDateRange != null) {
@@ -337,6 +334,26 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     // Apply payment method filter.
     if (_filterPaymentMethod != 'All') {
       txList = txList.where((tx) => tx['payment_method'] == _filterPaymentMethod).toList();
+    }
+
+    // Apply search query (medicine name or transaction ID).
+    if (_searchQuery.isNotEmpty) {
+      txList = txList.where((tx) {
+        final medicine = tx['medicine']?.toString().toLowerCase() ?? '';
+        final txId = tx['transaction_id']?.toString().toLowerCase() ?? '';
+        return medicine.contains(_searchQuery.toLowerCase()) ||
+            txId.contains(_searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    // Apply transaction amount filters.
+    double? minAmount = double.tryParse(_minAmountController.text);
+    double? maxAmount = double.tryParse(_maxAmountController.text);
+    if (minAmount != null) {
+      txList = txList.where((tx) => (tx['total_amount'] as num).toDouble() >= minAmount).toList();
+    }
+    if (maxAmount != null) {
+      txList = txList.where((tx) => (tx['total_amount'] as num).toDouble() <= maxAmount).toList();
     }
 
     // Apply sorting.
@@ -396,13 +413,27 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     );
   }
 
-  // Build the top section with sorting, filtering, and date range picker.
+  // Build the filter section with search, date range, payment method, amount filters, and sorting.
   Widget _buildFilterSection() {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          // Date Range Picker button.
+          // Search bar.
+          TextField(
+            decoration: InputDecoration(
+              labelText: 'Search by Medicine or ID',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          // Date range picker.
           Row(
             children: [
               ElevatedButton(
@@ -431,39 +462,16 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
             ],
           ),
           const SizedBox(height: 10),
-          // Sorting and filtering dropdowns.
+          // Payment method and sorting dropdowns.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               DropdownButton<String>(
-                value: _sortOption,
-                items: <String>[
-                  'Date Ascending',
-                  'Date Descending',
-                  'Amount Ascending',
-                  'Amount Descending'
-                ].map((option) {
-                  return DropdownMenuItem(
-                    value: option,
-                    child: Text(option),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _sortOption = value;
-                    });
-                  }
-                },
-              ),
-              DropdownButton<String>(
                 value: _filterPaymentMethod,
-                items: <String>['All', 'Cash/Coins', 'GCash'].map((option) {
-                  return DropdownMenuItem(
-                    value: option,
-                    child: Text(option),
-                  );
-                }).toList(),
+                items: <String>['All', 'Cash/Coins', 'GCash']
+                    .map((option) =>
+                    DropdownMenuItem(value: option, child: Text(option)))
+                    .toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
@@ -472,7 +480,69 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                   }
                 },
               ),
+              DropdownButton<String>(
+                value: _sortOption,
+                items: <String>[
+                  'Date Ascending',
+                  'Date Descending',
+                  'Amount Ascending',
+                  'Amount Descending'
+                ]
+                    .map((option) =>
+                    DropdownMenuItem(value: option, child: Text(option)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _sortOption = value;
+                    });
+                  }
+                },
+              ),
             ],
+          ),
+          const SizedBox(height: 10),
+          // Amount filter: min and max.
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _minAmountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Min Amount',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    setState(() {});
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _maxAmountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Max Amount',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    setState(() {});
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Button to apply filters.
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _futureTransactions = _getProcessedTransactions();
+              });
+            },
+            child: const Text("Apply Filters"),
           ),
         ],
       ),
@@ -485,11 +555,10 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
       appBar: AppBar(
         title: const Text("All Transactions"),
         actions: [
-          // Export/Print button stub.
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
-              // TODO: Implement export/print functionality.
+              // Export/Print functionality stub.
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Export/Print feature not implemented")),
               );
@@ -527,7 +596,7 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
   }
 }
 
-// Extension on DateTime for short date formatting.
+// Extension for DateTime formatting.
 extension DateTimeExtension on DateTime {
   String toShortDateString() {
     return "${this.year}-${this.month.toString().padLeft(2, '0')}-${this.day.toString().padLeft(2, '0')}";
