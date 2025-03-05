@@ -25,12 +25,15 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedTabIndex = 0;
   int _selectedTimeFilter = 2; // Default to "Month"
-  bool _isDarkMode = false;
-  int totalTransactions = 0;
-  double _activeBalance = 0.0;
+  bool _isDarkMode = false; // Dark mode state
+  int totalTransactions = 0; // Total transaction count from DB
+  double _activeBalance = 0.0; // Active balance (sum of total_amount)
+  // Chart data lists.
   List<ChartData> _salesData = [];
   List<ChartData> _frequencyData = [];
+  // All transactions fetched from DB.
   List<Map<String, dynamic>> _transactions = [];
+  // Time filter options.
   final List<String> timeFilters = ["Day", "Week", "Month", "Year"];
   Timer? _timer;
 
@@ -49,6 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
+  // Fetch transactions and compute active balance.
   Future<void> _fetchDashboardData() async {
     _transactions = await DatabaseHelper().getTransactions();
     double sum = 0.0;
@@ -62,6 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _updateChartData();
   }
 
+  // Update chart data based on selected time filter.
   void _updateChartData() {
     if (_transactions.isEmpty) {
       setState(() {
@@ -364,6 +369,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Bottom navigation tab selection.
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
@@ -376,7 +382,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => TransactionScreen()),
+        MaterialPageRoute(
+          builder: (context) => TransactionScreen(isDarkMode: _isDarkMode),
+        ),
       );
     }
     // Add conditions for additional tabs if needed.
