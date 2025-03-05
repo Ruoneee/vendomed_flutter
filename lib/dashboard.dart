@@ -76,60 +76,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    DateTime earliestTxDate = _transactions
-        .map((row) => DateTime.tryParse(row['date']) ?? DateTime.now())
-        .reduce((a, b) => a.isBefore(b) ? a : b);
-
+    DateTime now = DateTime.now();
     List<Map<String, dynamic>> filtered = [];
     if (_selectedTimeFilter == 0) { // Day
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
-        return dt.year == earliestTxDate.year &&
-            dt.month == earliestTxDate.month &&
-            dt.day == earliestTxDate.day;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
       }).toList();
     } else if (_selectedTimeFilter == 1) { // Week
-      DateTime startOfWeek = _startOfWeek(earliestTxDate);
-      DateTime endOfWeek = _endOfWeek(earliestTxDate);
+      DateTime startOfWeek = _startOfWeek(now);
+      DateTime endOfWeek = _endOfWeek(now);
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         return dt.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
             dt.isBefore(endOfWeek.add(const Duration(seconds: 1)));
       }).toList();
     } else if (_selectedTimeFilter == 2) { // Month
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
-        return dt.year == earliestTxDate.year && dt.month == earliestTxDate.month;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        return dt.year == now.year && dt.month == now.month;
       }).toList();
     } else { // Year
       filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
-        return dt.year == earliestTxDate.year;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
+        return dt.year == now.year;
       }).toList();
     }
 
     Map<String, double> salesMap = {};
     if (_selectedTimeFilter == 0) {
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = dt.hour.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else if (_selectedTimeFilter == 1) {
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = _weekdayName(dt.weekday);
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else if (_selectedTimeFilter == 2) {
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = dt.day.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else {
       for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? earliestTxDate;
+        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = _monthName(dt.month);
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
@@ -183,7 +178,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   DateTime _startOfWeek(DateTime date) {
     int dayOfWeek = date.weekday;
-    return DateTime(date.year, date.month, date.day).subtract(Duration(days: dayOfWeek - 1));
+    return DateTime(date.year, date.month, date.day)
+        .subtract(Duration(days: dayOfWeek - 1));
   }
 
   DateTime _endOfWeek(DateTime date) {
@@ -194,32 +190,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _weekdayName(int weekday) {
     switch (weekday) {
-      case 1: return "Monday";
-      case 2: return "Tuesday";
-      case 3: return "Wednesday";
-      case 4: return "Thursday";
-      case 5: return "Friday";
-      case 6: return "Saturday";
-      case 7: return "Sunday";
-      default: return "";
+      case 1:
+        return "Monday";
+      case 2:
+        return "Tuesday";
+      case 3:
+        return "Wednesday";
+      case 4:
+        return "Thursday";
+      case 5:
+        return "Friday";
+      case 6:
+        return "Saturday";
+      case 7:
+        return "Sunday";
+      default:
+        return "";
     }
   }
 
   String _monthName(int month) {
     switch (month) {
-      case 1: return "January";
-      case 2: return "February";
-      case 3: return "March";
-      case 4: return "April";
-      case 5: return "May";
-      case 6: return "June";
-      case 7: return "July";
-      case 8: return "August";
-      case 9: return "September";
-      case 10: return "October";
-      case 11: return "November";
-      case 12: return "December";
-      default: return "";
+      case 1:
+        return "January";
+      case 2:
+        return "February";
+      case 3:
+        return "March";
+      case 4:
+        return "April";
+      case 5:
+        return "May";
+      case 6:
+        return "June";
+      case 7:
+        return "July";
+      case 8:
+        return "August";
+      case 9:
+        return "September";
+      case 10:
+        return "October";
+      case 11:
+        return "November";
+      case 12:
+        return "December";
+      default:
+        return "";
     }
   }
 
@@ -247,7 +264,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close, color: _isDarkMode ? Colors.white : Colors.black),
+                      icon: Icon(Icons.close,
+                          color: _isDarkMode ? Colors.white : Colors.black),
                       onPressed: () {
                         Navigator.pop(context);
                       },
@@ -272,10 +290,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         build: (pw.Context context) {
           return pw.Column(
             children: [
-              pw.Text("Transactions Backup", style: pw.TextStyle(fontSize: 24)),
+              pw.Text("Transactions Backup",
+                  style: pw.TextStyle(fontSize: 24)),
               pw.SizedBox(height: 20),
               pw.Table.fromTextArray(
-                headers: ['ID', 'Medicine', 'Quantity', 'Unit Price', 'Total', 'Date', 'Payment', 'User'],
+                headers: [
+                  'ID',
+                  'Medicine',
+                  'Quantity',
+                  'Unit Price',
+                  'Total',
+                  'Date',
+                  'Payment',
+                  'User'
+                ],
                 data: transactions.map((tx) {
                   return [
                     tx['transaction_id'].toString(),
@@ -299,7 +327,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _exportDataAsPDF() async {
     final pdf = await _generatePDF();
-    await Printing.sharePdf(bytes: await pdf.save(), filename: 'transactions_backup.pdf');
+    await Printing.sharePdf(
+        bytes: await pdf.save(), filename: 'transactions_backup.pdf');
   }
 
   void _showSettingsDialog() {
@@ -336,7 +365,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () {
                       _exportDataAsPDF();
                     },
-                    child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
+                    child: const Text("Export Data as PDF",
+                        style: TextStyle(color: Colors.white)),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
@@ -344,7 +374,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       backgroundColor: const Color(0xFF0D2A5E),
                     ),
                     onPressed: _logOut,
-                    child: const Text("Log Out", style: TextStyle(color: Colors.white)),
+                    child: const Text("Log Out",
+                        style: TextStyle(color: Colors.white)),
                   ),
                 ],
               );
@@ -405,7 +436,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         automaticallyImplyLeading: false,
         title: const Text(
           "Welcome, Admin!",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2A5E),
         actions: [
@@ -425,15 +457,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.payment), label: "Payments"),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -485,9 +520,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
-                  child: const Text("Withdraw", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  child: const Text("Withdraw",
+                      style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ],
             ),
@@ -525,7 +562,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             Text(
               "$totalTransactions",
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style:
+              const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -556,7 +594,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSalesChart() {
-    final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    final Color chartBarColor =
+    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -570,14 +609,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor:
+              _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               primaryYAxis: NumericAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               series: <CartesianSeries<ChartData, String>>[
                 ColumnSeries<ChartData, String>(
@@ -594,7 +638,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -617,14 +662,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(
                 height: 300,
                 child: SfCartesianChart(
-                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                  backgroundColor:
+                  _isDarkMode ? Colors.grey[900] : Colors.white,
                   primaryXAxis: CategoryAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   primaryYAxis: NumericAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   series: <CartesianSeries<ChartData, String>>[
                     ColumnSeries<ChartData, String>(
@@ -644,7 +694,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFrequencyChart() {
-    final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    final Color chartLineColor =
+    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -658,14 +709,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor:
+              _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               primaryYAxis: NumericAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               series: <CartesianSeries<ChartData, String>>[
                 LineSeries<ChartData, String>(
@@ -683,7 +739,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -706,14 +763,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(
                 height: 300,
                 child: SfCartesianChart(
-                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                  backgroundColor:
+                  _isDarkMode ? Colors.grey[900] : Colors.white,
                   primaryXAxis: CategoryAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   primaryYAxis: NumericAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   series: <CartesianSeries<ChartData, String>>[
                     LineSeries<ChartData, String>(
