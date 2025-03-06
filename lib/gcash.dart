@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -25,20 +26,21 @@ class GCashPaymentPage extends StatelessWidget {
     return WillPopScope(
       // Intercept back navigation.
       onWillPop: () async {
-        debugPrint("GCashPaymentPage: Device back button or app bar back pressed. Going to PaymentMethodPage.");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => PaymentMethodPage(orders: orders, rfidData: rfidData),
+            builder: (context) =>
+                PaymentMethodPage(orders: orders, rfidData: rfidData),
           ),
         );
         return false;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFFFFF),
+        backgroundColor: Colors.white,
         appBar: AppBar(
           iconTheme: const IconThemeData(color: Colors.white),
-          title: const Text("GCash Payment", style: TextStyle(color: Colors.white)),
+          title:
+          const Text("GCash Payment", style: TextStyle(color: Colors.white)),
           backgroundColor: const Color(0xFF0D2A5E),
         ),
         body: Center(
@@ -55,57 +57,67 @@ class GCashPaymentPage extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () async {
                     // Determine user type based on RFID data.
-                    String userType = (rfidData.isNotEmpty) ? "RFID User" : "Guest";
+                    String userType =
+                    (rfidData.isNotEmpty) ? "RFID User" : "Guest";
 
                     // Calculate total amount (in centavos) and record transactions.
                     int totalAmount = 0;
                     for (var order in orders) {
                       String medicine = order['name'] ?? "Unknown";
-                      int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
-                      double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
-                      totalAmount += (totalCost * 100).toInt(); // Convert PHP to centavos
-                      double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
+                      int quantity =
+                          int.tryParse(order['quantity'] ?? "1") ?? 1;
+                      double totalCost =
+                          double.tryParse(order['price'] ?? "0.00") ?? 0.0;
+                      totalAmount += (totalCost * 100).toInt();
+                      double unitPrice =
+                      (quantity != 0) ? totalCost / quantity : 0.0;
                       String date = DateTime.now().toIso8601String();
 
                       Map<String, dynamic> transaction = {
-                        'medicine': medicine,
-                        'quantity': quantity,
-                        'unit_price': unitPrice,
-                        'total_amount': totalCost,
-                        'date': date,
-                        'payment_method': 'GCash',
-                        'user_type': userType,
+                        "medicine": medicine,
+                        "quantity": quantity,
+                        "unit_price": unitPrice,
+                        "total_amount": totalCost,
+                        "date": date,
+                        "payment_method": "GCash",
+                        "user_type": userType,
                       };
 
                       await DatabaseHelper().insertTransaction(transaction);
                     }
 
-                    // Create a PaymongoClient instance using your secret key.
+                    // Create a PaymentIntent via Paymongo.
                     // WARNING: In production, do NOT expose your secret key on the client.
-                    final paymongoClient = PaymongoClient('sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS');
+                    final paymongoClient =
+                    PaymongoClient("sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS");
 
                     try {
-                      // Use the extension method to create a PaymentIntent.
                       final paymentIntent = await paymongoClient.createPaymentIntent(
                         amount: totalAmount,
-                        currency: 'PHP',
-                        paymentMethodTypes: ['gcash'],
+                        currency: "PHP",
+                        paymentMethodTypes: ["gcash"],
                       );
                       debugPrint("PaymentIntent response: $paymentIntent");
 
-                      // Extract the redirect URL from the PaymentIntent response.
-                      // (Assumes the response structure contains data > attributes > next_action > redirect > url)
-                      final data = paymentIntent['data'];
-                      final attributes = data['attributes'];
-                      final nextAction = attributes['next_action'];
-                      final redirectUrl = nextAction != null ? nextAction['redirect']?['url'] : null;
+                      // Extract the redirect URL and PaymentIntent ID.
+                      final data = paymentIntent["data"];
+                      final attributes = data["attributes"];
+                      final nextAction = attributes["next_action"];
+                      final redirectUrl = (nextAction != null &&
+                          nextAction["redirect"] != null)
+                          ? nextAction["redirect"]["url"]
+                          : "";
+                      final paymentIntentId = data["id"];
 
-                      if (redirectUrl != null) {
-                        // Navigate to a screen that displays the dynamic QR code.
+                      if (redirectUrl != "") {
+                        // Navigate to the polling screen.
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => GCashQRCodeScreen(url: redirectUrl),
+                            builder: (context) => PollingPaymentScreen(
+                              paymentIntentId: paymentIntentId,
+                              redirectUrl: redirectUrl,
+                            ),
                           ),
                         );
                       } else {
@@ -113,14 +125,16 @@ class GCashPaymentPage extends StatelessWidget {
                       }
                     } catch (e) {
                       debugPrint("Error creating PaymentIntent: $e");
-                      // Optionally, display an error message to the user.
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
                     padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 20),
                   ),
-                  child: const Text("GENERATE PAYMENT QR", style: TextStyle(fontSize: 25, color: Colors.white)),
+                  child: const Text(
+                    "GENERATE PAYMENT QR",
+                    style: TextStyle(fontSize: 25, color: Colors.white),
+                  ),
                 ),
               ],
             ),
@@ -133,32 +147,30 @@ class GCashPaymentPage extends StatelessWidget {
 
 /// Extension on PaymongoClient to add a helper for creating PaymentIntents.
 extension PaymentIntentExtension on PaymongoClient {
-  /// Creates a PaymentIntent by making an HTTP POST request to Paymongo's API.
-  /// Returns the response as a Map<String, dynamic>.
   Future<Map<String, dynamic>> createPaymentIntent({
     required int amount,
     required String currency,
     required List<String> paymentMethodTypes,
   }) async {
-    final payload = {
+    final Map<String, dynamic> payload = {
       "data": {
         "attributes": {
           "amount": amount,
           "currency": currency,
           "payment_method_allowed": paymentMethodTypes,
-        }
-      }
+        },
+      },
     };
 
-    final url = Uri.parse('https://api.paymongo.com/v1/payment_intents');
-    final secretKey = 'sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS';
-    final auth = base64Encode(utf8.encode('$secretKey:'));
+    final Uri url = Uri.parse("https://api.paymongo.com/v1/payment_intents");
+    final String secretKey = "sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS";
+    final String auth = base64Encode(utf8.encode("$secretKey:"));
 
-    final response = await http.post(
+    final http.Response response = await http.post(
       url,
       headers: {
-        'Authorization': 'Basic $auth',
-        'Content-Type': 'application/json',
+        "Authorization": "Basic $auth",
+        "Content-Type": "application/json",
       },
       body: jsonEncode(payload),
     );
@@ -166,28 +178,100 @@ extension PaymentIntentExtension on PaymongoClient {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception('Failed to create PaymentIntent: ${response.body}');
+      throw Exception("Failed to create PaymentIntent: ${response.body}");
     }
   }
 }
 
-/// A screen that displays a dynamic QR code for the provided URL.
-class GCashQRCodeScreen extends StatelessWidget {
-  final String url;
-  const GCashQRCodeScreen({Key? key, required this.url}) : super(key: key);
+/// A screen that polls the PaymentIntent status periodically.
+class PollingPaymentScreen extends StatefulWidget {
+  final String paymentIntentId;
+  final String redirectUrl;
+
+  const PollingPaymentScreen({
+    Key? key,
+    required this.paymentIntentId,
+    required this.redirectUrl,
+  }) : super(key: key);
+
+  @override
+  _PollingPaymentScreenState createState() => _PollingPaymentScreenState();
+}
+
+class _PollingPaymentScreenState extends State<PollingPaymentScreen> {
+  Timer? _timer;
+  String _status = "awaiting_payment";
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _pollPaymentStatus();
+    });
+  }
+
+  Future<void> _pollPaymentStatus() async {
+    final Uri url = Uri.parse(
+        "https://api.paymongo.com/v1/payment_intents/${widget.paymentIntentId}");
+    final String secretKey = "sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS";
+    final String auth = base64Encode(utf8.encode("$secretKey:"));
+    final response = await http.get(
+      url,
+      headers: {
+        "Authorization": "Basic $auth",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+      final status = result["data"]["attributes"]["status"];
+      setState(() {
+        _status = status;
+      });
+      if (status == "paid") {
+        _timer?.cancel();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SplashScreen()),
+        );
+      }
+    } else {
+      debugPrint("Error polling PaymentIntent: ${response.body}");
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("GCash Payment QR Code"),
+        title: const Text("Confirming Payment"),
         backgroundColor: const Color(0xFF0D2A5E),
       ),
       body: Center(
-        child: QrImageView(
-          data: url,
-          version: QrVersions.auto,
-          size: 300.0,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Awaiting Payment Confirmation...", style: TextStyle(fontSize: 20)),
+            const SizedBox(height: 20),
+            // Wrap QrImageView in a Container to set its size.
+            Container(
+              width: 300,
+              height: 300,
+              child: QrImageView(data: widget.redirectUrl),
+            ),
+            const SizedBox(height: 20),
+            Text("Current status: $_status", style: const TextStyle(fontSize: 16)),
+          ],
         ),
       ),
     );
