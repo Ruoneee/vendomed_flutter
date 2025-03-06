@@ -19,6 +19,9 @@ dependencies:
   syncfusion_flutter_charts: ^28.2.6
   pdf: ^3.9.0
   printing: ^5.9.0
+  paymongo_sdk: ^1.0.0
+  qr_flutter: ^4.0.0
+  http: ^0.13.5
 
 dev_dependencies:
   flutter_test:
