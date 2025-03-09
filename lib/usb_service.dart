@@ -1,4 +1,5 @@
 import 'package:usb_serial/usb_serial.dart';
+import 'dart:typed_data';
 
 class USBService {
   // Singleton instance.
@@ -37,6 +38,18 @@ class USBService {
     if (_port != null) {
       await _port!.close();
       _port = null;
+    }
+  }
+
+  /// Writes a single byte to the USB port.
+  Future<void> writeData(int value) async {
+    if (_port == null) {
+      throw Exception("Port not connected");
+    }
+    try {
+      await _port!.write(Uint8List.fromList([value]));
+    } catch (e) {
+      throw Exception("Failed to write data: $e");
     }
   }
 }
