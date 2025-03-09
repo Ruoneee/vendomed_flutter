@@ -24,7 +24,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedTabIndex = 0;
-  int _selectedTimeFilter = 2; // Default to "Month"
   bool _isDarkMode = false; // Dark mode state
   int totalTransactions = 0; // Total transaction count from DB
   double _activeBalance = 0.0; // Active balance (sum of total_amount)
@@ -33,13 +32,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<ChartData> _frequencyData = [];
   // All transactions fetched from DB.
   List<Map<String, dynamic>> _transactions = [];
-  // Time filter options.
-  final List<String> timeFilters = ["Day", "Week", "Month", "Year"];
   Timer? _timer;
+
+  // Hierarchical filter state.
+  // _selectedYear is required. The others are optional (null means "All").
+  int _selectedYear = DateTime.now().year;
+  int? _selectedMonth; // null means all months in the year
+  int? _selectedWeek;  // null means all weeks in the month
+  int? _selectedDay;   // null means all days in the week
 
   @override
   void initState() {
     super.initState();
+    _selectedYear = DateTime.now().year;
+    _selectedMonth = null;
+    _selectedWeek = null;
+    _selectedDay = null;
     _fetchDashboardData();
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       _fetchDashboardData();
@@ -66,7 +74,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _updateChartData();
   }
 
-  // Update chart data based on selected time filter.
+  // Update chart data based on the hierarchical filters.
+  // Removed hour-level grouping; if a day is selected, we simply show "day" grouping.
   void _updateChartData() {
     if (_transactions.isEmpty) {
       setState(() {
@@ -76,129 +85,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    DateTime now = DateTime.now();
-    List<Map<String, dynamic>> filtered = [];
+    // 1) Filter transactions by year, month, week, and day.
+    List<Map<String, dynamic>> filtered = _transactions.where((tx) {
+      final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
+      if (dt.year != _selectedYear) return false;
+      if (_selectedMonth != null && dt.month != _selectedMonth) return false;
+      if (_selectedWeek != null) {
+        final weekOfMonth = ((dt.day - 1) ~/ 7) + 1;
+        if (weekOfMonth != _selectedWeek) return false;
+      }
+      if (_selectedDay != null && dt.day != _selectedDay) return false;
+      return true;
+    }).toList();
 
-    if (_selectedTimeFilter == 0) {
-      // Day
-      filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
-      }).toList();
-    } else if (_selectedTimeFilter == 1) {
-      // Week
-      DateTime startOfWeek = _startOfWeek(now);
-      DateTime endOfWeek = _endOfWeek(now);
-      filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
-            dt.isBefore(endOfWeek.add(const Duration(seconds: 1)));
-      }).toList();
-    } else if (_selectedTimeFilter == 2) {
-      // Month
-      filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.year == now.year && dt.month == now.month;
-      }).toList();
+    // 2) Decide how to group the filtered data.
+    //    We have only three grouping modes now: month, week, or day.
+    String groupingMode;
+    if (_selectedMonth == null) {
+      groupingMode = "month";
+    } else if (_selectedWeek == null) {
+      groupingMode = "week";
     } else {
-      // Year
-      filtered = _transactions.where((tx) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        return dt.year == now.year;
-      }).toList();
+      groupingMode = "day";
     }
 
-    // Build salesMap for chart
-    Map<String, double> salesMap = {};
-    if (_selectedTimeFilter == 0) {
-      // Group by hour
-      for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        String key = dt.hour.toString();
-        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
-      }
-    } else if (_selectedTimeFilter == 1) {
-      // Group by weekday
-      for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        String key = _weekdayName(dt.weekday);
-        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
-      }
-    } else if (_selectedTimeFilter == 2) {
-      // Group by day
-      for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        String key = dt.day.toString();
-        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
-      }
-    } else {
-      // Group by month
-      for (var tx in filtered) {
-        DateTime dt = DateTime.tryParse(tx['date']) ?? now;
-        String key = _monthName(dt.month);
-        salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
-      }
-    }
-
-    // Convert salesMap to List<ChartData>
-    List<ChartData> salesData = [];
-    if (_selectedTimeFilter == 0) {
-      var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
-      for (var key in keys) {
-        salesData.add(ChartData(label: "$key:00", value: salesMap[key]!));
-      }
-    } else if (_selectedTimeFilter == 1) {
-      List<String> weekdayOrder = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday"
-      ];
-      for (var day in weekdayOrder) {
-        if (salesMap.containsKey(day)) {
-          salesData.add(ChartData(label: day, value: salesMap[day]!));
-        }
-      }
-    } else if (_selectedTimeFilter == 2) {
-      var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
-      for (var key in keys) {
-        salesData.add(ChartData(label: "Day $key", value: salesMap[key]!));
-      }
-    } else {
-      List<String> monthOrder = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December"
-      ];
-      for (var month in monthOrder) {
-        if (salesMap.containsKey(month)) {
-          salesData.add(ChartData(label: month, value: salesMap[month]!));
-        }
-      }
-    }
-
-    // Build freqMap for frequency chart
-    Map<String, int> freqMap = {};
+    // 3) Build salesMap for the chosen grouping.
+    final Map<String, double> salesMap = {};
     for (var tx in filtered) {
-      String med = tx['medicine'];
-      freqMap[med] = (freqMap[med] ?? 0) + (tx['quantity'] as int);
+      final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
+      String key;
+      if (groupingMode == "month") {
+        key = _monthName(dt.month);
+      } else if (groupingMode == "week") {
+        final weekOfMonth = ((dt.day - 1) ~/ 7) + 1;
+        key = "Week $weekOfMonth";
+      } else {
+        // groupingMode == "day"
+        // We'll label the bar by the day number
+        key = dt.day.toString();
+      }
+      salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
     }
-    List<ChartData> freqData = [];
-    freqMap.forEach((med, qty) {
-      freqData.add(ChartData(label: med, value: qty));
-    });
+
+    // 4) Sort the keys in a logical order (month names, then week #, then day #).
+    final sortedKeys = salesMap.keys.toList();
+    if (groupingMode == "month") {
+      final monthOrder = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      sortedKeys.sort((a, b) => monthOrder.indexOf(a).compareTo(monthOrder.indexOf(b)));
+    } else if (groupingMode == "week") {
+      sortedKeys.sort((a, b) {
+        final aNum = int.tryParse(a.replaceAll("Week ", "")) ?? 0;
+        final bNum = int.tryParse(b.replaceAll("Week ", "")) ?? 0;
+        return aNum.compareTo(bNum);
+      });
+    } else {
+      // groupingMode == "day"
+      sortedKeys.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    }
+
+    final List<ChartData> salesData = sortedKeys
+        .map((key) => ChartData(label: key, value: salesMap[key]!))
+        .toList();
+
+    // 5) Build frequency data (group by medicine).
+    final Map<String, int> freqMap = {};
+    for (var tx in filtered) {
+      final med = tx['medicine'] ?? 'Unknown';
+      freqMap[med] = (freqMap[med] ?? 0) + (tx['quantity'] as int? ?? 0);
+    }
+    final List<ChartData> freqData = freqMap.entries
+        .map((e) => ChartData(label: e.key, value: e.value))
+        .toList();
 
     setState(() {
       _salesData = salesData;
@@ -206,18 +166,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  DateTime _startOfWeek(DateTime date) {
-    int dayOfWeek = date.weekday;
-    return DateTime(date.year, date.month, date.day)
-        .subtract(Duration(days: dayOfWeek - 1));
-  }
-
-  DateTime _endOfWeek(DateTime date) {
-    int dayOfWeek = date.weekday;
-    DateTime start = _startOfWeek(date);
-    return start.add(const Duration(days: 6));
-  }
-
+  // Helpers to get weekday and month names.
   String _weekdayName(int weekday) {
     switch (weekday) {
       case 1:
@@ -267,6 +216,194 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return "December";
       default:
         return "";
+    }
+  }
+
+  // Build the filter row using a horizontal scroll view to keep all dropdowns on one line.
+  Widget _buildFiltersRow() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildYearDropdown(),
+          const SizedBox(width: 16),
+          _buildMonthDropdown(),
+          if (_selectedMonth != null) ...[
+            const SizedBox(width: 16),
+            _buildWeekDropdown(),
+          ],
+          if (_selectedMonth != null && _selectedWeek != null) ...[
+            const SizedBox(width: 16),
+            _buildDayDropdown(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildYearDropdown() {
+    final currentYear = DateTime.now().year;
+    // For example, show a range from currentYear-2 to currentYear+2.
+    final years = List.generate(5, (index) => currentYear - 2 + index);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text("Year: "),
+        DropdownButton<int>(
+          value: _selectedYear,
+          items: years
+              .map((year) => DropdownMenuItem<int>(
+            value: year,
+            child: Text("$year"),
+          ))
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              _selectedYear = value;
+              // Reset lower-level filters.
+              _selectedMonth = null;
+              _selectedWeek = null;
+              _selectedDay = null;
+            });
+            _updateChartData();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMonthDropdown() {
+    // Dropdown with an "All" option (null) and the 12 months.
+    final months = [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text("Month: "),
+        DropdownButton<int?>(
+          value: _selectedMonth,
+          items: months.map((m) {
+            if (m == null) {
+              return const DropdownMenuItem<int?>(
+                value: null,
+                child: Text("All"),
+              );
+            }
+            return DropdownMenuItem<int?>(
+              value: m,
+              child: Text(_monthName(m)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedMonth = value;
+              _selectedWeek = null;
+              _selectedDay = null;
+            });
+            _updateChartData();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeekDropdown() {
+    // Weeks 1 to 5 with an "All" option.
+    final weeks = [null, 1, 2, 3, 4, 5];
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text("Week: "),
+        DropdownButton<int?>(
+          value: _selectedWeek,
+          items: weeks.map((w) {
+            if (w == null) {
+              return const DropdownMenuItem<int?>(
+                value: null,
+                child: Text("All"),
+              );
+            }
+            return DropdownMenuItem<int?>(
+              value: w,
+              child: Text("Week $w"),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedWeek = value;
+              _selectedDay = null;
+            });
+            _updateChartData();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDayDropdown() {
+    // Calculate the number of days in the selected month.
+    final daysInMonth = _daysInMonth(_selectedYear, _selectedMonth!);
+    final days = <int?>[null];
+    for (int i = 1; i <= daysInMonth; i++) {
+      days.add(i);
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text("Day: "),
+        DropdownButton<int?>(
+          value: _selectedDay,
+          items: days.map((d) {
+            if (d == null) {
+              return const DropdownMenuItem<int?>(
+                value: null,
+                child: Text("All"),
+              );
+            }
+            return DropdownMenuItem<int?>(
+              value: d,
+              child: Text("$d"),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedDay = value;
+            });
+            _updateChartData();
+          },
+        ),
+      ],
+    );
+  }
+
+  // Helper: Returns the number of days in a given month/year.
+  int _daysInMonth(int year, int month) {
+    if (month == 2) {
+      // Leap year check.
+      if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) {
+        return 29;
+      }
+      return 28;
+    }
+    if ([4, 6, 9, 11].contains(month)) return 30;
+    return 31;
+  }
+
+  // Generate a title for the sales chart based on active filters.
+  // Removed the "(by hour)" label. Now it just shows "(Day)" if a day is selected.
+  String _getSalesChartTitle() {
+    if (_selectedMonth == null) {
+      // Entire year
+      return "Sales for $_selectedYear (by Month)";
+    } else if (_selectedWeek == null) {
+      // Month-level
+      return "Sales for ${_monthName(_selectedMonth!)} $_selectedYear (by Week)";
+    } else if (_selectedDay == null) {
+      // Week-level
+      return "Sales for ${_monthName(_selectedMonth!)} (Week $_selectedWeek) $_selectedYear (by Day)";
+    } else {
+      // Day-level
+      return "Sales for ${_monthName(_selectedMonth!)} $_selectedDay, $_selectedYear (Day)";
     }
   }
 
@@ -348,12 +485,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Graphical Insights: a mini chart
+                  // Graphical Insights: a mini chart.
                   SizedBox(
                     height: 200,
                     child: SfCartesianChart(
-                      backgroundColor:
-                      _isDarkMode ? Colors.grey[900] : Colors.white,
+                      backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
                       primaryXAxis: CategoryAxis(
                         labelStyle: TextStyle(
                             color: _isDarkMode ? Colors.white : Colors.black),
@@ -375,11 +511,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Detailed Transaction List in a horizontal scrollable DataTable
+                  // Detailed Transaction List in a horizontal scrollable DataTable.
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
-                      // ID column removed
                       columns: const [
                         DataColumn(label: Text('Medicine')),
                         DataColumn(label: Text('Qty')),
@@ -389,7 +524,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         DataColumn(label: Text('Payment')),
                         DataColumn(label: Text('User')),
                       ],
-                      // Remove onSelectChanged; use onTap in each DataCell instead
                       rows: _transactions.map((tx) {
                         return DataRow(
                           cells: [
@@ -507,7 +641,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _exportDataAsPDF() async {
     final pdf = await _generatePDF();
-    await Printing.sharePdf(bytes: await pdf.save(), filename: 'transactions_backup.pdf');
+    await Printing.sharePdf(
+        bytes: await pdf.save(), filename: 'transactions_backup.pdf');
   }
 
   void _showSettingsDialog() {
@@ -544,7 +679,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () {
                       _exportDataAsPDF();
                     },
-                    child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
+                    child: const Text("Export Data as PDF",
+                        style: TextStyle(color: Colors.white)),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
@@ -552,7 +688,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       backgroundColor: const Color(0xFF0D2A5E),
                     ),
                     onPressed: _logOut,
-                    child: const Text("Log Out", style: TextStyle(color: Colors.white)),
+                    child: const Text("Log Out",
+                        style: TextStyle(color: Colors.white)),
                   ),
                 ],
               );
@@ -595,14 +732,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    // Add conditions for additional tabs if needed.
-  }
-
-  void _onTimeFilterSelected(int index) {
-    setState(() {
-      _selectedTimeFilter = index;
-    });
-    _updateChartData();
+    // Additional tabs can be added here if needed.
   }
 
   @override
@@ -613,7 +743,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         automaticallyImplyLeading: false,
         title: const Text(
           "Welcome, Admin!",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2A5E),
         actions: [
@@ -633,21 +764,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
         unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.payment), label: "Payments"),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildBalanceCard(),
                 const SizedBox(height: 20),
-                _buildSalesStatistics(),
+                _buildFiltersRow(),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Text(
+                      "Total Transactions: ",
+                      style: TextStyle(fontSize: 20, color: Colors.grey),
+                    ),
+                    Text(
+                      "$totalTransactions",
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 _buildSalesChart(),
                 const SizedBox(height: 20),
@@ -693,9 +841,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPressed: _showViewDetailsModal,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
-                  child: const Text("View Details", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  child: const Text("View Details",
+                      style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ],
             ),
@@ -705,87 +855,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSalesStatistics() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Sales Statistics",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: _isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: timeFilters.asMap().entries.map((entry) {
-            return _buildTimeFilterButton(entry.key, entry.value);
-          }).toList(),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            const Text(
-              "Total Transactions: ",
-              style: TextStyle(fontSize: 20, color: Colors.grey),
-            ),
-            Text(
-              "$totalTransactions",
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeFilterButton(int index, String label) {
-    final bool isSelected = _selectedTimeFilter == index;
-    return GestureDetector(
-      onTap: () => _onTimeFilterSelected(index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0D2A5E) : Colors.grey[300],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSalesChart() {
-    final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    final Color chartBarColor =
+    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
       onTap: () {
         _showBigChart(
-          _selectedTimeFilter == 0
-              ? "Sales for Today"
-              : _selectedTimeFilter == 1
-              ? "Sales for This Week"
-              : _selectedTimeFilter == 2
-              ? "Sales for This Month"
-              : "Sales for This Year",
+          _getSalesChartTitle(),
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor:
+              _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               primaryYAxis: NumericAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               series: <CartesianSeries<ChartData, String>>[
                 ColumnSeries<ChartData, String>(
@@ -802,19 +894,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
               Text(
-                _selectedTimeFilter == 0
-                    ? "Sales for Today"
-                    : _selectedTimeFilter == 1
-                    ? "Sales for This Week"
-                    : _selectedTimeFilter == 2
-                    ? "Sales for This Month"
-                    : "Sales for This Year",
+                _getSalesChartTitle(),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -825,14 +912,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(
                 height: 300,
                 child: SfCartesianChart(
-                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                  backgroundColor:
+                  _isDarkMode ? Colors.grey[900] : Colors.white,
                   primaryXAxis: CategoryAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   primaryYAxis: NumericAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   series: <CartesianSeries<ChartData, String>>[
                     ColumnSeries<ChartData, String>(
@@ -852,28 +944,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFrequencyChart() {
-    final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    final Color chartLineColor =
+    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
     return GestureDetector(
       onTap: () {
         _showBigChart(
-          _selectedTimeFilter == 0
-              ? "Frequency of Medicine Sales (Day)"
-              : _selectedTimeFilter == 1
-              ? "Frequency of Medicine Sales (Week)"
-              : _selectedTimeFilter == 2
-              ? "Frequency of Medicine Sales (Month)"
-              : "Frequency of Medicine Sales (Year)",
+          "Frequency of Medicine Sales",
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor:
+              _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               primaryYAxis: NumericAxis(
-                labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
+                axisLine: AxisLine(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
               series: <CartesianSeries<ChartData, String>>[
                 LineSeries<ChartData, String>(
@@ -891,19 +983,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
               Text(
-                _selectedTimeFilter == 0
-                    ? "Frequency of Medicine Sales (Day)"
-                    : _selectedTimeFilter == 1
-                    ? "Frequency of Medicine Sales (Week)"
-                    : _selectedTimeFilter == 2
-                    ? "Frequency of Medicine Sales (Month)"
-                    : "Frequency of Medicine Sales (Year)",
+                "Frequency of Medicine Sales",
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -914,14 +1001,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SizedBox(
                 height: 300,
                 child: SfCartesianChart(
-                  backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                  backgroundColor:
+                  _isDarkMode ? Colors.grey[900] : Colors.white,
                   primaryXAxis: CategoryAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   primaryYAxis: NumericAxis(
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                    axisLine: AxisLine(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
+                    axisLine: AxisLine(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                   series: <CartesianSeries<ChartData, String>>[
                     LineSeries<ChartData, String>(
