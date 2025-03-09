@@ -78,12 +78,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     DateTime now = DateTime.now();
     List<Map<String, dynamic>> filtered = [];
-    if (_selectedTimeFilter == 0) { // Day
+
+    if (_selectedTimeFilter == 0) {
+      // Day
       filtered = _transactions.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         return dt.year == now.year && dt.month == now.month && dt.day == now.day;
       }).toList();
-    } else if (_selectedTimeFilter == 1) { // Week
+    } else if (_selectedTimeFilter == 1) {
+      // Week
       DateTime startOfWeek = _startOfWeek(now);
       DateTime endOfWeek = _endOfWeek(now);
       filtered = _transactions.where((tx) {
@@ -91,38 +94,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return dt.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
             dt.isBefore(endOfWeek.add(const Duration(seconds: 1)));
       }).toList();
-    } else if (_selectedTimeFilter == 2) { // Month
+    } else if (_selectedTimeFilter == 2) {
+      // Month
       filtered = _transactions.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         return dt.year == now.year && dt.month == now.month;
       }).toList();
-    } else { // Year
+    } else {
+      // Year
       filtered = _transactions.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         return dt.year == now.year;
       }).toList();
     }
 
+    // Build salesMap for chart
     Map<String, double> salesMap = {};
     if (_selectedTimeFilter == 0) {
+      // Group by hour
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = dt.hour.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else if (_selectedTimeFilter == 1) {
+      // Group by weekday
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = _weekdayName(dt.weekday);
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else if (_selectedTimeFilter == 2) {
+      // Group by day
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = dt.day.toString();
         salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     } else {
+      // Group by month
       for (var tx in filtered) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? now;
         String key = _monthName(dt.month);
@@ -130,6 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
+    // Convert salesMap to List<ChartData>
     List<ChartData> salesData = [];
     if (_selectedTimeFilter == 0) {
       var keys = salesMap.keys.toList()..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
@@ -137,7 +148,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         salesData.add(ChartData(label: "$key:00", value: salesMap[key]!));
       }
     } else if (_selectedTimeFilter == 1) {
-      List<String> weekdayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      List<String> weekdayOrder = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ];
       for (var day in weekdayOrder) {
         if (salesMap.containsKey(day)) {
           salesData.add(ChartData(label: day, value: salesMap[day]!));
@@ -150,8 +169,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } else {
       List<String> monthOrder = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
       ];
       for (var month in monthOrder) {
         if (salesMap.containsKey(month)) {
@@ -160,6 +189,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
+    // Build freqMap for frequency chart
     Map<String, int> freqMap = {};
     for (var tx in filtered) {
       String med = tx['medicine'];
@@ -322,30 +352,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   SizedBox(
                     height: 200,
                     child: SfCartesianChart(
-                      backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+                      backgroundColor:
+                      _isDarkMode ? Colors.grey[900] : Colors.white,
                       primaryXAxis: CategoryAxis(
-                        labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                        labelStyle: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black),
                       ),
                       primaryYAxis: NumericAxis(
-                        labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                        labelStyle: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black),
                       ),
                       series: <CartesianSeries>[
                         ColumnSeries<ChartData, String>(
                           dataSource: _salesData,
                           xValueMapper: (ChartData data, _) => data.label,
                           yValueMapper: (ChartData data, _) => data.value,
-                          color: _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E),
+                          color: _isDarkMode
+                              ? Colors.cyanAccent
+                              : const Color(0xFF0D2A5E),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Detailed Transaction List in a horizontal scrollable DataTable.
+                  // Detailed Transaction List in a horizontal scrollable DataTable
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
+                      // ID column removed
                       columns: const [
-                        DataColumn(label: Text('ID')),
                         DataColumn(label: Text('Medicine')),
                         DataColumn(label: Text('Qty')),
                         DataColumn(label: Text('Unit Price')),
@@ -354,23 +389,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         DataColumn(label: Text('Payment')),
                         DataColumn(label: Text('User')),
                       ],
+                      // Remove onSelectChanged; use onTap in each DataCell instead
                       rows: _transactions.map((tx) {
                         return DataRow(
                           cells: [
-                            DataCell(Text(tx['transaction_id'].toString())),
-                            DataCell(Text(tx['medicine'])),
-                            DataCell(Text(tx['quantity'].toString())),
-                            DataCell(Text(tx['unit_price'].toString())),
-                            DataCell(Text(tx['total_amount'].toString())),
-                            DataCell(Text(tx['date'])),
-                            DataCell(Text(tx['payment_method'])),
-                            DataCell(Text(tx['user_type'])),
+                            DataCell(
+                              Text(tx['medicine'] ?? 'N/A'),
+                              onTap: () => _showDrillDownDetails(tx),
+                            ),
+                            DataCell(
+                              Text(tx['quantity']?.toString() ?? '0'),
+                              onTap: () => _showDrillDownDetails(tx),
+                            ),
+                            DataCell(
+                              Text(tx['unit_price']?.toString() ?? '0'),
+                              onTap: () => _showDrillDownDetails(tx),
+                            ),
+                            DataCell(
+                              Text(tx['total_amount']?.toString() ?? '0'),
+                              onTap: () => _showDrillDownDetails(tx),
+                            ),
+                            DataCell(
+                              Text(tx['date'] ?? 'N/A'),
+                              onTap: () => _showDrillDownDetails(tx),
+                            ),
+                            DataCell(
+                              Text(tx['payment_method'] ?? 'N/A'),
+                              onTap: () => _showDrillDownDetails(tx),
+                            ),
+                            DataCell(
+                              Text(tx['user_type'] ?? 'N/A'),
+                              onTap: () => _showDrillDownDetails(tx),
+                            ),
                           ],
-                          onSelectChanged: (selected) {
-                            if (selected == true) {
-                              _showDrillDownDetails(tx);
-                            }
-                          },
                         );
                       }).toList(),
                     ),
@@ -390,7 +441,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Transaction ${transaction['transaction_id']} Details"),
+          title: Text("Transaction Details"),
           content: Text(
             "Medicine: ${transaction['medicine']}\n"
                 "Quantity: ${transaction['quantity']}\n"
@@ -423,7 +474,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               pw.Text("Transactions Backup", style: pw.TextStyle(fontSize: 24)),
               pw.SizedBox(height: 20),
               pw.Table.fromTextArray(
-                headers: ['ID', 'Medicine', 'Quantity', 'Unit Price', 'Total', 'Date', 'Payment', 'User'],
+                headers: [
+                  'ID',
+                  'Medicine',
+                  'Quantity',
+                  'Unit Price',
+                  'Total',
+                  'Date',
+                  'Payment',
+                  'User'
+                ],
                 data: transactions.map((tx) {
                   return [
                     tx['transaction_id'].toString(),
