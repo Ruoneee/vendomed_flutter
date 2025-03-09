@@ -2,7 +2,9 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'user_selection_screen.dart'; // This screen will ask if the user has RFID or is a guest
+import 'package:usb_serial/usb_serial.dart';
+import 'user_selection_screen.dart';
+import 'usb_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,26 +15,60 @@ class SplashScreen extends StatefulWidget {
 
 class SplashScreenState extends State<SplashScreen> {
   int dotCount = 0; // For loading dots animation
+  String _statusMessage = 'Initializing USB connection...';
 
   @override
   void initState() {
     super.initState();
-    // Start a timer for a simple loading effect.
+    // Start a timer for a simple loading dots animation.
     Timer.periodic(const Duration(milliseconds: 500), (Timer timer) {
       setState(() {
         dotCount = (dotCount + 1) % 4;
       });
     });
+    // Attempt to initialize the USB connection.
+    _initUsbConnection();
+  }
+
+  Future<void> _initUsbConnection() async {
+    // List available USB devices.
+    List<UsbDevice> devices = await UsbSerial.listDevices();
+
+    if (devices.isEmpty) {
+      setState(() {
+        _statusMessage = 'No USB devices found. Please connect your ESP32.';
+      });
+      return;
+    }
+
+    // Since you're expecting only one device, use the first found device.
+    UsbDevice device = devices.first;
+    setState(() {
+      _statusMessage = 'Found device: ${device.productName}. Connecting...';
+    });
+
+    try {
+      // Use the global USBService to connect.
+      await USBService().connectToDevice(device);
+      // If the connection is successful, clear the status message.
+      setState(() {
+        _statusMessage = '';
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'Error connecting: $e';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Wrap the entire Scaffold in a GestureDetector.
     return WillPopScope(
-      onWillPop: () async => false, // Prevent back button.
+      // Prevent the back button during the splash screen.
+      onWillPop: () async => false,
       child: GestureDetector(
+        // Tap to proceed regardless of connection state.
         onTap: () {
-          // Navigate to the User Selection Screen when tapped.
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -41,12 +77,12 @@ class SplashScreenState extends State<SplashScreen> {
           );
         },
         child: Scaffold(
-          backgroundColor: const Color(0xFFFFFFFF), // White background
+          backgroundColor: const Color(0xFFFFFFFF),
           body: Container(
             width: double.infinity,
             height: double.infinity,
             decoration: const BoxDecoration(
-              color: Color(0xFFFFFFFF), // White background
+              color: Color(0xFFFFFFFF),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -57,7 +93,6 @@ class SplashScreenState extends State<SplashScreen> {
                   height: 600,
                 ),
                 const SizedBox(height: 30),
-                // Catchy phrase to enhance user experience.
                 const Text(
                   "Tap to Proceed!",
                   style: TextStyle(
@@ -67,8 +102,16 @@ class SplashScreenState extends State<SplashScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 20),
+                // Show the status message only if it's not empty.
+                if (_statusMessage.isNotEmpty)
+                  Text(
+                    _statusMessage,
+                    style: const TextStyle(fontSize: 18, color: Color(0xFF1E5D6F)),
+                    textAlign: TextAlign.center,
+                  ),
                 const SizedBox(height: 50),
-                // Optionally, you can still show loading dots:
+                // Loading dots animation.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(3, (index) {
