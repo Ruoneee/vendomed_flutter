@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'dashboard.dart';
 import 'database_helper.dart';
+import 'user.dart';
 
 /// Model for payment methods in the pie chart.
 class PaymentMethodData {
@@ -337,7 +338,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
               MaterialPageRoute(builder: (context) => DashboardScreen()),
             );
           }
-          // For index 1 (Payments), do nothing or handle other tabs similarly.
+
         },
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,

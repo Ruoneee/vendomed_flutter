@@ -7,6 +7,8 @@ import 'package:printing/printing.dart';
 import 'transaction.dart';
 import 'splash_screen.dart';
 import 'database_helper.dart';
+import 'user.dart';
+
 
 // Model for chart data.
 class ChartData {
@@ -732,7 +734,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    // Additional tabs can be added here if needed.
+    else if (index == 2) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
+      );
+    }
   }
 
   @override
