@@ -49,13 +49,13 @@ class SplashScreenState extends State<SplashScreen> {
     });
 
     try {
-      // Use the global USBService to connect.
+      // Connect using the global USBService.
       await USBService().connectToDevice(device);
-      // Clear the status message on success.
+      // Clear the error message if connection is successful.
       setState(() {
         _statusMessage = '';
       });
-      // Automatically send 1 to the ESP32 to turn on the LED.
+      // Automatically send 1 to the ESP32 (to light the LED).
       await _sendData(1);
     } catch (e) {
       setState(() {
@@ -66,95 +66,104 @@ class SplashScreenState extends State<SplashScreen> {
 
   /// Sends the given integer [value] as a single byte via USB serial.
   Future<void> _sendData(int value) async {
-    try {
-      await USBService().writeData(value);
-    } catch (e) {
-      // Optionally log or display an error.
-      debugPrint("Error sending data: $e");
+    UsbPort? port = USBService().port;
+    if (port != null) {
+      try {
+        await port.write(Uint8List.fromList([value]));
+      } catch (e) {
+        // Handle write errors if necessary.
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: const Color(0xFFFFFFFF),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Splash logo image.
-            Image.asset(
-              'assets/images/splash_logo.png', // Ensure the asset path is correct.
-              height: 600,
+    return WillPopScope(
+      // Prevent the back button during splash.
+      onWillPop: () async => false,
+      child: GestureDetector(
+        // Tapping anywhere on the screen navigates to the next screen.
+        onTap: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
+          );
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFFFFFFF),
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFFFFF),
             ),
-            const SizedBox(height: 30),
-            // Proceed button area.
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
-                );
-              },
-              child: const Text(
-                "Tap to Proceed!",
-                style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF0D2A5E)),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Status message (only shows error messages).
-            if (_statusMessage.isNotEmpty)
-              Text(
-                _statusMessage,
-                style: const TextStyle(fontSize: 18, color: Color(0xFF1E5D6F)),
-                textAlign: TextAlign.center,
-              ),
-            const SizedBox(height: 20),
-            // USB control buttons appear only if the connection is established.
-            if (USBService().isConnected)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      await _sendData(1); // Send 1 to turn LED on.
-                    },
-                    child: const Text('Send 1'),
-                  ),
-                  const SizedBox(width: 20),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await _sendData(0); // Send 0 to turn LED off.
-                    },
-                    child: const Text('Send 0'),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 50),
-            // Loading dots animation.
-            Row(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF1E5D6F)
-                        .withOpacity(dotCount == index ? 1.0 : 0.3),
+              children: [
+                // Splash logo image.
+                Image.asset(
+                  'assets/images/splash_logo.png', // Ensure this path is correct.
+                  height: 600,
+                ),
+                const SizedBox(height: 30),
+                const Text(
+                  "Tap to Proceed!",
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D2A5E),
                   ),
-                );
-              }),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                // Display status message only if not empty.
+                if (_statusMessage.isNotEmpty)
+                  Text(
+                    _statusMessage,
+                    style: const TextStyle(fontSize: 18, color: Color(0xFF1E5D6F)),
+                    textAlign: TextAlign.center,
+                  ),
+                const SizedBox(height: 20),
+                // If USB is connected, show buttons to send 1 and 0.
+                if (USBService().isConnected)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _sendData(1);
+                        },
+                        child: const Text('Send 1'),
+                      ),
+                      const SizedBox(width: 20),
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _sendData(0);
+                        },
+                        child: const Text('Send 0'),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 50),
+                // Loading dots animation.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (index) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF1E5D6F)
+                            .withOpacity(dotCount == index ? 1.0 : 0.3),
+                      ),
+                    );
+                  }),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

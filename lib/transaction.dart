@@ -122,7 +122,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
           'Transactions',
           style: TextStyle(color: Colors.white, fontSize: 28),
         ),
-        backgroundColor: _isDarkMode ? Colors.grey[900] : const Color(0xFF0D2A5E),
+        backgroundColor:
+        _isDarkMode ? Colors.grey[900] : const Color(0xFF0D2A5E),
       ),
       body: FutureBuilder<List<TransactionItem>>(
         future: _futureTransactions,
@@ -133,14 +134,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
             return Center(
               child: Text(
                 'Error: ${snapshot.error}',
-                style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                style: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
             );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(
               child: Text(
                 'No transactions available',
-                style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                style: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black),
               ),
             );
           }
@@ -148,8 +151,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
           final totalCount = transactions.length;
 
           // Payment method calculations
-          int cashCoinsCount =
-              transactions.where((tx) => tx.paymentMethod == 'Cash/Coins').length;
+          int cashCoinsCount = transactions
+              .where((tx) => tx.paymentMethod == 'Cash/Coins')
+              .length;
           int gCashCount =
               transactions.where((tx) => tx.paymentMethod == 'GCash').length;
           double percentCashCoins =
@@ -315,7 +319,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
                 // Display all transactions
                 Column(
-                  children: transactions.map((tx) => _buildTransactionCard(tx)).toList(),
+                  children:
+                  transactions.map((tx) => _buildTransactionCard(tx)).toList(),
                 ),
               ],
             ),
@@ -324,7 +329,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: _isDarkMode ? Colors.grey[850] : Colors.white,
-        currentIndex: 1, // Payments always active.
+        currentIndex: 1, // Payments tab is active.
         onTap: (index) {
           if (index == 0) {
             Navigator.pushReplacement(
@@ -332,13 +337,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
               MaterialPageRoute(builder: (context) => DashboardScreen()),
             );
           }
-          // For index 1, do nothing.
+          // For index 1 (Payments), do nothing or handle other tabs similarly.
         },
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
-        iconSize: 36,
-        selectedFontSize: 18,
-        unselectedFontSize: 16,
+        // MATCHED VALUES
+        iconSize: 28,
+        selectedFontSize: 14,
+        unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
           BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
@@ -350,12 +356,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
   }
 }
 
-/// --- AllTransactionsPopup ---
-/// This pop-up includes advanced filtering, search, and a detailed transaction view.
-/// It accepts the dark mode setting so that its UI elements update accordingly.
 class AllTransactionsPopup extends StatefulWidget {
   final bool isDarkMode;
-  const AllTransactionsPopup({Key? key, required this.isDarkMode}) : super(key: key);
+  const AllTransactionsPopup({Key? key, required this.isDarkMode})
+      : super(key: key);
 
   @override
   _AllTransactionsPopupState createState() => _AllTransactionsPopupState();
@@ -399,7 +403,9 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
 
     // Payment method filter.
     if (_filterPaymentMethod != 'All') {
-      txList = txList.where((tx) => tx['payment_method'] == _filterPaymentMethod).toList();
+      txList = txList
+          .where((tx) => tx['payment_method'] == _filterPaymentMethod)
+          .toList();
     }
 
     // Search query filter.
@@ -416,10 +422,14 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     double? minAmount = double.tryParse(_minAmountController.text);
     double? maxAmount = double.tryParse(_maxAmountController.text);
     if (minAmount != null) {
-      txList = txList.where((tx) => (tx['total_amount'] as num).toDouble() >= minAmount).toList();
+      txList = txList
+          .where((tx) => (tx['total_amount'] as num).toDouble() >= minAmount)
+          .toList();
     }
     if (maxAmount != null) {
-      txList = txList.where((tx) => (tx['total_amount'] as num).toDouble() <= maxAmount).toList();
+      txList = txList
+          .where((tx) => (tx['total_amount'] as num).toDouble() <= maxAmount)
+          .toList();
     }
 
     // Sorting.
@@ -446,7 +456,6 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     return txList;
   }
 
-  // Build a ListTile for each transaction.
   Widget _buildTransactionTile(Map<String, dynamic> tx) {
     return ListTile(
       title: Text(
@@ -457,7 +466,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
         tx['date'],
         style: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.grey),
       ),
-      trailing: Text("₱${(tx['total_amount'] as num).toStringAsFixed(2)}"),
+      trailing:
+      Text("₱${(tx['total_amount'] as num).toStringAsFixed(2)}"),
       onTap: () {
         showDialog(
           context: context,
@@ -472,7 +482,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                   "Date: ${tx['date']}\n"
                   "Payment Method: ${tx['payment_method']}\n"
                   "User Type: ${tx['user_type']}",
-              style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+              style: TextStyle(
+                  color: _isDarkMode ? Colors.white : Colors.black),
             ),
             actions: [
               TextButton(
@@ -486,19 +497,20 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     );
   }
 
-  // Build the filter section.
   Widget _buildFilterSection() {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          // Search bar.
+          // Search bar
           TextField(
             style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
             decoration: InputDecoration(
               labelText: 'Search by Medicine or ID',
-              labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-              prefixIcon: Icon(Icons.search, color: _isDarkMode ? Colors.white : Colors.black),
+              labelStyle: TextStyle(
+                  color: _isDarkMode ? Colors.white : Colors.black),
+              prefixIcon: Icon(Icons.search,
+                  color: _isDarkMode ? Colors.white : Colors.black),
               border: OutlineInputBorder(),
             ),
             onChanged: (value) {
@@ -509,12 +521,13 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
           ),
           const SizedBox(height: 10),
 
-          // Date range picker.
+          // Date range picker
           Row(
             children: [
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _isDarkMode ? Colors.grey[800] : null,
+                  backgroundColor:
+                  _isDarkMode ? Colors.grey[800] : null,
                 ),
                 onPressed: () async {
                   DateTimeRange? picked = await showDateRangePicker(
@@ -541,15 +554,17 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                 Padding(
                   padding: const EdgeInsets.only(left: 8.0),
                   child: Text(
-                    "${_selectedDateRange!.start.toLocal().toShortDateString()} - ${_selectedDateRange!.end.toLocal().toShortDateString()}",
-                    style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    "${_selectedDateRange!.start.toLocal().toShortDateString()} - "
+                        "${_selectedDateRange!.end.toLocal().toShortDateString()}",
+                    style: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                   ),
                 ),
             ],
           ),
           const SizedBox(height: 10),
 
-          // Payment method and sorting dropdowns.
+          // Payment method and sorting dropdowns
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -562,7 +577,9 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                     value: option,
                     child: Text(
                       option,
-                      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      style: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
                 )
@@ -589,7 +606,9 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                     value: option,
                     child: Text(
                       option,
-                      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      style: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
                 )
@@ -606,17 +625,19 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
           ),
           const SizedBox(height: 10),
 
-          // Amount filter.
+          // Amount filter
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _minAmountController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                  style: TextStyle(
+                      color: _isDarkMode ? Colors.white : Colors.black),
                   decoration: InputDecoration(
                     labelText: 'Min Amount',
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (value) {
@@ -629,10 +650,12 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                 child: TextField(
                   controller: _maxAmountController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                  style: TextStyle(
+                      color: _isDarkMode ? Colors.white : Colors.black),
                   decoration: InputDecoration(
                     labelText: 'Max Amount',
-                    labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    labelStyle: TextStyle(
+                        color: _isDarkMode ? Colors.white : Colors.black),
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (value) {
@@ -644,7 +667,7 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
           ),
           const SizedBox(height: 10),
 
-          // Apply filters button.
+          // Apply filters button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: _isDarkMode ? Colors.grey[800] : null,
@@ -672,7 +695,7 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
-              // Export/Print stub.
+              // Export/Print stub
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Export/Print feature not implemented")),
               );
@@ -693,14 +716,16 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                   return Center(
                     child: Text(
                       "Error: ${snapshot.error}",
-                      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      style: TextStyle(
+                          color: _isDarkMode ? Colors.white : Colors.black),
                     ),
                   );
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(
                     child: Text(
                       "No transactions available",
-                      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      style: TextStyle(
+                          color: _isDarkMode ? Colors.white : Colors.black),
                     ),
                   );
                 }
