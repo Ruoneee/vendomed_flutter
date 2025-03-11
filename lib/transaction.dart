@@ -337,6 +337,17 @@ class _TransactionScreenState extends State<TransactionScreen> {
               context,
               MaterialPageRoute(builder: (context) => DashboardScreen()),
             );
+          }else if (index == 1) {
+            // Already on Payments.
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
+            );
+          } else if (index == 3) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Inventory screen not implemented.")),
+            );
           }
 
         },

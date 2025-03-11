@@ -6,8 +6,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => _instance;
+  static final DatabaseHelper instance = DatabaseHelper._internal();
+  factory DatabaseHelper() => instance;
   static Database? _db;
 
   DatabaseHelper._internal();
@@ -25,7 +25,7 @@ class DatabaseHelper {
     // Create the directory if it doesn't exist.
     await Directory(dirname(path)).create(recursive: true);
 
-    // Always copy the database from assets (this will overwrite the existing local database).
+    // Always copy the database from assets (this will overwrite any existing local DB).
     await _copyDatabaseFromAssets(path);
     print("Database copied from assets to: $path");
 
@@ -44,16 +44,17 @@ class DatabaseHelper {
     }
   }
 
-  // Copy the vendomed.db file from assets to the specified path.
+  // Copy vendomed.db from assets to the specified path.
   Future<void> _copyDatabaseFromAssets(String path) async {
     ByteData data = await rootBundle.load("assets/vendomed.db");
-    List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    List<int> bytes =
+    data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     await File(path).writeAsBytes(bytes, flush: true);
   }
 
-  // Called when the database is first created.
+  // Called only if the database is newly created.
   Future _onCreate(Database db, int version) async {
-    // This may not be used if your vendomed.db is fully pre-populated.
+    // Create the transactions table if needed.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
         transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,9 +68,23 @@ class DatabaseHelper {
       )
     ''');
     print("Transactions table created in onCreate");
+
+    // Create the users table if it doesn't exist.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rfid TEXT,
+        name TEXT,
+        email TEXT,
+        expiration TEXT,
+        points TEXT
+      )
+    ''');
+    print("Users table created in onCreate");
   }
 
-  // Inserts a transaction row into the transactions table.
+  // ========== TRANSACTIONS TABLE METHODS ==========
+
   Future<int> insertTransaction(Map<String, dynamic> transaction) async {
     final database = await db;
     int id = await database.insert("transactions", transaction);
@@ -77,20 +92,50 @@ class DatabaseHelper {
     return id;
   }
 
-  // Query all transactions.
   Future<List<Map<String, dynamic>>> getTransactions() async {
     final database = await db;
     return await database.query("transactions");
   }
 
-  // Debug function to query and print all transactions.
   Future<void> debugPrintTransactions() async {
     final dbInstance = await db;
     List<Map<String, dynamic>> results = await dbInstance.query("transactions");
     print("Current transactions: $results");
   }
 
-  // Call this when you want to close the database.
+  // ========== USERS TABLE METHODS ==========
+
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final database = await db;
+    return await database.query('users');
+  }
+
+  Future<int> insertUser(Map<String, dynamic> userData) async {
+    final database = await db;
+    return await database.insert('users', userData);
+  }
+
+  Future<int> updateUser(Map<String, dynamic> userData, int userId) async {
+    final database = await db;
+    return await database.update(
+      'users',
+      userData,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<int> deleteUser(int userId) async {
+    final database = await db;
+    return await database.delete(
+      'users',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  // ========== CLOSE DB ==========
+
   void dispose() {
     _db?.close();
   }

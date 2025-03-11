@@ -24,60 +24,29 @@ class _UserScreenState extends State<UserScreen> {
   // Search field
   final TextEditingController _searchController = TextEditingController();
 
-  // Example user list (replace with DB calls as needed)
-  List<Map<String, String>> _users = [
-    {
-      "rfid": "0102010",
-      "name": "Rustan Chavez",
-      "email": "user@gmail.com",
-      "expiration": "10/03/25",
-      "points": "12345"
-    },
-    {
-      "rfid": "0102011",
-      "name": "Mai Cardenas",
-      "email": "user@gmail.com",
-      "expiration": "10/03/25",
-      "points": "12345"
-    },
-    {
-      "rfid": "0102012",
-      "name": "Russel Coquina",
-      "email": "user@gmail.com",
-      "expiration": "10/03/25",
-      "points": "12345"
-    },
-    {
-      "rfid": "0102013",
-      "name": "JM Romulo",
-      "email": "user@gmail.com",
-      "expiration": "10/03/25",
-      "points": "12345"
-    },
-    {
-      "rfid": "0102014",
-      "name": "Angelo Joe",
-      "email": "user@gmail.com",
-      "expiration": "10/03/25",
-      "points": "12345"
-    },
-    {
-      "rfid": "0102010",
-      "name": "Juan Santos",
-      "email": "user@gmail.com",
-      "expiration": "10/03/25",
-      "points": "12345"
-    },
-  ];
-
-  // Filtered list for search
-  List<Map<String, String>> _filteredUsers = [];
+  // User list from the DB and a filtered copy
+  List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> _filteredUsers = [];
 
   @override
   void initState() {
     super.initState();
     _isDarkMode = widget.isDarkMode;
-    _filteredUsers = List.from(_users); // Initially show all
+    _fetchUsersFromDB(); // Load users from vendomed.db on startup
+  }
+
+  // Fetch all users from the 'users' table and update lists
+  Future<void> _fetchUsersFromDB() async {
+    try {
+      final userList = await DatabaseHelper.instance.getAllUsers();
+      print("Fetched ${userList.length} users from DB");
+      setState(() {
+        _users = userList;
+        _filteredUsers = List.from(userList);
+      });
+    } catch (e) {
+      print("Error fetching users from DB: $e");
+    }
   }
 
   @override
@@ -90,32 +59,44 @@ class _UserScreenState extends State<UserScreen> {
     super.dispose();
   }
 
-  // Simple "Confirm" action
-  void _onConfirm() {
-    // Example: Insert or update user in DB. For now, just print.
-    print("RFID: ${_rfidController.text}");
-    print("Name: ${_nameController.text}");
-    print("Email: ${_emailController.text}");
-    print("Expiration: ${_expirationController.text}");
+  // Insert a new user into the DB and refresh the list
+  Future<void> _onConfirm() async {
+    final newUser = {
+      // Use exact column names from your table.
+      'RFID': _rfidController.text,
+      'NAME': _nameController.text,
+      'EMAIL': _emailController.text,
+      'EXPIRATIONS': _expirationController.text,
+      'POINTS': '0', // Default value for points.
+      'ROLE': 'User', // Default role.
+    };
 
-    // Clear fields
-    _rfidController.clear();
-    _nameController.clear();
-    _emailController.clear();
-    _expirationController.clear();
+    try {
+      await DatabaseHelper.instance.insertUser(newUser);
+      await _fetchUsersFromDB(); // Refresh the list
+      // Clear form fields
+      _rfidController.clear();
+      _nameController.clear();
+      _emailController.clear();
+      _expirationController.clear();
+    } catch (e) {
+      print("Error inserting user into DB: $e");
+    }
   }
 
-  // Search user by name or RFID
+  // Filter users based on search query (by RFID or NAME)
   void _searchUser(String query) {
     setState(() {
       _filteredUsers = _users.where((user) {
-        final combined = "${user['rfid']} ${user['name']}".toLowerCase();
+        final rfid = (user['RFID'] ?? '').toString().toLowerCase();
+        final name = (user['NAME'] ?? '').toString().toLowerCase();
+        final combined = "$rfid $name";
         return combined.contains(query.toLowerCase());
       }).toList();
     });
   }
 
-  // Bottom navigation
+  // Bottom navigation logic
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
@@ -135,8 +116,6 @@ class _UserScreenState extends State<UserScreen> {
     } else if (index == 2) {
       // Stay on Users
     } else if (index == 3) {
-      // Example: Navigate to "Inventory" screen
-      // Navigator.pushReplacement(...);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Inventory screen not implemented")),
       );
@@ -165,7 +144,6 @@ class _UserScreenState extends State<UserScreen> {
         onTap: _onTabSelected,
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
-        // MATCH the icon/text sizes from your other screens:
         iconSize: 28,
         selectedFontSize: 14,
         unselectedFontSize: 12,
@@ -182,155 +160,214 @@ class _UserScreenState extends State<UserScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // "Manage User" title
-              Text(
-                "Manage User",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: _isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // The four text fields (RFID, Name, Email, Expiration)
-              _buildTextField(
-                controller: _rfidController,
-                label: "Enter RFID Number",
-              ),
-              const SizedBox(height: 10),
-              _buildTextField(
-                controller: _nameController,
-                label: "User's Name",
-              ),
-              const SizedBox(height: 10),
-              _buildTextField(
-                controller: _emailController,
-                label: "Email Address",
-              ),
-              const SizedBox(height: 10),
-              _buildTextField(
-                controller: _expirationController,
-                label: "Expiration",
-              ),
-              const SizedBox(height: 10),
-
-              // Confirm button
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: _onConfirm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2A5E),
+              // ======= MANAGE USER SECTION (Box/Container) =======
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: _isDarkMode ? Colors.grey[900] : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isDarkMode ? Colors.white54 : Colors.grey.shade300,
                   ),
-                  child: const Text("Confirm"),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      "Manage User",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // RFID
+                    _buildTextField(
+                      controller: _rfidController,
+                      label: "Enter RFID Number",
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Name
+                    _buildTextField(
+                      controller: _nameController,
+                      label: "User's Name",
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Email
+                    _buildTextField(
+                      controller: _emailController,
+                      label: "Email Address",
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Expirations
+                    _buildTextField(
+                      controller: _expirationController,
+                      label: "Expirations",
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Confirm button BELOW Expirations field, centered
+                    Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: 150,
+                        child: ElevatedButton(
+                          onPressed: _onConfirm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D2A5E),
+                            foregroundColor: Colors.white,
+                            textStyle: const TextStyle(fontSize: 18),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text("Confirm"),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // "User Information"
-              Text(
-                "User Information",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: _isDarkMode ? Colors.white : Colors.black,
+              // ======= USER INFORMATION & SEARCH (blue box) =======
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2A5E), // Blue background
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.shade300, // Visible border
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // "User Information" in white
+                    Text(
+                      "User Information",
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    // White search bar on the right
+                    SizedBox(
+                      width: 200,
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(color: Colors.black),
+                        decoration: InputDecoration(
+                          labelText: "Search User",
+                          labelStyle: const TextStyle(color: Colors.black54),
+                          fillColor: Colors.white,
+                          filled: true,
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: (value) => _searchUser(value),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
 
-              // Table + search
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // We can just display the text "Search User" next to a field:
-                  SizedBox(
-                    width: 200,
-                    child: TextField(
-                      controller: _searchController,
-                      style: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: "Search User",
-                        labelStyle: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black,
-                        ),
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (value) => _searchUser(value),
-                    ),
-                  ),
-                  // Could add a separate "Search" button if needed
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // DataTable
+              // ======= DATA TABLE =======
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
                   columns: const [
                     DataColumn(label: Text("RFID")),
-                    DataColumn(label: Text("Name")),
-                    DataColumn(label: Text("Email")),
-                    DataColumn(label: Text("Expiration")),
-                    DataColumn(label: Text("Points")),
+                    DataColumn(label: Text("NAME")),
+                    DataColumn(label: Text("EMAIL")),
+                    DataColumn(label: Text("EXPIRATIONS")),
+                    DataColumn(label: Text("POINTS")),
                   ],
                   rows: _filteredUsers.map((user) {
                     return DataRow(cells: [
-                      DataCell(Text(user["rfid"] ?? "")),
-                      DataCell(Text(user["name"] ?? "")),
-                      DataCell(Text(user["email"] ?? "")),
-                      DataCell(Text(user["expiration"] ?? "")),
-                      DataCell(Text(user["points"] ?? "")),
+                      DataCell(Text(user["RFID"]?.toString() ?? "")),
+                      DataCell(Text(user["NAME"]?.toString() ?? "")),
+                      DataCell(Text(user["EMAIL"]?.toString() ?? "")),
+                      DataCell(Text(user["EXPIRATIONS"]?.toString() ?? "")),
+                      DataCell(Text(user["POINTS"]?.toString() ?? "")),
                     ]);
                   }).toList(),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Edit User, Delete User, Refresh
-              // (In the screenshot, these are stacked vertically.)
-              ElevatedButton(
-                onPressed: () {
-                  // Example action: edit the selected user
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Edit User clicked")),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey,
-                ),
-                child: const Text("Edit User"),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () {
-                  // Example action: delete the selected user
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Delete User clicked")),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                ),
-                child: const Text("Delete User"),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () {
-                  // Example action: refresh the table
-                  setState(() {
-                    _searchController.clear();
-                    _filteredUsers = List.from(_users);
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
-                child: const Text("Refresh"),
+              // ======= EDIT, REFRESH, DELETE BUTTONS (side-by-side) =======
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Edit User
+                  SizedBox(
+                    width: 120,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Implement update logic here.
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Edit User clicked")),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2A5E),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16),
+                      ),
+                      child: const Text("Edit User"),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Refresh
+                  SizedBox(
+                    width: 120,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        _searchController.clear();
+                        await _fetchUsersFromDB();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2A5E),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16),
+                      ),
+                      child: const Text("Refresh"),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Delete User
+                  SizedBox(
+                    width: 120,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Implement delete logic here.
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Delete User clicked")),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2A5E),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16),
+                      ),
+                      child: const Text("Delete User"),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -339,6 +376,7 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
+  // Helper method to build styled TextFields
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
