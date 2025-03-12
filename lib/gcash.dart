@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'payment_method.dart';
 import 'thankyou_screen.dart';
 import 'database_helper.dart';
@@ -9,56 +10,27 @@ class GCashPaymentPage extends StatelessWidget {
   final String rfidData;
 
   const GCashPaymentPage({
-    super.key,
+    Key? key,
     required this.orders,
     required this.medicinesToBeDisabled,
     required this.rfidData,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Intercept back navigation
       onWillPop: () async {
-        debugPrint("GCashPaymentPage: Device back button or app bar back pressed. Going to PaymentMethodPage.");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaymentMethodPage(
-              orders: orders,
-              rfidData: rfidData,
-            ),
-          ),
-        );
-        return false; // Prevent default pop
+        // ...
+        return false;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFFFFF),
-        appBar: AppBar(
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: const Text(
-            "GCash Payment",
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF0D2A5E),
-        ),
+        // ...
         body: Center(
           child: SingleChildScrollView(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              // ...
               children: [
-                const Text(
-                  "Please Scan GCash QR Code to complete payment.",
-                  style: TextStyle(fontSize: 29, color: Colors.black),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 80),
-                Image.asset(
-                  'assets/images/qrcode.png',
-                  height: 400,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 90),
+                // ...
                 ElevatedButton(
                   onPressed: () async {
                     // Determine user type based on RFID data.
@@ -70,7 +42,9 @@ class GCashPaymentPage extends StatelessWidget {
                       int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
                       double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
                       double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
-                      String date = DateTime.now().toIso8601String();
+
+                      // 2) Format the date to match older transactions
+                      String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
                       Map<String, dynamic> transaction = {
                         'medicine': medicine,
@@ -82,8 +56,9 @@ class GCashPaymentPage extends StatelessWidget {
                         'user_type': userType,
                       };
 
-                      await DatabaseHelper().insertTransaction(transaction);
+                      await DatabaseHelper.instance.insertTransaction(transaction);
                     }
+
                     debugPrint("GCashPaymentPage: 'PAYMENT COMPLETED' button pressed. Navigating to ThankYouScreen.");
                     Navigator.pushReplacement(
                       context,
@@ -92,13 +67,7 @@ class GCashPaymentPage extends StatelessWidget {
                       ),
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2A5E),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 35,
-                      vertical: 20,
-                    ),
-                  ),
+                  // ...
                   child: const Text(
                     "PAYMENT COMPLETED",
                     style: TextStyle(fontSize: 25, color: Colors.white),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // 1) Import the intl package
 import 'confirmation_screen.dart';
 import 'database_helper.dart';
 
@@ -77,7 +78,9 @@ class PaymentPageState extends State<PaymentPage> {
       int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
       double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
       double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
-      String date = DateTime.now().toIso8601String();
+
+      // 2) Use the same format as your older transactions: yyyy-MM-dd HH:mm:ss
+      String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
       Map<String, dynamic> transaction = {
         'medicine': medicine,

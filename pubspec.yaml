@@ -16,9 +16,10 @@ dependencies:
   sqflite: ^2.0.0+3
   path: ^1.8.0
   cupertino_icons: ^1.0.8
-  syncfusion_flutter_charts: ^28.2.6
+  syncfusion_flutter_charts: ^28.2.9
   pdf: ^3.9.0
   printing: ^5.9.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
