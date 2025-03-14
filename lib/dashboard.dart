@@ -8,6 +8,7 @@ import 'transaction.dart';
 import 'splash_screen.dart';
 import 'database_helper.dart';
 import 'user.dart';
+import 'inventory.dart';
 
 
 // Model for chart data.
@@ -716,11 +717,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Bottom navigation tab selection.
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
     });
+
     if (index == 0) {
       Navigator.pushReplacement(
         context,
@@ -729,15 +730,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => TransactionScreen(isDarkMode: _isDarkMode),
-        ),
+        MaterialPageRoute(builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)),
       );
-    }
-    else if (index == 2) {
+    } else if (index == 2) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
+      );
+    } else if (index == 3) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => InventoryScreen(isDarkMode: _isDarkMode)),
       );
     }
   }

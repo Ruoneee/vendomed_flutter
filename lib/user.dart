@@ -24,28 +24,31 @@ class _UserScreenState extends State<UserScreen> {
   // Search field
   final TextEditingController _searchController = TextEditingController();
 
-  // User list from the DB and a filtered copy
+  // Full user list from DB + filtered list for searching
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
+
+  // Instead of an integer ID, we'll track the selected RFID
+  String? _selectedRfid;
 
   @override
   void initState() {
     super.initState();
     _isDarkMode = widget.isDarkMode;
-    _fetchUsersFromDB(); // Load users from vendomed.db on startup
+    _fetchUsersFromDB();
   }
 
-  // Fetch all users from the 'users' table and update lists
+  // Fetch all users from the DB
   Future<void> _fetchUsersFromDB() async {
     try {
       final userList = await DatabaseHelper.instance.getAllUsers();
-      print("Fetched ${userList.length} users from DB");
       setState(() {
         _users = userList;
         _filteredUsers = List.from(userList);
       });
+      debugPrint("Fetched ${userList.length} users from DB");
     } catch (e) {
-      print("Error fetching users from DB: $e");
+      debugPrint("Error fetching users from DB: $e");
     }
   }
 
@@ -59,32 +62,95 @@ class _UserScreenState extends State<UserScreen> {
     super.dispose();
   }
 
-  // Insert a new user into the DB and refresh the list
+  // Insert a new user
   Future<void> _onConfirm() async {
     final newUser = {
-      // Use exact column names from your table.
       'RFID': _rfidController.text,
       'NAME': _nameController.text,
       'EMAIL': _emailController.text,
-      'EXPIRATIONS': _expirationController.text,
-      'POINTS': '0', // Default value for points.
-      'ROLE': 'User', // Default role.
+      'EXPIRATION': _expirationController.text,
+      'POINTS': '0',  // Default
+      // ROLE column if you have it, e.g. 'ROLE': 'User'
     };
 
     try {
       await DatabaseHelper.instance.insertUser(newUser);
-      await _fetchUsersFromDB(); // Refresh the list
-      // Clear form fields
+      await _fetchUsersFromDB();
+      // Clear the form
       _rfidController.clear();
       _nameController.clear();
       _emailController.clear();
       _expirationController.clear();
     } catch (e) {
-      print("Error inserting user into DB: $e");
+      debugPrint("Error inserting user: $e");
     }
   }
 
-  // Filter users based on search query (by RFID or NAME)
+  // Update the selected user using RFID
+  Future<void> _onEditUser() async {
+    if (_selectedRfid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No user selected for editing")),
+      );
+      return;
+    }
+
+    // We generally don't update the RFID if it's your unique key,
+    // so we exclude it from userData. If you do want to change RFID,
+    // that complicates the logic (since the WHERE clause uses old RFID).
+    final updatedUser = {
+      'NAME': _nameController.text,
+      'EMAIL': _emailController.text,
+      'EXPIRATION': _expirationController.text,
+      // 'POINTS': ... if you want to change points
+    };
+
+    try {
+      await DatabaseHelper.instance.updateUserByRFID(updatedUser, _selectedRfid!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("User updated successfully")),
+      );
+      await _fetchUsersFromDB();
+    } catch (e) {
+      debugPrint("Error updating user: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error updating user: $e")),
+      );
+    }
+  }
+
+  // Delete the selected user using RFID
+  Future<void> _onDeleteUser() async {
+    if (_selectedRfid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No user selected for deletion")),
+      );
+      return;
+    }
+
+    try {
+      await DatabaseHelper.instance.deleteUserByRFID(_selectedRfid!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("User deleted successfully")),
+      );
+      await _fetchUsersFromDB();
+      // Clear the form after deletion
+      setState(() {
+        _selectedRfid = null;
+        _rfidController.clear();
+        _nameController.clear();
+        _emailController.clear();
+        _expirationController.clear();
+      });
+    } catch (e) {
+      debugPrint("Error deleting user: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error deleting user: $e")),
+      );
+    }
+  }
+
+  // Search user by RFID or NAME
   void _searchUser(String query) {
     setState(() {
       _filteredUsers = _users.where((user) {
@@ -96,7 +162,7 @@ class _UserScreenState extends State<UserScreen> {
     });
   }
 
-  // Bottom navigation logic
+  // Bottom navigation
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
@@ -130,11 +196,7 @@ class _UserScreenState extends State<UserScreen> {
         automaticallyImplyLeading: false,
         title: const Text(
           "User Dashboard",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2A5E),
       ),
@@ -160,21 +222,18 @@ class _UserScreenState extends State<UserScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ======= MANAGE USER SECTION (Box/Container) =======
+              // Manage User
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
                   color: _isDarkMode ? Colors.grey[900] : Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _isDarkMode ? Colors.white54 : Colors.grey.shade300,
-                  ),
+                  border: Border.all(color: _isDarkMode ? Colors.white54 : Colors.grey.shade300),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
                     Text(
                       "Manage User",
                       style: TextStyle(
@@ -184,36 +243,14 @@ class _UserScreenState extends State<UserScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-
-                    // RFID
-                    _buildTextField(
-                      controller: _rfidController,
-                      label: "Enter RFID Number",
-                    ),
+                    _buildTextField(controller: _rfidController, label: "Enter RFID Number"),
                     const SizedBox(height: 10),
-
-                    // Name
-                    _buildTextField(
-                      controller: _nameController,
-                      label: "User's Name",
-                    ),
+                    _buildTextField(controller: _nameController, label: "User's Name"),
                     const SizedBox(height: 10),
-
-                    // Email
-                    _buildTextField(
-                      controller: _emailController,
-                      label: "Email Address",
-                    ),
+                    _buildTextField(controller: _emailController, label: "Email Address"),
                     const SizedBox(height: 10),
-
-                    // Expirations
-                    _buildTextField(
-                      controller: _expirationController,
-                      label: "Expirations",
-                    ),
+                    _buildTextField(controller: _expirationController, label: "Expiration"),
                     const SizedBox(height: 10),
-
-                    // Confirm button BELOW Expirations field, centered
                     Align(
                       alignment: Alignment.center,
                       child: SizedBox(
@@ -235,30 +272,22 @@ class _UserScreenState extends State<UserScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ======= USER INFORMATION & SEARCH (blue box) =======
+              // User Information + Search
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D2A5E), // Blue background
+                  color: const Color(0xFF0D2A5E),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.grey.shade300, // Visible border
-                  ),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // "User Information" in white
-                    Text(
+                    const Text(
                       "User Information",
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
-                    // White search bar on the right
                     SizedBox(
                       width: 200,
                       child: TextField(
@@ -280,31 +309,55 @@ class _UserScreenState extends State<UserScreen> {
               ),
               const SizedBox(height: 10),
 
-              // ======= DATA TABLE =======
+              // Data Table (no checkboxes)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
+                  showCheckboxColumn: false,
                   columns: const [
                     DataColumn(label: Text("RFID")),
                     DataColumn(label: Text("NAME")),
                     DataColumn(label: Text("EMAIL")),
-                    DataColumn(label: Text("EXPIRATIONS")),
+                    DataColumn(label: Text("EXPIRATION")),
                     DataColumn(label: Text("POINTS")),
                   ],
                   rows: _filteredUsers.map((user) {
-                    return DataRow(cells: [
-                      DataCell(Text(user["RFID"]?.toString() ?? "")),
-                      DataCell(Text(user["NAME"]?.toString() ?? "")),
-                      DataCell(Text(user["EMAIL"]?.toString() ?? "")),
-                      DataCell(Text(user["EXPIRATIONS"]?.toString() ?? "")),
-                      DataCell(Text(user["POINTS"]?.toString() ?? "")),
-                    ]);
+                    // Use RFID as the unique key
+                    final rfid = user["RFID"]?.toString();
+                    return DataRow(
+                      selected: rfid == _selectedRfid,
+                      onSelectChanged: (selected) {
+                        if (selected == true && rfid != null) {
+                          setState(() {
+                            _selectedRfid = rfid;
+                            _rfidController.text = rfid;
+                            _nameController.text = user["NAME"]?.toString() ?? "";
+                            _emailController.text = user["EMAIL"]?.toString() ?? "";
+                            _expirationController.text = user["EXPIRATION"]?.toString() ?? "";
+                          });
+                        } else {
+                          // Deselect
+                          setState(() {
+                            if (_selectedRfid == rfid) {
+                              _selectedRfid = null;
+                            }
+                          });
+                        }
+                      },
+                      cells: [
+                        DataCell(Text(rfid ?? "")),
+                        DataCell(Text(user["NAME"]?.toString() ?? "")),
+                        DataCell(Text(user["EMAIL"]?.toString() ?? "")),
+                        DataCell(Text(user["EXPIRATION"]?.toString() ?? "")),
+                        DataCell(Text(user["POINTS"]?.toString() ?? "")),
+                      ],
+                    );
                   }).toList(),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // ======= EDIT, REFRESH, DELETE BUTTONS (side-by-side) =======
+              // Edit, Refresh, Delete
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -312,12 +365,7 @@ class _UserScreenState extends State<UserScreen> {
                   SizedBox(
                     width: 120,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Implement update logic here.
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Edit User clicked")),
-                        );
-                      },
+                      onPressed: _onEditUser,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2A5E),
                         foregroundColor: Colors.white,
@@ -328,7 +376,6 @@ class _UserScreenState extends State<UserScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-
                   // Refresh
                   SizedBox(
                     width: 120,
@@ -347,17 +394,11 @@ class _UserScreenState extends State<UserScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-
                   // Delete User
                   SizedBox(
                     width: 120,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Implement delete logic here.
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Delete User clicked")),
-                        );
-                      },
+                      onPressed: _onDeleteUser,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2A5E),
                         foregroundColor: Colors.white,
@@ -376,21 +417,17 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
-  // Helper method to build styled TextFields
+  // Helper method for building styled TextFields
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
   }) {
     return TextField(
       controller: controller,
-      style: TextStyle(
-        color: _isDarkMode ? Colors.white : Colors.black,
-      ),
+      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: _isDarkMode ? Colors.white70 : Colors.black54,
-        ),
+        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
         border: const OutlineInputBorder(),
       ),
     );

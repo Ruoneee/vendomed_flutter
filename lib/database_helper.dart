@@ -27,7 +27,7 @@ class DatabaseHelper {
   Stream<List<Map<String, dynamic>>> get transactionStream =>
       _transactionStreamController.stream;
 
-  // Initialize the database by copying from assets and opening the database.
+  // Initialize the database by checking if it exists; if not, copy from assets and then open.
   Future<Database> _initDb() async {
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, "vendomed.db");
@@ -35,12 +35,15 @@ class DatabaseHelper {
     // Create the directory if it doesn't exist.
     await Directory(dirname(path)).create(recursive: true);
 
-    // Copy the database from assets to the local path (overwrites any existing DB).
-    await _copyDatabaseFromAssets(path);
-    print("Database copied from assets to: $path");
+    final dbFile = File(path);
+    if (!await dbFile.exists()) {
+      await _copyDatabaseFromAssets(path);
+      print("Database copied from assets to: $path");
+    } else {
+      print("Database already exists at: $path");
+    }
 
     try {
-      // Open the database.
       final database = await openDatabase(
         path,
         version: 1,
@@ -57,8 +60,7 @@ class DatabaseHelper {
   // Copy vendomed.db from the assets folder to the specified local path.
   Future<void> _copyDatabaseFromAssets(String path) async {
     ByteData data = await rootBundle.load("assets/vendomed.db");
-    List<int> bytes =
-    data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     await File(path).writeAsBytes(bytes, flush: true);
   }
 
@@ -91,6 +93,17 @@ class DatabaseHelper {
       )
     ''');
     print("Users table created in onCreate");
+
+    // Create the stocks table if it doesn't exist.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS stocks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        NAME TEXT,
+        AMOUNT TEXT,
+        STOCKS TEXT
+      )
+    ''');
+    print("Stocks table created in onCreate");
   }
 
   // Private helper method to update the transactions stream.
@@ -137,7 +150,7 @@ class DatabaseHelper {
     return await database.insert('users', userData);
   }
 
-  // Updates an existing user record.
+  // Updates an existing user record using the integer primary key.
   Future<int> updateUser(Map<String, dynamic> userData, int userId) async {
     final database = await db;
     return await database.update(
@@ -148,13 +161,69 @@ class DatabaseHelper {
     );
   }
 
-  // Deletes a user record.
+  // Deletes a user record using the integer primary key.
   Future<int> deleteUser(int userId) async {
     final database = await db;
     return await database.delete(
       'users',
       where: 'user_id = ?',
       whereArgs: [userId],
+    );
+  }
+
+  // Updates an existing user record using the RFID as the unique key.
+  Future<int> updateUserByRFID(Map<String, dynamic> userData, String rfid) async {
+    final database = await db;
+    return await database.update(
+      'users',
+      userData,
+      where: 'rfid = ?',
+      whereArgs: [rfid],
+    );
+  }
+
+  // Deletes a user record using the RFID as the unique key.
+  Future<int> deleteUserByRFID(String rfid) async {
+    final database = await db;
+    return await database.delete(
+      'users',
+      where: 'rfid = ?',
+      whereArgs: [rfid],
+    );
+  }
+
+  // ========== STOCKS TABLE METHODS ==========
+
+  // Retrieves all rows from 'stocks'.
+  Future<List<Map<String, dynamic>>> getAllStocks() async {
+    final database = await db;
+    return await database.query('stocks');
+  }
+
+  // Inserts a new row into 'stocks'.
+  Future<int> insertStock(Map<String, dynamic> stockData) async {
+    final database = await db;
+    return await database.insert('stocks', stockData);
+  }
+
+  // Updates an existing row in 'stocks' by NAME.
+  Future<int> updateStock(Map<String, dynamic> stockData, String name) async {
+    final database = await db;
+    return await database.update(
+      'stocks',
+      stockData,
+      where: 'NAME = ?',
+      whereArgs: [name],
+    );
+  }
+
+  // Deletes a row from 'stocks' by NAME.
+  Future<int> deleteStock(String name) async {
+    final database = await db;
+    return await database.delete(
+      'stocks',
+      where: 'NAME = ?',
+      whereArgs: [name],
     );
   }
 
