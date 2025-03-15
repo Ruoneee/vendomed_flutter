@@ -4,6 +4,8 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'dashboard.dart';
 import 'database_helper.dart';
 import 'user.dart';
+import 'inventory.dart';
+
 
 /// Model for payment methods in the pie chart.
 class PaymentMethodData {
@@ -345,12 +347,13 @@ class _TransactionScreenState extends State<TransactionScreen> {
               MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
             );
           } else if (index == 3) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Inventory screen not implemented.")),
-            );
+          Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => InventoryScreen(isDarkMode: _isDarkMode)),
+          );
           }
 
-        },
+  },
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
         // MATCHED VALUES

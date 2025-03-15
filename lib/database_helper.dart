@@ -97,10 +97,12 @@ class DatabaseHelper {
     // Create the stocks table if it doesn't exist.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS stocks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        NAME TEXT,
+        BATCH_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        PRODUCT_NAME TEXT,
+        PRODUCT_ID TEXT,
         AMOUNT TEXT,
-        STOCKS TEXT
+        STATUS TEXT,
+        COUNT TEXT
       )
     ''');
     print("Stocks table created in onCreate");
@@ -194,36 +196,36 @@ class DatabaseHelper {
 
   // ========== STOCKS TABLE METHODS ==========
 
-  // Retrieves all rows from 'stocks'.
+  // Retrieves all rows from the 'stocks' table.
   Future<List<Map<String, dynamic>>> getAllStocks() async {
     final database = await db;
     return await database.query('stocks');
   }
 
-  // Inserts a new row into 'stocks'.
+  // Inserts a new stock record.
   Future<int> insertStock(Map<String, dynamic> stockData) async {
     final database = await db;
     return await database.insert('stocks', stockData);
   }
 
-  // Updates an existing row in 'stocks' by NAME.
-  Future<int> updateStock(Map<String, dynamic> stockData, String name) async {
+  // Updates an existing stock record by PRODUCT_NAME (or adjust to use BATCH_ID if desired).
+  Future<int> updateStock(Map<String, dynamic> stockData, String productName) async {
     final database = await db;
     return await database.update(
       'stocks',
       stockData,
-      where: 'NAME = ?',
-      whereArgs: [name],
+      where: 'PRODUCT_NAME = ?',
+      whereArgs: [productName],
     );
   }
 
-  // Deletes a row from 'stocks' by NAME.
-  Future<int> deleteStock(String name) async {
+  // Deletes a stock record by PRODUCT_NAME.
+  Future<int> deleteStock(String productName) async {
     final database = await db;
     return await database.delete(
       'stocks',
-      where: 'NAME = ?',
-      whereArgs: [name],
+      where: 'PRODUCT_NAME = ?',
+      whereArgs: [productName],
     );
   }
 

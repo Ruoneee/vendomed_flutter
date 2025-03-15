@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard.dart';
 import 'transaction.dart';
 import 'database_helper.dart';
+import 'inventory.dart';
 
 class UserScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -167,6 +168,7 @@ class _UserScreenState extends State<UserScreen> {
     setState(() {
       _selectedTabIndex = index;
     });
+
     if (index == 0) {
       Navigator.pushReplacement(
         context,
@@ -175,15 +177,17 @@ class _UserScreenState extends State<UserScreen> {
     } else if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => TransactionScreen(isDarkMode: _isDarkMode),
-        ),
+        MaterialPageRoute(builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)),
       );
     } else if (index == 2) {
-      // Stay on Users
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
+      );
     } else if (index == 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Inventory screen not implemented")),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => InventoryScreen(isDarkMode: _isDarkMode)),
       );
     }
   }
