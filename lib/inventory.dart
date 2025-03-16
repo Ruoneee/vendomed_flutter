@@ -14,22 +14,24 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   bool _isDarkMode = false;
-  int _selectedTabIndex = 3; // Inventory tab
+  int _selectedTabIndex = 3; // Inventory tab index
 
-  // "Manage Inventory" form fields
+  // "Manage Inventory" form fields (for 5 columns; BATCH_ID is auto)
+  final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _productIdController = TextEditingController();
-  final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _statusController = TextEditingController();
+  final TextEditingController _countController = TextEditingController();
 
-  // For searching
+  // For searching inventory
   final TextEditingController _searchController = TextEditingController();
 
-  // Data from DB (stocks table)
+  // Inventory data loaded from DB
   List<Map<String, dynamic>> _stocks = [];
-  // Filtered list for the "Main Inventory" table
+  // Filtered list for the Main Inventory table
   List<Map<String, dynamic>> _filteredStocks = [];
 
-  // Placeholder "Batch Expiry" table (replace with real DB if available)
+  // Placeholder Batch Expiry data (replace with real DB if needed)
   final List<Map<String, dynamic>> _batchExpiryItems = [
     {
       "batchId": "B-001",
@@ -44,13 +46,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
       "dateReceived": "2024-07-10",
     },
   ];
-  // Filtered list for the second table
+  // Filtered list for the Batch Expiry table
   List<Map<String, dynamic>> _filteredExpiry = [];
 
-  // Counters for the colored indicators
+  // Stock counters
   int _inStockCount = 0;
   int _warningCount = 0;
   int _outOfStockCount = 0;
+
+  // Track the selected row's BATCH_ID for updating
+  int? _selectedBatchId;
 
   @override
   void initState() {
@@ -62,14 +67,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   void dispose() {
+    _productNameController.dispose();
     _productIdController.dispose();
-    _quantityController.dispose();
     _amountController.dispose();
+    _statusController.dispose();
+    _countController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  // Fetch all rows from 'stocks' table, then compute indicators
+  // Fetch inventory data from the 'stocks' table and update counters
   Future<void> _fetchStocksFromDB() async {
     try {
       final stockList = await DatabaseHelper.instance.getAllStocks();
@@ -85,44 +92,73 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   // Insert a new row into 'stocks'
-  // Mapping:
-  //   "PRODUCT ID" => _productIdController.text
-  //   "COUNT"      => _quantityController.text
-  //   "AMOUNT"     => _amountController.text
-  //   "PRODUCT NAME" is set to "Placeholder" (adjust if needed)
-  //   "STATUS" is set to "In Stock" if COUNT>0, else "Out of stock"
   Future<void> _onSubmit() async {
-    final countVal = int.tryParse(_quantityController.text) ?? 0;
-    final initialStatus = (countVal > 0) ? "In Stock" : "Out of stock";
-
     final newItem = {
-      "PRODUCT ID": _productIdController.text,
-      "COUNT": _quantityController.text,
-      "AMOUNT": _amountController.text,
-      "PRODUCT NAME": "Placeholder", // Adjust if you want a dedicated field
-      "STATUS": initialStatus,
+      "product_name": _productNameController.text,
+      "product_id": _productIdController.text,
+      "amount": _amountController.text,
+      "status": _statusController.text,
+      "count": _countController.text,
     };
 
     try {
       await DatabaseHelper.instance.insertStock(newItem);
       await _fetchStocksFromDB();
-      // Clear fields
-      _productIdController.clear();
-      _quantityController.clear();
-      _amountController.clear();
+      _clearManageInventoryFields();
     } catch (e) {
       debugPrint("Error inserting stock: $e");
     }
   }
 
-  // Compute stock indicators based on the "STATUS" column
+  // Update the selected stock record using its BATCH_ID.
+  Future<void> _onUpdate() async {
+    if (_selectedBatchId == null) return;
+    final updatedItem = {
+      "product_name": _productNameController.text,
+      "product_id": _productIdController.text,
+      "amount": _amountController.text,
+      "status": _statusController.text,
+      "count": _countController.text,
+    };
+
+    try {
+      await DatabaseHelper.instance.updateStockByBatchId(updatedItem, _selectedBatchId!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Stock updated successfully")),
+      );
+      setState(() {
+        _selectedBatchId = null;
+      });
+      await _fetchStocksFromDB();
+      _clearManageInventoryFields();
+    } catch (e) {
+      debugPrint("Error updating stock: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error updating stock: $e")),
+      );
+    }
+  }
+
+  // Clear the Manage Inventory form fields and deselect the record.
+  void _clearManageInventoryFields() {
+    _productNameController.clear();
+    _productIdController.clear();
+    _amountController.clear();
+    _statusController.clear();
+    _countController.clear();
+    setState(() {
+      _selectedBatchId = null;
+    });
+  }
+
+  // Compute stock indicators based on the "status" column.
   void _computeStockIndicators() {
     int inStock = 0;
     int warning = 0;
     int outOfStock = 0;
 
     for (var item in _stocks) {
-      final statusStr = (item["STATUS"] ?? "").toString().toLowerCase();
+      final statusStr = (item["status"] ?? "").toString().toLowerCase();
       if (statusStr == "in stock") {
         inStock++;
       } else if (statusStr == "warning") {
@@ -138,7 +174,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  // Return a color based on the status text
+  // Return a color based on the status.
   Color _getStatusColor(String status) {
     final lower = status.toLowerCase();
     if (lower == "in stock") return Colors.green;
@@ -147,12 +183,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return _isDarkMode ? Colors.white : Colors.black;
   }
 
-  // Search by "PRODUCT ID" or "PRODUCT NAME" in stocks and by batchId in expiry data
+  // Search in 'stocks' by product_id or product_name, also filter placeholder expiry by batchId.
   void _searchItem(String query) {
     setState(() {
       _filteredStocks = _stocks.where((item) {
-        final productId = (item["PRODUCT ID"] ?? "").toString().toLowerCase();
-        final productName = (item["PRODUCT NAME"] ?? "").toString().toLowerCase();
+        final productId = (item["product_id"] ?? "").toString().toLowerCase();
+        final productName = (item["product_name"] ?? "").toString().toLowerCase();
         final combined = "$productId $productName";
         return combined.contains(query.toLowerCase());
       }).toList();
@@ -164,28 +200,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  // Bottom navigation
+  // Bottom navigation logic.
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
     });
     if (index == 0) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => DashboardScreen()),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
     } else if (index == 1) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)));
     } else if (index == 2) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)));
     } else if (index == 3) {
-      // Stay on Inventory
+      // Remain on Inventory
     }
   }
 
@@ -224,7 +251,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Manage Inventory Section
+              // MANAGE INVENTORY SECTION
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
@@ -247,41 +274,32 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // Product ID
-                    _buildTextField(
-                      controller: _productIdController,
-                      label: "Enter product ID",
-                    ),
+                    _buildTextField(controller: _productNameController, label: "Enter product name"),
                     const SizedBox(height: 10),
-                    // Quantity
-                    _buildTextField(
-                      controller: _quantityController,
-                      label: "Enter quantity to add",
-                    ),
+                    _buildTextField(controller: _productIdController, label: "Enter product ID"),
                     const SizedBox(height: 10),
-                    // Amount
-                    _buildTextField(
-                      controller: _amountController,
-                      label: "Enter amount",
-                    ),
+                    _buildTextField(controller: _amountController, label: "Enter amount"),
                     const SizedBox(height: 10),
-                    // Submit Button
+                    _buildTextField(controller: _statusController, label: "Enter status (In Stock, Warning, Out of stock)"),
+                    const SizedBox(height: 10),
+                    _buildTextField(controller: _countController, label: "Enter count"),
+                    const SizedBox(height: 10),
                     Align(
                       alignment: Alignment.centerRight,
                       child: ElevatedButton(
-                        onPressed: _onSubmit,
+                        onPressed: _selectedBatchId == null ? _onSubmit : _onUpdate,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0D2A5E),
                           foregroundColor: Colors.white,
                         ),
-                        child: const Text("Submit"),
+                        child: Text(_selectedBatchId == null ? "Submit" : "Update"),
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              // Stock Indicators
+              // STOCK INDICATORS (Larger boxes)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -291,7 +309,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              // Search and Add New Product
+              // SEARCH + ADD NEW PRODUCT
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -299,14 +317,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     width: 200,
                     child: TextField(
                       controller: _searchController,
-                      style: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black,
-                      ),
+                      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
                       decoration: InputDecoration(
                         labelText: "Search",
-                        labelStyle: TextStyle(
-                          color: _isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
+                        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
                         border: const OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -328,46 +342,107 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-              // Main Inventory Table
+              // MAIN INVENTORY TABLE (Larger)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text("Batch ID")),
-                    DataColumn(label: Text("Product ID")),
-                    DataColumn(label: Text("Product Name")),
-                    DataColumn(label: Text("Amount")),
-                    DataColumn(label: Text("Status")),
-                    DataColumn(label: Text("Count")),
-                  ],
-                  rows: _filteredStocks.map((item) {
-                    final batchId = item["BATCH ID"]?.toString() ?? "";
-                    final productId = item["PRODUCT ID"]?.toString() ?? "";
-                    final productName = item["PRODUCT NAME"]?.toString() ?? "";
-                    final amountStr = item["AMOUNT"]?.toString() ?? "0";
-                    final statusStr = item["STATUS"]?.toString() ?? "Out of stock";
-                    final countStr = item["COUNT"]?.toString() ?? "0";
-                    return DataRow(cells: [
-                      DataCell(Text(batchId)),
-                      DataCell(Text(productId)),
-                      DataCell(Text(productName)),
-                      DataCell(Text(amountStr)),
-                      DataCell(
-                        Text(
-                          statusStr,
-                          style: TextStyle(
-                            color: _getStatusColor(statusStr),
-                            fontWeight: FontWeight.bold,
+                  showCheckboxColumn: false,
+                  dataRowHeight: 56.0,
+                  headingRowHeight: 56.0,
+                  columns: [
+                    DataColumn(
+                      label: Text(
+                        "Batch ID",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Product Name",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Product ID",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Amount",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Expanded(
+                        child: Center(
+                          child: Text(
+                            "Status",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
-                      DataCell(Text(countStr)),
-                    ]);
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Count",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                  rows: _filteredStocks.map((item) {
+                    final batchIdStr = item["BATCH_ID"]?.toString() ?? "";
+                    final productNameStr = item["product_name"]?.toString() ?? "";
+                    final productIdStr = item["product_id"]?.toString() ?? "";
+                    final amountStr = item["amount"]?.toString() ?? "0";
+                    final statusStr = item["status"]?.toString() ?? "Out of stock";
+                    final countStr = item["count"]?.toString() ?? "0";
+                    final batchIdInt = int.tryParse(batchIdStr);
+                    return DataRow(
+                      selected: _selectedBatchId == batchIdInt,
+                      onSelectChanged: (selected) {
+                        if (selected == true) {
+                          setState(() {
+                            _selectedBatchId = batchIdInt;
+                            _productNameController.text = productNameStr;
+                            _productIdController.text = productIdStr;
+                            _amountController.text = amountStr;
+                            _statusController.text = statusStr;
+                            _countController.text = countStr;
+                          });
+                        } else {
+                          setState(() {
+                            _selectedBatchId = null;
+                            _clearManageInventoryFields();
+                          });
+                        }
+                      },
+                      cells: [
+                        DataCell(Text(batchIdStr, style: const TextStyle(fontSize: 16))),
+                        DataCell(Text(productNameStr, style: const TextStyle(fontSize: 16))),
+                        DataCell(Text(productIdStr, style: const TextStyle(fontSize: 16))),
+                        DataCell(Text(amountStr, style: const TextStyle(fontSize: 16))),
+                        DataCell(
+                          Center(
+                            child: Text(
+                              statusStr,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: _getStatusColor(statusStr),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataCell(Text(countStr, style: const TextStyle(fontSize: 16))),
+                      ],
+                    );
                   }).toList(),
                 ),
               ),
               const SizedBox(height: 20),
-              // Batch Expiry Management Table
+              // BATCH EXPIRY MANAGEMENT TABLE (Even Larger)
               Text(
                 "Batch Expiry Management",
                 style: TextStyle(
@@ -380,24 +455,46 @@ class _InventoryScreenState extends State<InventoryScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text("Batch ID")),
-                    DataColumn(label: Text("Expiration")),
-                    DataColumn(label: Text("Supplier")),
-                    DataColumn(label: Text("Date Received")),
+                  dataRowHeight: 64.0,
+                  headingRowHeight: 64.0,
+                  columns: [
+                    DataColumn(
+                      label: Text(
+                        "Batch ID",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Expiration",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Supplier",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        "Date Received",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
                   rows: _filteredExpiry.map((batch) {
                     return DataRow(cells: [
-                      DataCell(Text(batch["batchId"] ?? "")),
-                      DataCell(Text(batch["expiration"] ?? "")),
-                      DataCell(Text(batch["supplier"] ?? "")),
-                      DataCell(Text(batch["dateReceived"] ?? "")),
+                      DataCell(Text(batch["batchId"] ?? "", style: const TextStyle(fontSize: 16))),
+                      DataCell(Text(batch["expiration"] ?? "", style: const TextStyle(fontSize: 16))),
+                      DataCell(Text(batch["supplier"] ?? "", style: const TextStyle(fontSize: 16))),
+                      DataCell(Text(batch["dateReceived"] ?? "", style: const TextStyle(fontSize: 16))),
                     ]);
                   }).toList(),
                 ),
               ),
               const SizedBox(height: 20),
-              // Refresh Button
+              // REFRESH BUTTON (Larger style)
               Center(
                 child: ElevatedButton(
                   onPressed: () async {
@@ -410,6 +507,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   child: const Text("Refresh"),
                 ),
@@ -421,78 +520,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  // Helper for building text fields
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-  }) {
+  // Helper for building text fields.
+  Widget _buildTextField({required TextEditingController controller, required String label}) {
     return TextField(
       controller: controller,
       style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: _isDarkMode ? Colors.white70 : Colors.black54,
-        ),
+        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
         border: const OutlineInputBorder(),
       ),
     );
   }
 
-  // Helper for the dropdown (if needed)
-  Widget _buildDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: _isDarkMode ? Colors.white70 : Colors.black54,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: DropdownButton<String>(
-            value: value,
-            isExpanded: true,
-            underline: const SizedBox(),
-            dropdownColor: _isDarkMode ? Colors.grey[900] : Colors.white,
-            style: TextStyle(
-              color: _isDarkMode ? Colors.white : Colors.black,
-            ),
-            items: items.map((String item) {
-              return DropdownMenuItem<String>(
-                value: item,
-                child: Text(item),
-              );
-            }).toList(),
-            onChanged: onChanged,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Helper for the colored stock indicator boxes
-  Widget _buildStockIndicator({
-    required int count,
-    required String label,
-    required Color color,
-  }) {
+  // Helper for the colored stock indicator boxes (Larger version)
+  Widget _buildStockIndicator({required int count, required String label, required Color color}) {
     return Container(
-      width: 80,
-      height: 80,
+      width: 120,
+      height: 120,
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
@@ -501,18 +546,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
               "$count",
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
             ),
+            const SizedBox(height: 8),
             Text(
               label,
+              textAlign: TextAlign.center,
               style: TextStyle(
+                fontSize: 18,
                 color: color,
                 fontWeight: FontWeight.w600,
               ),

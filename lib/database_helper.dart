@@ -94,15 +94,15 @@ class DatabaseHelper {
     ''');
     print("Users table created in onCreate");
 
-    // Create the stocks table if it doesn't exist.
+    // Create the stocks table with new column names.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS stocks (
         BATCH_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-        PRODUCT_NAME TEXT,
-        PRODUCT_ID TEXT,
-        AMOUNT TEXT,
-        STATUS TEXT,
-        COUNT TEXT
+        product_name TEXT,
+        product_id TEXT,
+        amount TEXT,
+        status TEXT,
+        count TEXT
       )
     ''');
     print("Stocks table created in onCreate");
@@ -116,7 +116,6 @@ class DatabaseHelper {
 
   // ========== TRANSACTIONS TABLE METHODS ==========
 
-  // Inserts a transaction record and updates the stream.
   Future<int> insertTransaction(Map<String, dynamic> transaction) async {
     final database = await db;
     int id = await database.insert("transactions", transaction);
@@ -125,13 +124,11 @@ class DatabaseHelper {
     return id;
   }
 
-  // Retrieves all transaction records.
   Future<List<Map<String, dynamic>>> getTransactions() async {
     final database = await db;
     return await database.query("transactions");
   }
 
-  // Utility method for debugging: prints out all current transactions.
   Future<void> debugPrintTransactions() async {
     final dbInstance = await db;
     List<Map<String, dynamic>> results = await dbInstance.query("transactions");
@@ -140,19 +137,16 @@ class DatabaseHelper {
 
   // ========== USERS TABLE METHODS ==========
 
-  // Retrieves all users.
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     final database = await db;
     return await database.query('users');
   }
 
-  // Inserts a new user record into the users table.
   Future<int> insertUser(Map<String, dynamic> userData) async {
     final database = await db;
     return await database.insert('users', userData);
   }
 
-  // Updates an existing user record using the integer primary key.
   Future<int> updateUser(Map<String, dynamic> userData, int userId) async {
     final database = await db;
     return await database.update(
@@ -163,7 +157,6 @@ class DatabaseHelper {
     );
   }
 
-  // Deletes a user record using the integer primary key.
   Future<int> deleteUser(int userId) async {
     final database = await db;
     return await database.delete(
@@ -173,7 +166,6 @@ class DatabaseHelper {
     );
   }
 
-  // Updates an existing user record using the RFID as the unique key.
   Future<int> updateUserByRFID(Map<String, dynamic> userData, String rfid) async {
     final database = await db;
     return await database.update(
@@ -184,7 +176,6 @@ class DatabaseHelper {
     );
   }
 
-  // Deletes a user record using the RFID as the unique key.
   Future<int> deleteUserByRFID(String rfid) async {
     final database = await db;
     return await database.delete(
@@ -196,42 +187,49 @@ class DatabaseHelper {
 
   // ========== STOCKS TABLE METHODS ==========
 
-  // Retrieves all rows from the 'stocks' table.
   Future<List<Map<String, dynamic>>> getAllStocks() async {
     final database = await db;
     return await database.query('stocks');
   }
 
-  // Inserts a new stock record.
   Future<int> insertStock(Map<String, dynamic> stockData) async {
     final database = await db;
     return await database.insert('stocks', stockData);
   }
 
-  // Updates an existing stock record by PRODUCT_NAME (or adjust to use BATCH_ID if desired).
+  // Updates an existing stock record by BATCH_ID.
+  Future<int> updateStockByBatchId(Map<String, dynamic> stockData, int batchId) async {
+    final database = await db;
+    return await database.update(
+      'stocks',
+      stockData,
+      where: 'BATCH_ID = ?',
+      whereArgs: [batchId],
+    );
+  }
+
+  // Alternative update method by product_name if needed.
   Future<int> updateStock(Map<String, dynamic> stockData, String productName) async {
     final database = await db;
     return await database.update(
       'stocks',
       stockData,
-      where: 'PRODUCT_NAME = ?',
+      where: 'product_name = ?',
       whereArgs: [productName],
     );
   }
 
-  // Deletes a stock record by PRODUCT_NAME.
   Future<int> deleteStock(String productName) async {
     final database = await db;
     return await database.delete(
       'stocks',
-      where: 'PRODUCT_NAME = ?',
+      where: 'product_name = ?',
       whereArgs: [productName],
     );
   }
 
   // ========== CLOSE DB ==========
 
-  // Call this method to properly close the database connection and stream when done.
   void dispose() {
     _db?.close();
     _transactionStreamController.close();
