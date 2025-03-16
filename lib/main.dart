@@ -4,13 +4,14 @@ import 'splash_screen.dart';
 import 'user_selection_screen.dart';
 import 'rfid_screen.dart';
 import 'medicine_menu.dart';
+import 'usb_helper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize the database (vendomed.db)
   await DatabaseHelper().db;
-
+  USBHelper().initUSB(); // ✅ Initialize USB connection at app startup
   runApp(const MyApp());
 }
 

@@ -3,11 +3,15 @@ import 'package:intl/intl.dart'; // For formatting dates
 import 'confirmation_screen.dart';
 import 'database_helper.dart';
 import 'medicine_menu.dart'; // To navigate back with existing orders
+import 'usb_helper.dart'; // Import USB Helper
+
+
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, String>> orders;
   final List<String> medicinesToBeDisabled;
   final String rfidData;
+
 
   const PaymentPage({
     super.key,
@@ -22,6 +26,7 @@ class PaymentPage extends StatefulWidget {
 
 class PaymentPageState extends State<PaymentPage> {
   final TextEditingController _coinsInsertedController = TextEditingController();
+  final USBHelper _usbHelper = USBHelper(); // ✅ Uses global instance
 
   int coinInserted = 0;
   bool coinEqualToAmount = false;
@@ -33,6 +38,8 @@ class PaymentPageState extends State<PaymentPage> {
     super.initState();
     _calculateTotalAmount();
     _loadUserName();
+    _usbHelper.initUSB(); // ✅ Ensures connection persists
+    _coinsInsertedController.text = "₱0.00"; // ✅ Initialize amount inserted
   }
 
   Future<void> _loadUserName() async {
@@ -59,6 +66,13 @@ class PaymentPageState extends State<PaymentPage> {
         _userName = widget.rfidData;
       });
     }
+  }
+
+  void _incrementAmountInserted() {
+    setState(() {
+      coinInserted += 20; // ✅ Increment by 20
+      _coinsInsertedController.text = "₱${coinInserted.toStringAsFixed(2)}"; // ✅ Update UI
+    });
   }
 
   void _calculateTotalAmount() {
@@ -124,25 +138,26 @@ class PaymentPageState extends State<PaymentPage> {
   }
 
   Future<void> _onProceedButtonPressed() async {
-    if (coinEqualToAmount) {
+    _calculateTotalAmount(); // ✅ Ensure totalAmount is updated
+
+    if (coinInserted >= totalAmount) { // ✅ Compare inserted amount with total amount
       await _insertTransactions();
-      await _updateStocksForOrders(); // Deduct ordered quantities from stocks
+      await _updateStocksForOrders();
+
+      // ✅ Send medicine orders to ESP32 for dispensing
+      await _usbHelper.sendOrdersToESP32(widget.orders);
 
       setState(() {
         coinEqualToAmount = false;
         coinInserted = 0;
+        _coinsInsertedController.text = "₱0.00"; // ✅ Reset UI
       });
-      print("Transaction Successful");
 
-      // Return to previous screen with disabled medicines list if needed.
-      Navigator.pop(context, widget.medicinesToBeDisabled);
 
-      // Then navigate to the confirmation screen.
-      Navigator.push(
+      // ✅ Navigate to ConfirmationScreen
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => ConfirmationScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => ConfirmationScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,6 +165,7 @@ class PaymentPageState extends State<PaymentPage> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -219,6 +235,7 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
+
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
@@ -240,6 +257,41 @@ class PaymentPageState extends State<PaymentPage> {
                 style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 20),
+
+              // ✅ AMOUNT INSERTED SECTION
+              const Text(
+                'AMOUNT INSERTED:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _coinsInsertedController, // ✅ Dynamic controller
+                enabled: false,
+                decoration: const InputDecoration(
+                  disabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black),
+                  ),
+                  hintText: 'Amount inserted will appear here',
+                ),
+                style: const TextStyle(color: Colors.black),
+              ),
+              const SizedBox(height: 20),
+
+              // ✅ ADD COINS BUTTON
+              Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _incrementAmountInserted, // ✅ Increment coins
+                  child: const Text('ADD ₱20'),
+                ),
+              ),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'medicine_menu.dart';
-import 'splash_screen.dart';
 import 'database_helper.dart';
 import 'dashboard.dart';
 
