@@ -54,7 +54,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   int _warningCount = 0;
   int _outOfStockCount = 0;
 
-  // Track the selected row's BATCH_ID for updating
+  // Track the selected row's Batch ID for updating.
+  // This value will be shown in the Manage Inventory section.
   int? _selectedBatchId;
 
   @override
@@ -110,7 +111,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  // Update the selected stock record using its BATCH_ID.
+  // Update the selected stock record using its Batch ID.
   Future<void> _onUpdate() async {
     if (_selectedBatchId == null) return;
     final updatedItem = {
@@ -274,6 +275,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    // Display the selected Batch ID if one is selected.
+                    if (_selectedBatchId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          "Batch ID: $_selectedBatchId",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                      ),
                     _buildTextField(controller: _productNameController, label: "Enter product name"),
                     const SizedBox(height: 10),
                     _buildTextField(controller: _productIdController, label: "Enter product ID"),
@@ -392,7 +406,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   ],
                   rows: _filteredStocks.map((item) {
-                    final batchIdStr = item["BATCH_ID"]?.toString() ?? "";
+                    // Try to get Batch ID with either uppercase or lowercase key.
+                    final batchIdStr = item["BATCH_ID"]?.toString() ?? item["batch_id"]?.toString() ?? "";
                     final productNameStr = item["product_name"]?.toString() ?? "";
                     final productIdStr = item["product_id"]?.toString() ?? "";
                     final amountStr = item["amount"]?.toString() ?? "0";

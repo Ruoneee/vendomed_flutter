@@ -2,30 +2,40 @@ import 'package:flutter/material.dart';
 import 'user_selection_screen.dart';
 import 'payment_method.dart';
 import 'database_helper.dart';
-import 'dashboard.dart'; // Import the dashboard screen.
 import 'dart:async';
 
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
+  /// Optional: use this to pass existing orders when coming back from Payment screens.
+  final List<Map<String, String>>? existingOrders;
 
-  const MedicineMenu({Key? key, required this.rfidData}) : super(key: key);
+  const MedicineMenu({
+    Key? key,
+    required this.rfidData,
+    this.existingOrders,
+  }) : super(key: key);
 
   @override
   MedicineMenuState createState() => MedicineMenuState();
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
-  // Each order now includes: name, quantity, and price.
+  /// Each order is a map with keys: 'name', 'quantity', and 'price'.
   List<Map<String, String>> orders = [];
 
   String _userName = "";
   List<Map<String, dynamic>> medicines = [];
   Timer? _stockUpdateTimer;
-  Map<String, bool> _isTapped = {}; // Tracks the tap state of each item.
+  // For handling tap animations on medicine items.
+  Map<String, bool> _isTapped = {};
 
   @override
   void initState() {
     super.initState();
+    // If there are existing orders passed in, use them.
+    if (widget.existingOrders != null) {
+      orders = List.from(widget.existingOrders!);
+    }
     _loadUserName();
     _fetchMedicines();
     _startStockListener();
@@ -38,19 +48,18 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _startStockListener() {
-    // Fetch from the database every 2 seconds.
+    // Refresh the medicines every 2 seconds.
     _stockUpdateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _fetchMedicines();
     });
   }
 
-  // Load user name from DB.
   Future<void> _loadUserName() async {
     try {
       final db = await DatabaseHelper().db;
       final result = await db.query(
         'users',
-        columns: ['NAME'],
+        columns: ['NAME'], // Ensure the column exists in your DB.
         where: 'RFID = ?',
         whereArgs: [widget.rfidData],
       );
@@ -67,20 +76,26 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
-  // Fetch medicines from DB.
+  /// Reads medicines from the 'stocks' table.
+  /// Your table has columns: product_name, amount, count.
   Future<void> _fetchMedicines() async {
     try {
       final db = await DatabaseHelper().db;
       final List<Map<String, dynamic>> results = await db.query('stocks');
 
       setState(() {
-        medicines = results.map((medicine) {
-          final String medicineName = medicine['NAME'] ?? 'Unknown';
-          _isTapped.putIfAbsent(medicineName, () => false);
+        medicines = results.map((row) {
+          final String productName = row['product_name'] ?? 'Unknown';
+          _isTapped.putIfAbsent(productName, () => false);
+
+          final String amountStr = row['amount']?.toString() ?? '0';
+          final int stockCount =
+              int.tryParse(row['count']?.toString() ?? '0') ?? 0;
+
           return {
-            'NAME': medicineName,
-            'AMOUNT': medicine['AMOUNT']?.toString() ?? '0',
-            'STOCKS': medicine['STOCKS'] ?? 0,
+            'product_name': productName,
+            'amount': amountStr,
+            'count': stockCount,
           };
         }).toList();
       });
@@ -89,8 +104,9 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
-  // Map medicine name to image path.
-  String _getImagePath(String name) {
+  /// Returns the image asset path based on product name.
+  /// If no match is found, returns an empty string (so a placeholder is shown).
+  String _getImagePath(String productName) {
     final Map<String, String> imagePaths = {
       'Ibuprofen': 'assets/images/ibuprofen.png',
       'Cetirizine': 'assets/images/cetirizine.png',
@@ -99,13 +115,14 @@ class MedicineMenuState extends State<MedicineMenu> {
       'Antacid': 'assets/images/antacid.png',
       'Buscopan': 'assets/images/buscopan.png',
     };
-    return imagePaths[name] ?? 'assets/images/default.png';
+    return imagePaths[productName] ?? '';
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // Prevent Android back button.
+      // Disable Android's back button.
+      onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
@@ -127,6 +144,7 @@ class MedicineMenuState extends State<MedicineMenu> {
             IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () {
+                // Navigate back to the UserSelectionScreen.
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -142,7 +160,6 @@ class MedicineMenuState extends State<MedicineMenu> {
           child: ListView(
             padding: const EdgeInsets.all(12.0),
             children: [
-              // "Your Orders" header.
               const Text(
                 "Your Orders:",
                 style: TextStyle(
@@ -152,7 +169,6 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ),
               ),
               const SizedBox(height: 8),
-              // Orders List Container.
               Container(
                 height: 100,
                 decoration: BoxDecoration(
@@ -169,7 +185,9 @@ class MedicineMenuState extends State<MedicineMenu> {
                       final orderPrice = orders[index]['price'] ?? '0.00';
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6.0, vertical: 3.0),
+                          horizontal: 6.0,
+                          vertical: 3.0,
+                        ),
                         child: Text(
                           '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
                           style: const TextStyle(fontSize: 16),
@@ -180,7 +198,6 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Grid of medicines.
               if (medicines.isEmpty)
                 const Center(child: CircularProgressIndicator())
               else
@@ -193,38 +210,39 @@ class MedicineMenuState extends State<MedicineMenu> {
                   physics: const NeverScrollableScrollPhysics(),
                   children: medicines.map((medicine) {
                     return _buildMedicineItem(
-                      medicine['NAME'],
-                      medicine['AMOUNT'].toString(),
-                      _getImagePath(medicine['NAME']),
-                      medicine['STOCKS'],
+                      medicine['product_name'] as String,
+                      medicine['amount'] as String,
+                      _getImagePath(medicine['product_name'] as String),
+                      medicine['count'] as int,
                     );
                   }).toList(),
                 ),
               const SizedBox(height: 20),
-              // RESET & CHECKOUT BUTTONS (Dashboard button removed).
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // RESET Button.
                   ElevatedButton(
                     onPressed: _resetOrders,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[700],
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                     ),
                     child: const Text(
                       "RESET",
                       style: TextStyle(fontSize: 18, color: Colors.white),
                     ),
                   ),
-                  // CHECKOUT Button.
                   ElevatedButton(
                     onPressed: _proceedToCheckout,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                     ),
                     child: const Text(
                       "CHECKOUT",
@@ -242,28 +260,28 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   Widget _buildMedicineItem(
-      String? name,
-      String? unitPrice,
+      String productName,
+      String amountStr,
       String imagePath,
-      int? stocks,
+      int stockCount,
       ) {
     final double imageHeight = MediaQuery.of(context).size.height * 0.18;
-    bool isTapped = _isTapped[name] ?? false;
+    bool isTapped = _isTapped[productName] ?? false;
 
     return GestureDetector(
       onTapDown: (_) {
         setState(() {
-          _isTapped[name!] = true;
+          _isTapped[productName] = true;
         });
       },
       onTapUp: (_) {
         Future.delayed(const Duration(milliseconds: 150), () {
           setState(() {
-            _isTapped[name!] = false;
+            _isTapped[productName] = false;
           });
         });
-        if (stocks != null && stocks > 0) {
-          _addToOrder(name!, unitPrice ?? '0.00');
+        if (stockCount > 0) {
+          _addToOrder(productName, amountStr);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -275,7 +293,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       },
       onTapCancel: () {
         setState(() {
-          _isTapped[name!] = false;
+          _isTapped[productName] = false;
         });
       },
       child: AnimatedScale(
@@ -290,14 +308,24 @@ class MedicineMenuState extends State<MedicineMenu> {
           child: Column(
             children: [
               const Spacer(),
-              Image.asset(
-                imagePath,
-                height: imageHeight,
-                fit: BoxFit.contain,
-              ),
+              if (imagePath.isNotEmpty)
+                Image.asset(
+                  imagePath,
+                  height: imageHeight,
+                  fit: BoxFit.contain,
+                )
+              else
+                Container(
+                  height: imageHeight,
+                  alignment: Alignment.center,
+                  child: const Text(
+                    "No image",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                ),
               const SizedBox(height: 10),
               Text(
-                name ?? 'Unknown',
+                productName,
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -306,13 +334,13 @@ class MedicineMenuState extends State<MedicineMenu> {
                 textAlign: TextAlign.center,
               ),
               Text(
-                '₱${unitPrice ?? "0.00"}',
+                '₱$amountStr',
                 style: const TextStyle(fontSize: 18, color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
               Text(
-                'Remaining: ${stocks ?? 0} pc/s',
+                'Remaining: $stockCount pc/s',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -328,11 +356,12 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
-  void _addToOrder(String name, String unitPriceStr) {
+  void _addToOrder(String productName, String unitPriceStr) {
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
       final existingIndex =
-      orders.indexWhere((item) => item['name'] == name);
+      orders.indexWhere((item) => item['name'] == productName);
+
       if (existingIndex != -1) {
         final oldQuantity =
             int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
@@ -342,7 +371,7 @@ class MedicineMenuState extends State<MedicineMenu> {
         orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
       } else {
         orders.add({
-          'name': name,
+          'name': productName,
           'quantity': '1',
           'price': unitPrice.toStringAsFixed(2),
         });

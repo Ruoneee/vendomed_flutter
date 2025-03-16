@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // 1) Import the intl package
+import 'package:intl/intl.dart'; // For formatting dates
 import 'confirmation_screen.dart';
 import 'database_helper.dart';
+import 'medicine_menu.dart'; // To navigate back with existing orders
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, String>> orders;
@@ -70,7 +71,7 @@ class PaymentPageState extends State<PaymentPage> {
   }
 
   Future<void> _insertTransactions() async {
-    // Determine user type: if _userName equals widget.rfidData, assume Guest.
+    // Determine user type based on _userName.
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
     for (var order in widget.orders) {
@@ -79,7 +80,6 @@ class PaymentPageState extends State<PaymentPage> {
       double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
       double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
 
-      // 2) Use the same format as your older transactions: yyyy-MM-dd HH:mm:ss
       String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
       Map<String, dynamic> transaction = {
@@ -96,9 +96,37 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
+  /// New function to update the stocks for each order.
+  /// It queries the current "count" for the product, subtracts the ordered quantity,
+  /// and then updates the "count" in the stocks table.
+  Future<void> _updateStocksForOrders() async {
+    for (var order in widget.orders) {
+      final String productName = order['name'] ?? "";
+      final int quantityOrdered = int.tryParse(order['quantity'] ?? "1") ?? 1;
+      final db = await DatabaseHelper().db;
+      final results = await db.query(
+        'stocks',
+        where: 'product_name = ?',
+        whereArgs: [productName],
+      );
+      if (results.isNotEmpty) {
+        final String currentCountString = results.first['count']?.toString() ?? "0";
+        final int currentCount = int.tryParse(currentCountString) ?? 0;
+        final int newCount = currentCount - quantityOrdered;
+        // Ensure stock doesn't go negative.
+        final int finalCount = newCount < 0 ? 0 : newCount;
+        final Map<String, dynamic> updatedData = {
+          'count': finalCount.toString(),
+        };
+        await DatabaseHelper().updateStock(updatedData, productName);
+      }
+    }
+  }
+
   Future<void> _onProceedButtonPressed() async {
     if (coinEqualToAmount) {
       await _insertTransactions();
+      await _updateStocksForOrders(); // Deduct ordered quantities from stocks
 
       setState(() {
         coinEqualToAmount = false;
@@ -106,10 +134,10 @@ class PaymentPageState extends State<PaymentPage> {
       });
       print("Transaction Successful");
 
-      // Return to previous screen with disabled medicines list.
+      // Return to previous screen with disabled medicines list if needed.
       Navigator.pop(context, widget.medicinesToBeDisabled);
 
-      // Navigate to the confirmation screen.
+      // Then navigate to the confirmation screen.
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -126,7 +154,8 @@ class PaymentPageState extends State<PaymentPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // disable device back button
+      // Disable the device back button.
+      onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
@@ -145,7 +174,7 @@ class PaymentPageState extends State<PaymentPage> {
             ],
           ),
         ),
-        backgroundColor: const Color(0xFFFFFFFF),
+        backgroundColor: Colors.white,
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -174,7 +203,6 @@ class PaymentPageState extends State<PaymentPage> {
                       final orderName = widget.orders[index]['name'] ?? 'Unknown';
                       final orderQuantity = widget.orders[index]['quantity'] ?? '1';
                       final orderPrice = widget.orders[index]['price'] ?? '0.00';
-
                       return Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Text(
@@ -215,6 +243,7 @@ class PaymentPageState extends State<PaymentPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // CANCEL button navigates back to MedicineMenu while preserving orders.
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -224,13 +253,22 @@ class PaymentPageState extends State<PaymentPage> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MedicineMenu(
+                            rfidData: widget.rfidData,
+                            existingOrders: widget.orders,
+                          ),
+                        ),
+                      );
                     },
                     child: const Text('CANCEL'),
                   ),
+                  // PROCEED button processes payment, updates stock, and navigates to ConfirmationScreen.
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF0D2A5E),
+                      backgroundColor: const Color(0xFF0D2A5E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
