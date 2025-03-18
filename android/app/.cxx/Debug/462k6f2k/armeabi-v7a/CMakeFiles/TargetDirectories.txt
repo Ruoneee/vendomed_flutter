@@ -1,0 +1,2 @@
+C:/Users/Angelo/StudioProjects/vendomed_flutter/android/app/.cxx/Debug/462k6f2k/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/Angelo/StudioProjects/vendomed_flutter/android/app/.cxx/Debug/462k6f2k/armeabi-v7a/CMakeFiles/rebuild_cache.dir

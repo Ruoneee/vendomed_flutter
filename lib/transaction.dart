@@ -6,7 +6,6 @@ import 'database_helper.dart';
 import 'user.dart';
 import 'inventory.dart';
 
-
 /// Model for payment methods in the pie chart.
 class PaymentMethodData {
   final String method;
@@ -191,7 +190,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 SizedBox(
                   height: 600,
                   child: SfCircularChart(
-                    backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+                    backgroundColor:
+                    _isDarkMode ? Colors.black : Colors.white,
                     legend: Legend(
                       isVisible: true,
                       overflowMode: LegendItemOverflowMode.wrap,
@@ -204,13 +204,24 @@ class _TransactionScreenState extends State<TransactionScreen> {
                     series: <CircularSeries>[
                       PieSeries<PaymentMethodData, String>(
                         dataSource: paymentMethods,
-                        xValueMapper: (PaymentMethodData data, _) => data.method,
-                        yValueMapper: (PaymentMethodData data, _) => data.percentage,
-                        dataLabelSettings: DataLabelSettings(
+                        xValueMapper: (PaymentMethodData data, _) =>
+                        data.method,
+                        yValueMapper: (PaymentMethodData data, _) =>
+                        data.percentage,
+                        pointColorMapper: (PaymentMethodData data, _) {
+                          if (data.method == 'Cash/Coins') {
+                            return const Color(0xFF142E6B);
+                          } else if (data.method == 'GCash') {
+                            return const Color(0xFF2F4D8A);
+                          }
+                          return null;
+                        },
+                        // Changed color to white for better visibility.
+                        dataLabelSettings: const DataLabelSettings(
                           isVisible: true,
                           textStyle: TextStyle(
                             fontSize: 18,
-                            color: _isDarkMode ? Colors.white : Colors.black,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -274,7 +285,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: _isDarkMode ? Colors.white : Colors.black,
+                                color:
+                                _isDarkMode ? Colors.white : Colors.black,
                               ),
                             ),
                           ],
@@ -322,8 +334,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
                 // Display all transactions
                 Column(
-                  children:
-                  transactions.map((tx) => _buildTransactionCard(tx)).toList(),
+                  children: transactions
+                      .map((tx) => _buildTransactionCard(tx))
+                      .toList(),
                 ),
               ],
             ),
@@ -339,21 +352,24 @@ class _TransactionScreenState extends State<TransactionScreen> {
               context,
               MaterialPageRoute(builder: (context) => DashboardScreen()),
             );
-          }else if (index == 1) {
+          } else if (index == 1) {
             // Already on Payments.
           } else if (index == 2) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
+              MaterialPageRoute(
+                  builder: (context) =>
+                      UserScreen(isDarkMode: _isDarkMode)),
             );
           } else if (index == 3) {
-          Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => InventoryScreen(isDarkMode: _isDarkMode)),
-          );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      InventoryScreen(isDarkMode: _isDarkMode)),
+            );
           }
-
-  },
+        },
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
         // MATCHED VALUES
@@ -361,10 +377,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
         selectedFontSize: 14,
         unselectedFontSize: 12,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart), label: "Sales"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.people), label: "Users"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
     );
@@ -405,13 +425,15 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
   }
 
   Future<List<Map<String, dynamic>>> _getProcessedTransactions() async {
-    List<Map<String, dynamic>> txList = await DatabaseHelper().getTransactions();
+    List<Map<String, dynamic>> txList =
+    await DatabaseHelper().getTransactions();
 
     // Date range filter.
     if (_selectedDateRange != null) {
       txList = txList.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? DateTime.now();
-        return dt.isAfter(_selectedDateRange!.start.subtract(Duration(days: 1))) &&
+        return dt.isAfter(
+            _selectedDateRange!.start.subtract(Duration(days: 1))) &&
             dt.isBefore(_selectedDateRange!.end.add(Duration(days: 1)));
       }).toList();
     }
@@ -475,11 +497,13 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     return ListTile(
       title: Text(
         tx['medicine'],
-        style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+        style:
+        TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
       ),
       subtitle: Text(
         tx['date'],
-        style: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.grey),
+        style: TextStyle(
+            color: _isDarkMode ? Colors.white70 : Colors.grey),
       ),
       trailing:
       Text("₱${(tx['total_amount'] as num).toStringAsFixed(2)}"),
@@ -487,7 +511,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
+            backgroundColor:
+            _isDarkMode ? Colors.grey[900] : Colors.white,
             title: const Text("Transaction Details"),
             content: Text(
               "Medicine: ${tx['medicine']}\n"
@@ -498,7 +523,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                   "Payment Method: ${tx['payment_method']}\n"
                   "User Type: ${tx['user_type']}",
               style: TextStyle(
-                  color: _isDarkMode ? Colors.white : Colors.black),
+                  color:
+                  _isDarkMode ? Colors.white : Colors.black),
             ),
             actions: [
               TextButton(
@@ -519,7 +545,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
         children: [
           // Search bar
           TextField(
-            style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+            style:
+            TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
             decoration: InputDecoration(
               labelText: 'Search by Medicine or ID',
               labelStyle: TextStyle(
@@ -552,7 +579,9 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                     initialDateRange: _selectedDateRange,
                     builder: (context, child) {
                       return Theme(
-                        data: _isDarkMode ? ThemeData.dark() : ThemeData.light(),
+                        data: _isDarkMode
+                            ? ThemeData.dark()
+                            : ThemeData.light(),
                         child: child!,
                       );
                     },
@@ -569,10 +598,10 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                 Padding(
                   padding: const EdgeInsets.only(left: 8.0),
                   child: Text(
-                    "${_selectedDateRange!.start.toLocal().toShortDateString()} - "
-                        "${_selectedDateRange!.end.toLocal().toShortDateString()}",
+                    "${_selectedDateRange!.start.toLocal().toShortDateString()} - ${_selectedDateRange!.end.toLocal().toShortDateString()}",
                     style: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black),
+                        color:
+                        _isDarkMode ? Colors.white : Colors.black),
                   ),
                 ),
             ],
@@ -585,7 +614,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
             children: [
               DropdownButton<String>(
                 value: _filterPaymentMethod,
-                dropdownColor: _isDarkMode ? Colors.grey[800] : Colors.white,
+                dropdownColor:
+                _isDarkMode ? Colors.grey[800] : Colors.white,
                 items: <String>['All', 'Cash/Coins', 'GCash']
                     .map(
                       (option) => DropdownMenuItem(
@@ -593,7 +623,9 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                     child: Text(
                       option,
                       style: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black,
+                        color: _isDarkMode
+                            ? Colors.white
+                            : Colors.black,
                       ),
                     ),
                   ),
@@ -609,7 +641,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
               ),
               DropdownButton<String>(
                 value: _sortOption,
-                dropdownColor: _isDarkMode ? Colors.grey[800] : Colors.white,
+                dropdownColor:
+                _isDarkMode ? Colors.grey[800] : Colors.white,
                 items: <String>[
                   'Date Ascending',
                   'Date Descending',
@@ -622,7 +655,9 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                     child: Text(
                       option,
                       style: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black,
+                        color: _isDarkMode
+                            ? Colors.white
+                            : Colors.black,
                       ),
                     ),
                   ),
@@ -685,7 +720,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
           // Apply filters button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isDarkMode ? Colors.grey[800] : null,
+              backgroundColor:
+              _isDarkMode ? Colors.grey[800] : null,
             ),
             onPressed: () {
               setState(() {
@@ -702,17 +738,22 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+      backgroundColor:
+      _isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
         title: const Text("All Transactions"),
-        backgroundColor: _isDarkMode ? Colors.grey[900] : const Color(0xFF0D2A5E),
+        backgroundColor: _isDarkMode
+            ? Colors.grey[900]
+            : const Color(0xFF0D2A5E),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
               // Export/Print stub
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Export/Print feature not implemented")),
+                const SnackBar(
+                    content: Text(
+                        "Export/Print feature not implemented")),
               );
             },
           ),
@@ -725,22 +766,29 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _getProcessedTransactions(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(
                     child: Text(
                       "Error: ${snapshot.error}",
                       style: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black),
+                          color: _isDarkMode
+                              ? Colors.white
+                              : Colors.black),
                     ),
                   );
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                } else if (!snapshot.hasData ||
+                    snapshot.data!.isEmpty) {
                   return Center(
                     child: Text(
                       "No transactions available",
                       style: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black),
+                          color: _isDarkMode
+                              ? Colors.white
+                              : Colors.black),
                     ),
                   );
                 }
