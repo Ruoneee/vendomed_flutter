@@ -1,4 +1,3 @@
-// database_helper.dart
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart' show ByteData, rootBundle;
@@ -44,10 +43,12 @@ class DatabaseHelper {
     }
 
     try {
+      // Bump version to 2 so that _onUpgrade is triggered if needed
       final database = await openDatabase(
         path,
-        version: 1,
+        version: 2,
         onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
       );
       print("Database connected: vendomed.db located at: $path");
       return database;
@@ -94,7 +95,7 @@ class DatabaseHelper {
     ''');
     print("Users table created in onCreate");
 
-    // Create the stocks table with new column names.
+    // Create the stocks table.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS stocks (
         BATCH_ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,6 +107,37 @@ class DatabaseHelper {
       )
     ''');
     print("Stocks table created in onCreate");
+
+    // Create the batch_expiry table if it doesn't exist.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS batch_expiry (
+        batch_expiry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        batch_id INTEGER NOT NULL,
+        expiration_date TEXT NOT NULL,
+        supplier TEXT NOT NULL,
+        date_received TEXT NOT NULL,
+        FOREIGN KEY(batch_id) REFERENCES stocks(BATCH_ID)
+      )
+    ''');
+    print("batch_expiry table created in onCreate");
+  }
+
+  // Called when the database version is upgraded (e.g., from 1 to 2).
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Create batch_expiry table if it doesn't exist
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS batch_expiry (
+          batch_expiry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          batch_id INTEGER NOT NULL,
+          expiration_date TEXT NOT NULL,
+          supplier TEXT NOT NULL,
+          date_received TEXT NOT NULL,
+          FOREIGN KEY(batch_id) REFERENCES stocks(BATCH_ID)
+        )
+      ''');
+      print("batch_expiry table created in onUpgrade");
+    }
   }
 
   // Private helper method to update the transactions stream.
@@ -225,6 +257,51 @@ class DatabaseHelper {
       'stocks',
       where: 'product_name = ?',
       whereArgs: [productName],
+    );
+  }
+
+  // ========== BATCH_EXPIRY TABLE METHODS ==========
+
+  // Insert a new record into batch_expiry
+  Future<int> insertBatchExpiry(Map<String, dynamic> data) async {
+    final database = await db;
+    return await database.insert('batch_expiry', data);
+  }
+
+  // Get all expiry records
+  Future<List<Map<String, dynamic>>> getAllBatchExpiry() async {
+    final database = await db;
+    return await database.query('batch_expiry');
+  }
+
+  // Get expiry records by batch_id
+  Future<List<Map<String, dynamic>>> getBatchExpiryByBatchId(int batchId) async {
+    final database = await db;
+    return await database.query(
+      'batch_expiry',
+      where: 'batch_id = ?',
+      whereArgs: [batchId],
+    );
+  }
+
+  // Update a record by batch_expiry_id
+  Future<int> updateBatchExpiry(int batchExpiryId, Map<String, dynamic> data) async {
+    final database = await db;
+    return await database.update(
+      'batch_expiry',
+      data,
+      where: 'batch_expiry_id = ?',
+      whereArgs: [batchExpiryId],
+    );
+  }
+
+  // Delete a record by batch_expiry_id
+  Future<int> deleteBatchExpiry(int batchExpiryId) async {
+    final database = await db;
+    return await database.delete(
+      'batch_expiry',
+      where: 'batch_expiry_id = ?',
+      whereArgs: [batchExpiryId],
     );
   }
 

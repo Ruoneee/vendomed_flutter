@@ -31,21 +31,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   // Filtered list for the Main Inventory table
   List<Map<String, dynamic>> _filteredStocks = [];
 
-  // Placeholder Batch Expiry data (replace with real DB if needed)
-  final List<Map<String, dynamic>> _batchExpiryItems = [
-    {
-      "batchId": "B-001",
-      "expiration": "2025-07-20",
-      "supplier": "Supplier A",
-      "dateReceived": "2024-06-25",
-    },
-    {
-      "batchId": "B-002",
-      "expiration": "2025-10-30",
-      "supplier": "Supplier B",
-      "dateReceived": "2024-07-10",
-    },
-  ];
+  // Batch expiry data loaded from DB
+  List<Map<String, dynamic>> _batchExpiry = [];
   // Filtered list for the Batch Expiry table
   List<Map<String, dynamic>> _filteredExpiry = [];
 
@@ -63,7 +50,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     super.initState();
     _isDarkMode = widget.isDarkMode;
     _fetchStocksFromDB();
-    _filteredExpiry = List.from(_batchExpiryItems);
+    _fetchBatchExpiryFromDB();
   }
 
   @override
@@ -89,6 +76,31 @@ class _InventoryScreenState extends State<InventoryScreen> {
       _computeStockIndicators();
     } catch (e) {
       debugPrint("Error fetching stocks from DB: $e");
+    }
+  }
+
+  // Fetch batch expiry data from the 'batch_expiry' table
+  Future<void> _fetchBatchExpiryFromDB() async {
+    try {
+      final expiryList = await DatabaseHelper.instance.getAllBatchExpiry();
+      setState(() {
+        // Convert each row to a consistent Map for the DataTable
+        _batchExpiry = expiryList.map((row) {
+          // You can prepend "B-" to batch_id or just use it as a string
+          return {
+            "batchId": row["batch_id"]?.toString() ?? "",
+            "expiration": row["expiration_date"] ?? "",
+            "supplier": row["supplier"] ?? "",
+            "dateReceived": row["date_received"] ?? "",
+          };
+        }).toList();
+
+        // By default, show all items
+        _filteredExpiry = List.from(_batchExpiry);
+      });
+      debugPrint("Fetched ${expiryList.length} items from 'batch_expiry' table");
+    } catch (e) {
+      debugPrint("Error fetching batch expiry from DB: $e");
     }
   }
 
@@ -184,9 +196,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return _isDarkMode ? Colors.white : Colors.black;
   }
 
-  // Search in 'stocks' by product_id or product_name, also filter placeholder expiry by batchId.
+  // Search in 'stocks' by product_id or product_name,
+  // and in the batch expiry table by batchId, supplier, etc.
   void _searchItem(String query) {
     setState(() {
+      // Filter stocks
       _filteredStocks = _stocks.where((item) {
         final productId = (item["product_id"] ?? "").toString().toLowerCase();
         final productName = (item["product_name"] ?? "").toString().toLowerCase();
@@ -194,8 +208,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return combined.contains(query.toLowerCase());
       }).toList();
 
-      _filteredExpiry = _batchExpiryItems.where((batch) {
-        final combined = "${batch['batchId']}".toLowerCase();
+      // Filter expiry
+      _filteredExpiry = _batchExpiry.where((batch) {
+        final batchId = batch["batchId"].toString().toLowerCase();
+        final supplier = batch["supplier"].toString().toLowerCase();
+        final combined = "$batchId $supplier";
         return combined.contains(query.toLowerCase());
       }).toList();
     });
@@ -457,7 +474,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // BATCH EXPIRY MANAGEMENT TABLE (Even Larger)
+              // BATCH EXPIRY MANAGEMENT TABLE
               Text(
                 "Batch Expiry Management",
                 style: TextStyle(
@@ -509,15 +526,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // REFRESH BUTTON (Larger style)
+              // REFRESH BUTTON
               Center(
                 child: ElevatedButton(
                   onPressed: () async {
                     _searchController.clear();
                     await _fetchStocksFromDB();
-                    setState(() {
-                      _filteredExpiry = List.from(_batchExpiryItems);
-                    });
+                    await _fetchBatchExpiryFromDB();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
@@ -561,7 +576,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
               "$count",
