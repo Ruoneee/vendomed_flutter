@@ -20,7 +20,6 @@ class GCashPaymentPage extends StatelessWidget {
     required this.rfidData,
   }) : super(key: key);
 
-  /// Inserts transactions into the database with payment_method 'GCash'.
   Future<void> _insertTransactions() async {
     String userType = (rfidData.isNotEmpty) ? "RFID User" : "Guest";
 
@@ -45,13 +44,11 @@ class GCashPaymentPage extends StatelessWidget {
     }
   }
 
-  /// Updates the stock for each ordered medicine by subtracting the quantity ordered.
   Future<void> _updateStocksForOrders() async {
     for (var order in orders) {
       final String productName = order['name'] ?? "";
       final int quantityOrdered = int.tryParse(order['quantity'] ?? "1") ?? 1;
       final db = await DatabaseHelper.instance.db;
-      // Query current stock for the product.
       final results = await db.query(
         'stocks',
         where: 'product_name = ?',
@@ -71,7 +68,6 @@ class GCashPaymentPage extends StatelessWidget {
     }
   }
 
-  /// Called when the "PAYMENT COMPLETED" button is pressed.
   Future<void> _onPaymentCompleted(BuildContext context) async {
     await _insertTransactions();
     await _updateStocksForOrders();
@@ -83,7 +79,6 @@ class GCashPaymentPage extends StatelessWidget {
     );
   }
 
-  /// Calculates the total amount (in centavos) from orders.
   int _calculateTotalAmount() {
     int totalAmount = 0;
     for (var order in orders) {
@@ -93,11 +88,6 @@ class GCashPaymentPage extends StatelessWidget {
     return totalAmount;
   }
 
-  /// Initiates the payment process:
-  /// Creates a PaymentIntent with Paymongo using an HTTP call,
-  /// extracts a data string for the QR code (using next_action.redirect.url if available,
-  /// otherwise falling back to the client_key),
-  /// and then navigates to the polling screen.
   Future<void> _processPayment(BuildContext context) async {
     int totalAmount = _calculateTotalAmount();
     final String secretKey = "sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS";
@@ -132,7 +122,6 @@ class GCashPaymentPage extends StatelessWidget {
         final data = paymentIntent["data"];
         final attributes = data["attributes"];
 
-        // Use next_action.redirect.url if available; otherwise, fall back to client_key.
         String qrData = "";
         if (attributes["next_action"] != null &&
             attributes["next_action"]["redirect"] != null &&
@@ -144,13 +133,14 @@ class GCashPaymentPage extends StatelessWidget {
 
         final paymentIntentId = data["id"];
 
-        // Navigate to the polling screen to display the QR code and poll for status.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => PollingPaymentScreen(
               paymentIntentId: paymentIntentId,
               qrData: qrData,
+              orders: orders,
+              rfidData: rfidData,
             ),
           ),
         );
@@ -168,7 +158,6 @@ class GCashPaymentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Prevent default back navigation.
       onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
@@ -178,7 +167,6 @@ class GCashPaymentPage extends StatelessWidget {
             'GCASH Payment',
             style: TextStyle(color: Colors.white),
           ),
-          // Navigate back to MedicineMenu.
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
@@ -200,7 +188,6 @@ class GCashPaymentPage extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-                // Button to initiate payment and navigate to dynamic QR code screen.
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
@@ -219,7 +206,6 @@ class GCashPaymentPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Button for the user to tap once they have completed payment.
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
@@ -246,15 +232,18 @@ class GCashPaymentPage extends StatelessWidget {
   }
 }
 
-/// Polling screen that displays a dynamically generated QR code and polls for payment status.
 class PollingPaymentScreen extends StatefulWidget {
   final String paymentIntentId;
   final String qrData;
+  final List<Map<String, String>> orders;
+  final String rfidData;
 
   const PollingPaymentScreen({
     Key? key,
     required this.paymentIntentId,
     required this.qrData,
+    required this.orders,
+    required this.rfidData,
   }) : super(key: key);
 
   @override
@@ -271,7 +260,6 @@ class _PollingPaymentScreenState extends State<PollingPaymentScreen> {
     _startPolling();
   }
 
-  /// Polls the PaymentIntent status every 5 seconds.
   Future<void> _pollPaymentStatus() async {
     final String secretKey = "sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS";
     final String auth = base64Encode(utf8.encode("$secretKey:"));
@@ -323,8 +311,26 @@ class _PollingPaymentScreenState extends State<PollingPaymentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Confirming Payment"),
         backgroundColor: const Color(0xFF0D2A5E),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          "Confirming Payment",
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MedicineMenu(
+                  rfidData: widget.rfidData,
+                  existingOrders: widget.orders,
+                ),
+              ),
+            );
+          },
+        ),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -337,7 +343,6 @@ class _PollingPaymentScreenState extends State<PollingPaymentScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
-              // Using QrImageView from qr_flutter 4.0.0.
               QrImageView(
                 data: widget.qrData,
                 version: QrVersions.auto,
