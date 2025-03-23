@@ -58,7 +58,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   /// Fetch both user NAME and POINTS from 'users' table by RFID.
-  /// If no user record is found, we treat them as a Guest (userName == rfid).
+  /// If no user record is found, treat them as a Guest (userName == rfidData).
   Future<void> _loadUserNameAndPoints() async {
     try {
       final db = await DatabaseHelper().db;
@@ -174,22 +174,30 @@ class MedicineMenuState extends State<MedicineMenu> {
           child: ListView(
             padding: const EdgeInsets.all(12.0),
             children: [
-              // Only show "Your Points" if the user is an RFID user
-              // (i.e. we found them in the DB => _userName != widget.rfidData).
+              // Show "VendoPoints" if the user is an RFID user
               if (_userName != widget.rfidData) ...[
                 Container(
-                  height: 80,
+                  height: 100,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
+                    // Add a border matching the AppBar color
+                    border: Border.all(
+                      color: const Color(0xFF0D2A5E), // same as AppBar color
+                      width: 2,
+                    ),
                   ),
-                  child: Center(
-                    child: Text(
-                      "Your Points: $_userPoints",
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "VendoPoints: $_userPoints",
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ),
@@ -403,8 +411,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   void _addToOrder(String productName, String unitPriceStr) {
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-      final existingIndex =
-      orders.indexWhere((item) => item['name'] == productName);
+      final existingIndex = orders.indexWhere((item) => item['name'] == productName);
 
       if (existingIndex != -1) {
         final oldQuantity =

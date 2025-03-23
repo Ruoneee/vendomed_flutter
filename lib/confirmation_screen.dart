@@ -10,7 +10,9 @@ class ConfirmationScreen extends StatefulWidget {
 }
 
 class ConfirmationScreenState extends State<ConfirmationScreen> {
-  final String _dispensingMessage = "Order Confirmed!";
+  // Changed to lowercase
+  final String _dispensingMessage = "Order confirmed!";
+
   Timer? _autoNavigateTimer;
 
   @override
@@ -22,7 +24,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
   void _startAutoNavigateTimer() {
     // Cancel any existing timer and start a new one
     _autoNavigateTimer?.cancel();
-    // Auto-navigate after 3 seconds
+    // Auto-navigate after 2 seconds
     _autoNavigateTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pushReplacement(
@@ -41,11 +43,10 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Get the screen height
     final screenHeight = MediaQuery.of(context).size.height;
-    // Decide how large the image and text should be
-    final logoHeight = screenHeight * 0.60; // 40% of screen height
-    final textSize = screenHeight * 0.07;   // 7% of screen height
+    // Adjust the logo/text sizes as needed
+    final logoHeight = screenHeight * 0.60;
+    final textSize = screenHeight * 0.05;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -53,16 +54,15 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // The logo at 40% of screen height
             Image.asset(
               'assets/images/splash_logo.png',
               height: logoHeight,
             ),
-            SizedBox(height: screenHeight * 0.05), // 5% spacing
+            SizedBox(height: screenHeight * 0.05),
             Text(
               _dispensingMessage,
               style: TextStyle(
-                fontSize: textSize,  // 7% of screen height
+                fontSize: textSize,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
