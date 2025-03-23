@@ -20,6 +20,9 @@ dependencies:
   pdf: ^3.9.0
   printing: ^5.9.0
   intl: ^0.20.2
+  http: ^0.13.6
+  url_launcher: ^6.1.7
+  qr_flutter: ^4.0.0
 
 dev_dependencies:
   flutter_test:
