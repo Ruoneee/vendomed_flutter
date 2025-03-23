@@ -24,8 +24,11 @@ class MedicineMenuState extends State<MedicineMenu> {
   List<Map<String, String>> orders = [];
 
   String _userName = "";
+  String _userPoints = "0"; // Store the user's points
+
   List<Map<String, dynamic>> medicines = [];
   Timer? _stockUpdateTimer;
+
   // For handling tap animations on medicine items.
   Map<String, bool> _isTapped = {};
 
@@ -36,7 +39,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     if (widget.existingOrders != null) {
       orders = List.from(widget.existingOrders!);
     }
-    _loadUserName();
+    _loadUserNameAndPoints(); // Load user name and points
     _fetchMedicines();
     _startStockListener();
   }
@@ -54,24 +57,35 @@ class MedicineMenuState extends State<MedicineMenu> {
     });
   }
 
-  Future<void> _loadUserName() async {
+  /// Fetch both user NAME and POINTS from 'users' table by RFID.
+  /// If no user record is found, we treat them as a Guest (userName == rfid).
+  Future<void> _loadUserNameAndPoints() async {
     try {
       final db = await DatabaseHelper().db;
       final result = await db.query(
         'users',
-        columns: ['NAME'], // Ensure the column exists in your DB.
+        columns: ['NAME', 'POINTS'], // Ensure 'POINTS' column exists
         where: 'RFID = ?',
         whereArgs: [widget.rfidData],
       );
-      setState(() {
-        _userName = result.isNotEmpty
-            ? result.first['NAME'] as String
-            : widget.rfidData;
-      });
+
+      if (result.isNotEmpty) {
+        setState(() {
+          _userName = result.first['NAME']?.toString() ?? widget.rfidData;
+          _userPoints = result.first['POINTS']?.toString() ?? '0';
+        });
+      } else {
+        // If no user found with that RFID, fallback to showing the raw RFID
+        setState(() {
+          _userName = widget.rfidData; // Treat as Guest
+          _userPoints = '0';
+        });
+      }
     } catch (e) {
-      print("Error loading user name: $e");
+      print("Error loading user name/points: $e");
       setState(() {
         _userName = widget.rfidData;
+        _userPoints = '0';
       });
     }
   }
@@ -160,6 +174,30 @@ class MedicineMenuState extends State<MedicineMenu> {
           child: ListView(
             padding: const EdgeInsets.all(12.0),
             children: [
+              // Only show "Your Points" if the user is an RFID user
+              // (i.e. we found them in the DB => _userName != widget.rfidData).
+              if (_userName != widget.rfidData) ...[
+                Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "Your Points: $_userPoints",
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // "Your Orders"
               const Text(
                 "Your Orders:",
                 style: TextStyle(
@@ -169,6 +207,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ),
               ),
               const SizedBox(height: 8),
+
+              // Orders list in a white box
               Container(
                 height: 100,
                 decoration: BoxDecoration(
@@ -198,6 +238,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Medicine grid
               if (medicines.isEmpty)
                 const Center(child: CircularProgressIndicator())
               else
@@ -218,6 +260,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                   }).toList(),
                 ),
               const SizedBox(height: 20),
+
+              // RESET and CHECKOUT Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [

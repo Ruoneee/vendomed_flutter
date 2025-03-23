@@ -4,14 +4,14 @@ import 'confirmation_screen.dart';
 import 'database_helper.dart';
 import 'medicine_menu.dart'; // To navigate back with existing orders
 import 'usb_helper.dart'; // Import USB Helper
-
-
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, String>> orders;
   final List<String> medicinesToBeDisabled;
   final String rfidData;
-
 
   const PaymentPage({
     super.key,
@@ -26,10 +26,9 @@ class PaymentPage extends StatefulWidget {
 
 class PaymentPageState extends State<PaymentPage> {
   final TextEditingController _coinsInsertedController = TextEditingController();
-  final USBHelper _usbHelper = USBHelper(); // ✅ Uses global instance
+  final USBHelper _usbHelper = USBHelper(); // Uses global instance
 
   int coinInserted = 0;
-  bool coinEqualToAmount = false;
   double totalAmount = 0.0;
   String _userName = "";
 
@@ -38,10 +37,11 @@ class PaymentPageState extends State<PaymentPage> {
     super.initState();
     _calculateTotalAmount();
     _loadUserName();
-    _usbHelper.initUSB(); // ✅ Ensures connection persists
-    _coinsInsertedController.text = "₱0.00"; // ✅ Initialize amount inserted
+    _usbHelper.initUSB(); // Ensures connection persists
+    _coinsInsertedController.text = "₱0.00"; // Initialize amount inserted
   }
 
+  /// Load the user's name from the DB. If no match, treat as Guest.
   Future<void> _loadUserName() async {
     try {
       final db = await DatabaseHelper().db;
@@ -56,6 +56,7 @@ class PaymentPageState extends State<PaymentPage> {
           _userName = result.first['NAME'] as String;
         });
       } else {
+        // If no user found, treat as Guest
         setState(() {
           _userName = widget.rfidData;
         });
@@ -68,13 +69,15 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
+  /// Increment the coinInserted by 20
   void _incrementAmountInserted() {
     setState(() {
-      coinInserted += 20; // ✅ Increment by 20
-      _coinsInsertedController.text = "₱${coinInserted.toStringAsFixed(2)}"; // ✅ Update UI
+      coinInserted += 20;
+      _coinsInsertedController.text = "₱${coinInserted.toStringAsFixed(2)}";
     });
   }
 
+  /// Calculate total amount from the orders
   void _calculateTotalAmount() {
     totalAmount = 0.0;
     for (var order in widget.orders) {
@@ -84,8 +87,9 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
+  /// Insert each order as a transaction into DB
   Future<void> _insertTransactions() async {
-    // Determine user type based on _userName.
+    // Determine user type based on _userName
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
     for (var order in widget.orders) {
@@ -93,7 +97,6 @@ class PaymentPageState extends State<PaymentPage> {
       int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
       double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
       double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
-
       String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
       Map<String, dynamic> transaction = {
@@ -110,9 +113,7 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  /// New function to update the stocks for each order.
-  /// It queries the current "count" for the product, subtracts the ordered quantity,
-  /// and then updates the "count" in the stocks table.
+  /// Update the stock count for each ordered product
   Future<void> _updateStocksForOrders() async {
     for (var order in widget.orders) {
       final String productName = order['name'] ?? "";
@@ -127,7 +128,6 @@ class PaymentPageState extends State<PaymentPage> {
         final String currentCountString = results.first['count']?.toString() ?? "0";
         final int currentCount = int.tryParse(currentCountString) ?? 0;
         final int newCount = currentCount - quantityOrdered;
-        // Ensure stock doesn't go negative.
         final int finalCount = newCount < 0 ? 0 : newCount;
         final Map<String, dynamic> updatedData = {
           'count': finalCount.toString(),
@@ -137,24 +137,64 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  Future<void> _onProceedButtonPressed() async {
-    _calculateTotalAmount(); // ✅ Ensure totalAmount is updated
+  /// Award extra points if user is RFID and overpays
+  Future<void> _awardPoints(double difference) async {
+    // If user is a guest, skip awarding points
+    if (_userName == widget.rfidData) {
+      // Means we didn't find them in the DB => treat as Guest => no points
+      return;
+    }
 
-    if (coinInserted >= totalAmount) { // ✅ Compare inserted amount with total amount
+    try {
+      final db = await DatabaseHelper.instance.db;
+      final result = await db.query(
+        'users',
+        columns: ['POINTS'],
+        where: 'RFID = ?',
+        whereArgs: [widget.rfidData],
+      );
+      int oldPoints = 0;
+      if (result.isNotEmpty) {
+        oldPoints = int.tryParse(result.first['POINTS']?.toString() ?? '0') ?? 0;
+      }
+      // 1:1 ratio => difference.floor() points
+      int additionalPoints = difference.floor();
+      int newPoints = oldPoints + additionalPoints;
+      await DatabaseHelper.instance.updateUserByRFID(
+        {'POINTS': newPoints.toString()},
+        widget.rfidData,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("You earned $additionalPoints extra points!")),
+      );
+    } catch (e) {
+      debugPrint("Error awarding points: $e");
+    }
+  }
+
+  /// Called when user taps PROCEED
+  Future<void> _onProceedButtonPressed() async {
+    _calculateTotalAmount();
+
+    // Check if user inserted enough coins
+    if (coinInserted >= totalAmount) {
+      // If user overpaid, award points if user is RFID
+      if (coinInserted > totalAmount) {
+        double difference = coinInserted - totalAmount;
+        await _awardPoints(difference);
+      }
+
+      // Insert transactions, update stocks, etc.
       await _insertTransactions();
       await _updateStocksForOrders();
-
-      // ✅ Send medicine orders to ESP32 for dispensing
       await _usbHelper.sendOrdersToESP32(widget.orders);
 
       setState(() {
-        coinEqualToAmount = false;
         coinInserted = 0;
-        _coinsInsertedController.text = "₱0.00"; // ✅ Reset UI
+        _coinsInsertedController.text = "₱0.00";
       });
 
-
-      // ✅ Navigate to ConfirmationScreen
+      // Go to ConfirmationScreen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => ConfirmationScreen()),
@@ -166,11 +206,16 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
+  @override
+  void dispose() {
+    _coinsInsertedController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Disable the device back button.
+      // Disable the device back button
       onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
@@ -190,7 +235,7 @@ class PaymentPageState extends State<PaymentPage> {
             ],
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF7EAF0),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -258,14 +303,18 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 20),
 
-              // ✅ AMOUNT INSERTED SECTION
+              // AMOUNT INSERTED SECTION
               const Text(
                 'AMOUNT INSERTED:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: _coinsInsertedController, // ✅ Dynamic controller
+                controller: _coinsInsertedController,
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
@@ -277,7 +326,7 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 20),
 
-              // ✅ ADD COINS BUTTON
+              // ADD COINS BUTTON
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -287,15 +336,17 @@ class PaymentPageState extends State<PaymentPage> {
                     ),
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: _incrementAmountInserted, // ✅ Increment coins
+                  onPressed: _incrementAmountInserted,
                   child: const Text('ADD ₱20'),
                 ),
               ),
+              const SizedBox(height: 20),
 
+              // CANCEL / PROCEED Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // CANCEL button navigates back to MedicineMenu while preserving orders.
+                  // CANCEL button navigates back to MedicineMenu while preserving orders
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -317,7 +368,7 @@ class PaymentPageState extends State<PaymentPage> {
                     },
                     child: const Text('CANCEL'),
                   ),
-                  // PROCEED button processes payment, updates stock, and navigates to ConfirmationScreen.
+                  // PROCEED button processes payment, updates stock, awards points if user is RFID
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),
