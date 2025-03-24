@@ -1,12 +1,8 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
-import 'package:qr_flutter/qr_flutter.dart';
 import 'database_helper.dart';
-import 'splash_screen.dart';
 import 'medicine_menu.dart';
+import 'confirmation_screen.dart';
 
 class GCashPaymentPage extends StatelessWidget {
   final List<Map<String, String>> orders;
@@ -20,6 +16,7 @@ class GCashPaymentPage extends StatelessWidget {
     required this.rfidData,
   }) : super(key: key);
 
+  /// Inserts transactions into the database with payment_method 'GCash'.
   Future<void> _insertTransactions() async {
     String userType = (rfidData.isNotEmpty) ? "RFID User" : "Guest";
 
@@ -44,11 +41,13 @@ class GCashPaymentPage extends StatelessWidget {
     }
   }
 
+  /// Updates the stock for each ordered medicine by subtracting the quantity ordered.
   Future<void> _updateStocksForOrders() async {
     for (var order in orders) {
       final String productName = order['name'] ?? "";
       final int quantityOrdered = int.tryParse(order['quantity'] ?? "1") ?? 1;
       final db = await DatabaseHelper.instance.db;
+      // Query current stock for the product.
       final results = await db.query(
         'stocks',
         where: 'product_name = ?',
@@ -68,98 +67,39 @@ class GCashPaymentPage extends StatelessWidget {
     }
   }
 
-  Future<void> _onPaymentCompleted(BuildContext context) async {
+  /// Called when the "PROCEED" button is pressed.
+  /// Inserts transactions, updates stocks, then navigates to SplashScreen.
+  Future<void> _onProceedPayment(BuildContext context) async {
     await _insertTransactions();
     await _updateStocksForOrders();
+    // Changed only this line to navigate to ConfirmationScreen
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => const SplashScreen(),
+        builder: (context) => const ConfirmationScreen(),
       ),
     );
   }
 
-  int _calculateTotalAmount() {
-    int totalAmount = 0;
+  /// Calculates the total amount (in PHP) from the orders.
+  double _calculateTotalAmount() {
+    double total = 0.0;
     for (var order in orders) {
-      double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
-      totalAmount += (totalCost * 100).toInt();
+      double price = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
+      total += price;
     }
-    return totalAmount;
-  }
-
-  Future<void> _processPayment(BuildContext context) async {
-    int totalAmount = _calculateTotalAmount();
-    final String secretKey = "sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS";
-    final String auth = base64Encode(utf8.encode("$secretKey:"));
-
-    final Map<String, dynamic> payload = {
-      "data": {
-        "attributes": {
-          "amount": totalAmount,
-          "currency": "PHP",
-          "payment_method_allowed": ["gcash"],
-        },
-      },
-    };
-
-    final Uri url = Uri.parse("https://api.paymongo.com/v1/payment_intents");
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          "Authorization": "Basic $auth",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode(payload),
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final paymentIntent = jsonDecode(response.body) as Map<String, dynamic>;
-        debugPrint("PaymentIntent response: $paymentIntent");
-
-        final data = paymentIntent["data"];
-        final attributes = data["attributes"];
-
-        String qrData = "";
-        if (attributes["next_action"] != null &&
-            attributes["next_action"]["redirect"] != null &&
-            attributes["next_action"]["redirect"]["url"] != null) {
-          qrData = attributes["next_action"]["redirect"]["url"];
-        } else {
-          qrData = attributes["client_key"] ?? "";
-        }
-
-        final paymentIntentId = data["id"];
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PollingPaymentScreen(
-              paymentIntentId: paymentIntentId,
-              qrData: qrData,
-              orders: orders,
-              rfidData: rfidData,
-            ),
-          ),
-        );
-      } else {
-        throw Exception("Failed to create PaymentIntent: ${response.body}");
-      }
-    } catch (e) {
-      debugPrint("Error processing payment: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error processing payment: $e")),
-      );
-    }
+    return total;
   }
 
   @override
   Widget build(BuildContext context) {
+    final double totalAmount = _calculateTotalAmount();
+
     return WillPopScope(
+      // Prevent default back navigation.
       onWillPop: () async => false,
       child: Scaffold(
+        backgroundColor: const Color(0xFFF7EAF0),
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           iconTheme: const IconThemeData(color: Colors.white),
@@ -167,6 +107,7 @@ class GCashPaymentPage extends StatelessWidget {
             'GCASH Payment',
             style: TextStyle(color: Colors.white),
           ),
+          // Override the back arrow to navigate back to MedicineMenu.
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
@@ -182,174 +123,135 @@ class GCashPaymentPage extends StatelessWidget {
             },
           ),
         ),
-        backgroundColor: const Color(0xFFF7EAF0),
-        body: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2A5E),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 30,
-                      vertical: 15,
-                    ),
-                  ),
-                  onPressed: () async {
-                    await _processPayment(context);
-                  },
-                  child: const Text(
-                    "PROCEED WITH PAYMENT",
-                    style: TextStyle(fontSize: 25),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2A5E),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 30,
-                      vertical: 15,
-                    ),
-                  ),
-                  onPressed: () async {
-                    await _onPaymentCompleted(context);
-                  },
-                  child: const Text(
-                    "PAYMENT COMPLETED",
-                    style: TextStyle(fontSize: 25),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class PollingPaymentScreen extends StatefulWidget {
-  final String paymentIntentId;
-  final String qrData;
-  final List<Map<String, String>> orders;
-  final String rfidData;
-
-  const PollingPaymentScreen({
-    Key? key,
-    required this.paymentIntentId,
-    required this.qrData,
-    required this.orders,
-    required this.rfidData,
-  }) : super(key: key);
-
-  @override
-  _PollingPaymentScreenState createState() => _PollingPaymentScreenState();
-}
-
-class _PollingPaymentScreenState extends State<PollingPaymentScreen> {
-  Timer? _timer;
-  String _status = "awaiting_payment";
-
-  @override
-  void initState() {
-    super.initState();
-    _startPolling();
-  }
-
-  Future<void> _pollPaymentStatus() async {
-    final String secretKey = "sk_test_KA5UFDB3xNJCF4ev4tZ2b4fS";
-    final String auth = base64Encode(utf8.encode("$secretKey:"));
-    final Uri url = Uri.parse("https://api.paymongo.com/v1/payment_intents/${widget.paymentIntentId}");
-
-    try {
-      final response = await http.get(
-        url,
-        headers: {
-          "Authorization": "Basic $auth",
-          "Content-Type": "application/json",
-        },
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final result = jsonDecode(response.body) as Map<String, dynamic>;
-        final status = result["data"]["attributes"]["status"];
-        setState(() {
-          _status = status;
-        });
-        if (status == "paid") {
-          _timer?.cancel();
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const SplashScreen()),
-          );
-        }
-      } else {
-        debugPrint("Error polling PaymentIntent: ${response.body}");
-      }
-    } catch (e) {
-      debugPrint("Error polling PaymentIntent: $e");
-    }
-  }
-
-  void _startPolling() {
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      _pollPaymentStatus();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D2A5E),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          "Confirming Payment",
-          style: TextStyle(color: Colors.white),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MedicineMenu(
-                  rfidData: widget.rfidData,
-                  existingOrders: widget.orders,
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Scan the QR Code with your GCash app to proceed with payment.",
-                style: TextStyle(fontSize: 24),
-                textAlign: TextAlign.center,
+              // Container for YOUR ORDERS
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "YOUR ORDER/S:",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    for (var order in orders) ...[
+                      Text(
+                        "${order['name']} (Qty: ${order['quantity']}) - ₱${order['price']}",
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
-              QrImageView(
-                data: widget.qrData,
-                version: QrVersions.auto,
-                size: 300.0,
+              // Container for TOTAL AMOUNT
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "TOTAL AMOUNT:",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "₱${totalAmount.toStringAsFixed(2)}",
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 100),
+              // Centered instruction text with bigger font
+              Center(
+                child: Text(
+                  "Scan the QR Code with your GCash app to proceed with payment.",
+                  style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
               ),
               const SizedBox(height: 20),
-              Text("Current status: $_status", style: const TextStyle(fontSize: 16)),
+              // Static QR Code (centered, larger size)
+              Center(
+                child: Image.asset(
+                  'assets/images/qrcode.png',
+                  width: 500,
+                  height: 500,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 30),
+              // Row of CANCEL and PROCEED buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // CANCEL button
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 15,
+                      ),
+                    ),
+                    onPressed: () {
+                      // If user cancels, go back to MedicineMenu
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MedicineMenu(
+                            rfidData: rfidData,
+                            existingOrders: orders,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      "CANCEL",
+                      style: TextStyle(fontSize: 20, color: Colors.white),
+                    ),
+                  ),
+                  // PROCEED button
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D2A5E),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 15,
+                      ),
+                    ),
+                    onPressed: () async {
+                      // Same logic as "PAYMENT COMPLETED" in your old code
+                      await _onProceedPayment(context);
+                    },
+                    child: const Text(
+                      "PROCEED",
+                      style: TextStyle(fontSize: 20, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

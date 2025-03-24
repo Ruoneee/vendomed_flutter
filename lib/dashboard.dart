@@ -9,7 +9,6 @@ import 'database_helper.dart';
 import 'user.dart';
 import 'inventory.dart';
 
-
 // Model for chart data.
 class ChartData {
   final String label;
@@ -453,119 +452,197 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // The "View Details" modal.
   void _showViewDetailsModal() {
-    showDialog(
+    // --- NEW: Calculate Previous vs Current Month Sales ---
+    final now = DateTime.now();
+    final currentMonth = now.month;
+    final currentYear = now.year;
+    final previousMonth = (currentMonth == 1) ? 12 : currentMonth - 1;
+    final previousYear = (currentMonth == 1) ? currentYear - 1 : currentYear;
+
+    double currentMonthSales = 0.0;
+    double previousMonthSales = 0.0;
+
+    for (var tx in _transactions) {
+      final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
+      // Check if transaction is in the current month
+      if (dt.year == currentYear && dt.month == currentMonth) {
+        currentMonthSales += (tx['total_amount'] as num).toDouble();
+      }
+      // Check if transaction is in the previous month
+      else if (dt.year == previousYear && dt.month == previousMonth) {
+        previousMonthSales += (tx['total_amount'] as num).toDouble();
+      }
+    }
+
+    // Prepare a simple list of ChartData for comparison
+    List<ChartData> comparisonData = [
+      ChartData(label: 'Previous Month', value: previousMonthSales),
+      ChartData(label: 'Current Month', value: currentMonthSales),
+    ];
+
+    // --- NEW: Use a Bottom Sheet instead of a Dialog ---
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
       builder: (BuildContext context) {
-        return Dialog(
-          insetPadding: const EdgeInsets.all(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            color: _isDarkMode ? Colors.black : Colors.white,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header with title and close "X" button.
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Transaction Details",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: _isDarkMode ? Colors.white : Colors.black,
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              color: _isDarkMode ? Colors.black : Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // --- Title + Close Button ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Transaction Details",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close,
-                            color: _isDarkMode ? Colors.white : Colors.black),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Graphical Insights: a mini chart.
-                  SizedBox(
-                    height: 200,
-                    child: SfCartesianChart(
-                      backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
-                      primaryXAxis: CategoryAxis(
-                        labelStyle: TextStyle(
-                            color: _isDarkMode ? Colors.white : Colors.black),
-                      ),
-                      primaryYAxis: NumericAxis(
-                        labelStyle: TextStyle(
-                            color: _isDarkMode ? Colors.white : Colors.black),
-                      ),
-                      series: <CartesianSeries>[
-                        ColumnSeries<ChartData, String>(
-                          dataSource: _salesData,
-                          xValueMapper: (ChartData data, _) => data.label,
-                          yValueMapper: (ChartData data, _) => data.value,
-                          color: _isDarkMode
-                              ? Colors.cyanAccent
-                              : const Color(0xFF0D2A5E),
+                        IconButton(
+                          icon: Icon(
+                            Icons.close,
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                          onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Detailed Transaction List in a horizontal scrollable DataTable.
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('Medicine')),
-                        DataColumn(label: Text('Qty')),
-                        DataColumn(label: Text('Unit Price')),
-                        DataColumn(label: Text('Total')),
-                        DataColumn(label: Text('Date')),
-                        DataColumn(label: Text('Payment')),
-                        DataColumn(label: Text('User')),
-                      ],
-                      rows: _transactions.map((tx) {
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              Text(tx['medicine'] ?? 'N/A'),
-                              onTap: () => _showDrillDownDetails(tx),
-                            ),
-                            DataCell(
-                              Text(tx['quantity']?.toString() ?? '0'),
-                              onTap: () => _showDrillDownDetails(tx),
-                            ),
-                            DataCell(
-                              Text(tx['unit_price']?.toString() ?? '0'),
-                              onTap: () => _showDrillDownDetails(tx),
-                            ),
-                            DataCell(
-                              Text(tx['total_amount']?.toString() ?? '0'),
-                              onTap: () => _showDrillDownDetails(tx),
-                            ),
-                            DataCell(
-                              Text(tx['date'] ?? 'N/A'),
-                              onTap: () => _showDrillDownDetails(tx),
-                            ),
-                            DataCell(
-                              Text(tx['payment_method'] ?? 'N/A'),
-                              onTap: () => _showDrillDownDetails(tx),
-                            ),
-                            DataCell(
-                              Text(tx['user_type'] ?? 'N/A'),
-                              onTap: () => _showDrillDownDetails(tx),
-                            ),
-                          ],
-                        );
-                      }).toList(),
+                    const SizedBox(height: 16),
+
+                    // --- NEW: Comparison Chart (Previous vs. Current Month) ---
+                    Text(
+                      "Comparison: Previous vs Current Month",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 200,
+                      child: SfCartesianChart(
+                        backgroundColor:
+                        _isDarkMode ? Colors.grey[900] : Colors.white,
+                        primaryXAxis: CategoryAxis(
+                          labelStyle: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        primaryYAxis: NumericAxis(
+                          labelStyle: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        series: <CartesianSeries<ChartData, String>>[
+                          ColumnSeries<ChartData, String>(
+                            dataSource: comparisonData,
+                            xValueMapper: (ChartData data, _) => data.label,
+                            yValueMapper: (ChartData data, _) => data.value,
+                            color: _isDarkMode
+                                ? Colors.cyanAccent
+                                : const Color(0xFF0D2A5E),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- EXISTING: Mini Chart for _salesData ---
+                    SizedBox(
+                      height: 200,
+                      child: SfCartesianChart(
+                        backgroundColor:
+                        _isDarkMode ? Colors.grey[900] : Colors.white,
+                        primaryXAxis: CategoryAxis(
+                          labelStyle: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        primaryYAxis: NumericAxis(
+                          labelStyle: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        series: <CartesianSeries<ChartData, String>>[
+                          ColumnSeries<ChartData, String>(
+                            dataSource: _salesData,
+                            xValueMapper: (ChartData data, _) => data.label,
+                            yValueMapper: (ChartData data, _) => data.value,
+                            color: _isDarkMode
+                                ? Colors.cyanAccent
+                                : const Color(0xFF0D2A5E),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- EXISTING: Transaction DataTable ---
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Medicine')),
+                          DataColumn(label: Text('Qty')),
+                          DataColumn(label: Text('Unit Price')),
+                          DataColumn(label: Text('Total')),
+                          DataColumn(label: Text('Date')),
+                          DataColumn(label: Text('Payment')),
+                          DataColumn(label: Text('User')),
+                        ],
+                        rows: _transactions.map((tx) {
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(tx['medicine'] ?? 'N/A'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
+                              DataCell(
+                                Text(tx['quantity']?.toString() ?? '0'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
+                              DataCell(
+                                Text(tx['unit_price']?.toString() ?? '0'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
+                              DataCell(
+                                Text(tx['total_amount']?.toString() ?? '0'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
+                              DataCell(
+                                Text(tx['date'] ?? 'N/A'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
+                              DataCell(
+                                Text(tx['payment_method'] ?? 'N/A'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
+                              DataCell(
+                                Text(tx['user_type'] ?? 'N/A'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
