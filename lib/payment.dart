@@ -73,7 +73,7 @@ class PaymentPageState extends State<PaymentPage> {
         });
       }
     } catch (e) {
-      print("Error loading user name: $e");
+      debugPrint("Error loading user name: $e");
       setState(() {
         _userName = widget.rfidData;
       });
@@ -148,12 +148,12 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  /// Award extra points if user is RFID and overpays
-  Future<void> _awardPoints(double difference) async {
+  /// Returns how many points were actually awarded (0 if none).
+  Future<int> _awardPoints(double difference) async {
     // If user is a guest, skip awarding points
     if (_userName == widget.rfidData) {
       // Means we didn't find them in the DB => treat as Guest => no points
-      return;
+      return 0;
     }
 
     try {
@@ -175,11 +175,11 @@ class PaymentPageState extends State<PaymentPage> {
         {'POINTS': newPoints.toString()},
         widget.rfidData,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("You earned $additionalPoints extra points!")),
-      );
+
+      return additionalPoints;
     } catch (e) {
       debugPrint("Error awarding points: $e");
+      return 0; // Return 0 if something goes wrong
     }
   }
 
@@ -189,36 +189,81 @@ class PaymentPageState extends State<PaymentPage> {
 
     // Check if user inserted enough coins
     if (coinInserted >= totalAmount) {
-      // If user overpaid, award points if user is RFID
+      // 1) If user overpaid, award points
+      int pointsAwarded = 0;
       if (coinInserted > totalAmount) {
         double difference = coinInserted - totalAmount;
-        await _awardPoints(difference);
+        pointsAwarded = await _awardPoints(difference);
       }
 
-      // Process transaction: insert transactions, update stocks, etc.
+      // 2) Process transaction steps
       await _insertTransactions();
       await _updateStocksForOrders();
       await _usbHelper.sendOrdersToESP32(widget.orders);
 
-      // Reset the inserted coin amount on both the ESP32 and UI.
+      // 3) Reset the inserted coin amount
       await _usbHelper.resetCredit();
       setState(() {
         coinInserted = 0;
         _coinsInsertedController.text = "₱0.00";
       });
 
-      // Navigate to ConfirmationScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => ConfirmationScreen()),
-      );
+      // 4) If points awarded, show a 3-second pop-up, then auto-navigate
+      if (pointsAwarded > 0) {
+        showDialog(
+          context: context,
+          barrierDismissible: false, // user cannot dismiss by tapping outside
+          builder: (context) {
+            // After 3 seconds, close the dialog and go to Confirmation
+            Future.delayed(const Duration(seconds: 3), () {
+              Navigator.of(context).pop(); // Close the dialog
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => ConfirmationScreen()),
+              );
+            });
+
+            // A larger AlertDialog
+            return AlertDialog(
+              // Make corners more rounded or keep default
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              // Optional: Adjust the background color if you like
+              backgroundColor: Colors.white,
+              title: const Text(
+                "Points Earned!",
+                style: TextStyle(fontSize: 30), // Larger font
+              ),
+              content: SizedBox(
+                // Force a larger width/height
+                width: MediaQuery.of(context).size.width * 0.6,
+                height: 180,
+                child: Center(
+                  child: Text(
+                    "You earned $pointsAwarded extra points!",
+                    style: const TextStyle(fontSize: 28), // Larger font
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      } else {
+        // If no points awarded or user didn't overpay, go directly
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ConfirmationScreen()),
+        );
+      }
     } else {
+      // Not enough coins
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Insufficient Coins Inserted')),
       );
     }
   }
-
 
   @override
   void dispose() {
