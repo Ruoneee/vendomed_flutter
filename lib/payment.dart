@@ -26,19 +26,30 @@ class PaymentPage extends StatefulWidget {
 
 class PaymentPageState extends State<PaymentPage> {
   final TextEditingController _coinsInsertedController = TextEditingController();
-  final USBHelper _usbHelper = USBHelper(); // Uses global instance
+  final USBHelper _usbHelper = USBHelper(); // Global instance
 
   int coinInserted = 0;
   double totalAmount = 0.0;
   String _userName = "";
+  StreamSubscription<int>? _creditSubscription;
 
   @override
   void initState() {
     super.initState();
     _calculateTotalAmount();
     _loadUserName();
-    _usbHelper.initUSB(); // Ensures connection persists
-    _coinsInsertedController.text = "₱0.00"; // Initialize amount inserted
+    _usbHelper.initUSB(); // Ensure connection persists
+
+    // Initialize the amount inserted display
+    _coinsInsertedController.text = "₱0.00";
+
+    // Subscribe to the credit stream from the ESP32
+    _creditSubscription = _usbHelper.creditStream.listen((int newCredit) {
+      setState(() {
+        coinInserted = newCredit;
+        _coinsInsertedController.text = "₱${coinInserted.toStringAsFixed(2)}";
+      });
+    });
   }
 
   /// Load the user's name from the DB. If no match, treat as Guest.
@@ -184,17 +195,19 @@ class PaymentPageState extends State<PaymentPage> {
         await _awardPoints(difference);
       }
 
-      // Insert transactions, update stocks, etc.
+      // Process transaction: insert transactions, update stocks, etc.
       await _insertTransactions();
       await _updateStocksForOrders();
       await _usbHelper.sendOrdersToESP32(widget.orders);
 
+      // Reset the inserted coin amount on both the ESP32 and UI.
+      await _usbHelper.resetCredit();
       setState(() {
         coinInserted = 0;
         _coinsInsertedController.text = "₱0.00";
       });
 
-      // Go to ConfirmationScreen
+      // Navigate to ConfirmationScreen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => ConfirmationScreen()),
@@ -206,8 +219,10 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
+
   @override
   void dispose() {
+    _creditSubscription?.cancel();
     _coinsInsertedController.dispose();
     super.dispose();
   }
