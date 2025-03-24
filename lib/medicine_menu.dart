@@ -58,7 +58,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   /// Fetch both user NAME and POINTS from 'users' table by RFID.
-  /// If no user record is found, treat them as a Guest (userName == rfidData).
+  /// If no user record is found, treat them as a Guest (userName == widget.rfidData).
   Future<void> _loadUserNameAndPoints() async {
     try {
       final db = await DatabaseHelper().db;
@@ -141,18 +141,10 @@ class MedicineMenuState extends State<MedicineMenu> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           automaticallyImplyLeading: false,
-          title: Row(
-            children: [
-              const CircleAvatar(
-                backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
-                radius: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
-                style: const TextStyle(fontSize: 18, color: Colors.white),
-              ),
-            ],
+          // Removed the user icon from the title.
+          title: Text(
+            "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
+            style: const TextStyle(fontSize: 18, color: Colors.white),
           ),
           actions: [
             IconButton(
@@ -174,16 +166,16 @@ class MedicineMenuState extends State<MedicineMenu> {
           child: ListView(
             padding: const EdgeInsets.all(12.0),
             children: [
-              // Show "VendoPoints" if the user is an RFID user
+              // Show "VendoPoints" (or "Current Points") if the user is an RFID user.
               if (_userName != widget.rfidData) ...[
                 Container(
                   height: 100,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
-                    // Add a border matching the AppBar color
+                    // Border based on AppBar color.
                     border: Border.all(
-                      color: const Color(0xFF0D2A5E), // same as AppBar color
+                      color: const Color(0xFF0D2A5E),
                       width: 2,
                     ),
                   ),
@@ -414,8 +406,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       final existingIndex = orders.indexWhere((item) => item['name'] == productName);
 
       if (existingIndex != -1) {
-        final oldQuantity =
-            int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        final oldQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
         final newQuantity = oldQuantity + 1;
         final double newTotalPrice = unitPrice * newQuantity;
         orders[existingIndex]['quantity'] = newQuantity.toString();
