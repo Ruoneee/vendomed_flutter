@@ -223,26 +223,32 @@ class PaymentPageState extends State<PaymentPage> {
               );
             });
 
-            // A larger AlertDialog
+            // A larger, styled AlertDialog with bigger text
             return AlertDialog(
-              // Make corners more rounded or keep default
+              // Rounded corners
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              // Optional: Adjust the background color if you like
               backgroundColor: Colors.white,
-              title: const Text(
+              title: Text(
                 "Points Earned!",
-                style: TextStyle(fontSize: 30), // Larger font
+                style: TextStyle(
+                  fontSize: 32, // Larger title font
+                  color: const Color(0xFF0D2A5E),
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
               content: SizedBox(
-                // Force a larger width/height
                 width: MediaQuery.of(context).size.width * 0.6,
-                height: 180,
+                height: 140,
                 child: Center(
                   child: Text(
                     "You earned $pointsAwarded extra points!",
-                    style: const TextStyle(fontSize: 28), // Larger font
+                    style: const TextStyle(
+                      fontSize: 26, // Larger content font
+                      color: Colors.black,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),

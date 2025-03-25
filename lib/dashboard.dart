@@ -36,7 +36,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Timer? _timer;
 
   // Hierarchical filter state.
-  // _selectedYear is required. The others are optional (null means "All").
   int _selectedYear = DateTime.now().year;
   int? _selectedMonth; // null means all months in the year
   int? _selectedWeek;  // null means all weeks in the month
@@ -76,7 +75,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Update chart data based on the hierarchical filters.
-  // Removed hour-level grouping; if a day is selected, we simply show "day" grouping.
   void _updateChartData() {
     if (_transactions.isEmpty) {
       setState(() {
@@ -99,8 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return true;
     }).toList();
 
-    // 2) Decide how to group the filtered data.
-    //    We have only three grouping modes now: month, week, or day.
+    // 2) Decide how to group the filtered data: month, week, or day.
     String groupingMode;
     if (_selectedMonth == null) {
       groupingMode = "month";
@@ -121,14 +118,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final weekOfMonth = ((dt.day - 1) ~/ 7) + 1;
         key = "Week $weekOfMonth";
       } else {
-        // groupingMode == "day"
-        // We'll label the bar by the day number
         key = dt.day.toString();
       }
       salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
     }
 
-    // 4) Sort the keys in a logical order (month names, then week #, then day #).
+    // 4) Sort the keys in a logical order.
     final sortedKeys = salesMap.keys.toList();
     if (groupingMode == "month") {
       final monthOrder = [
@@ -143,7 +138,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return aNum.compareTo(bNum);
       });
     } else {
-      // groupingMode == "day"
       sortedKeys.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
     }
 
@@ -167,7 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // Helpers to get weekday and month names.
+  // Helpers
   String _weekdayName(int weekday) {
     switch (weekday) {
       case 1:
@@ -220,7 +214,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Build the filter row using a horizontal scroll view to keep all dropdowns on one line.
   Widget _buildFiltersRow() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -244,7 +237,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildYearDropdown() {
     final currentYear = DateTime.now().year;
-    // For example, show a range from currentYear-2 to currentYear+2.
     final years = List.generate(5, (index) => currentYear - 2 + index);
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -262,7 +254,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (value == null) return;
             setState(() {
               _selectedYear = value;
-              // Reset lower-level filters.
               _selectedMonth = null;
               _selectedWeek = null;
               _selectedDay = null;
@@ -275,7 +266,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildMonthDropdown() {
-    // Dropdown with an "All" option (null) and the 12 months.
     final months = [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -309,7 +299,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildWeekDropdown() {
-    // Weeks 1 to 5 with an "All" option.
     final weeks = [null, 1, 2, 3, 4, 5];
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -342,7 +331,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildDayDropdown() {
-    // Calculate the number of days in the selected month.
     final daysInMonth = _daysInMonth(_selectedYear, _selectedMonth!);
     final days = <int?>[null];
     for (int i = 1; i <= daysInMonth; i++) {
@@ -377,7 +365,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Helper: Returns the number of days in a given month/year.
   int _daysInMonth(int year, int month) {
     if (month == 2) {
       // Leap year check.
@@ -390,20 +377,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return 31;
   }
 
-  // Generate a title for the sales chart based on active filters.
-  // Removed the "(by hour)" label. Now it just shows "(Day)" if a day is selected.
   String _getSalesChartTitle() {
     if (_selectedMonth == null) {
-      // Entire year
       return "Sales for $_selectedYear (by Month)";
     } else if (_selectedWeek == null) {
-      // Month-level
       return "Sales for ${_monthName(_selectedMonth!)} $_selectedYear (by Week)";
     } else if (_selectedDay == null) {
-      // Week-level
       return "Sales for ${_monthName(_selectedMonth!)} (Week $_selectedWeek) $_selectedYear (by Day)";
     } else {
-      // Day-level
       return "Sales for ${_monthName(_selectedMonth!)} $_selectedDay, $_selectedYear (Day)";
     }
   }
@@ -450,9 +431,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Helper for summary cards
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required Color backgroundColor,
+    bool isDarkMode = false,
+  }) {
+    return Expanded(
+      child: Card(
+        color: backgroundColor,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white70 : Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // The "View Details" modal.
   void _showViewDetailsModal() {
-    // --- NEW: Calculate Previous vs Current Month Sales ---
+    // --- Calculate Previous vs Current Month Sales ---
     final now = DateTime.now();
     final currentMonth = now.month;
     final currentYear = now.year;
@@ -464,23 +484,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     for (var tx in _transactions) {
       final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
-      // Check if transaction is in the current month
       if (dt.year == currentYear && dt.month == currentMonth) {
         currentMonthSales += (tx['total_amount'] as num).toDouble();
-      }
-      // Check if transaction is in the previous month
-      else if (dt.year == previousYear && dt.month == previousMonth) {
+      } else if (dt.year == previousYear && dt.month == previousMonth) {
         previousMonthSales += (tx['total_amount'] as num).toDouble();
       }
     }
 
-    // Prepare a simple list of ChartData for comparison
+    final double difference = currentMonthSales - previousMonthSales;
+
+    // Prepare chart data
     List<ChartData> comparisonData = [
       ChartData(label: 'Previous Month', value: previousMonthSales),
       ChartData(label: 'Current Month', value: currentMonthSales),
     ];
 
-    // --- NEW: Use a Bottom Sheet instead of a Dialog ---
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -497,7 +515,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // --- Title + Close Button ---
+                    // Title + Close Button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -520,7 +538,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // --- NEW: Comparison Chart (Previous vs. Current Month) ---
+                    // Row of Summary Cards (monochrome + pastel for difference)
+                    Row(
+                      children: [
+                        _buildSummaryCard(
+                          title: "Previous Month",
+                          value: "₱${previousMonthSales.toStringAsFixed(2)}",
+                          backgroundColor: Color(0xFF1B3B6F), // lighter navy
+                          isDarkMode: _isDarkMode,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildSummaryCard(
+                          title: "Current Month",
+                          value: "₱${currentMonthSales.toStringAsFixed(2)}",
+                          backgroundColor: Color(0xFF0D2A5E), // main brand navy
+                          isDarkMode: _isDarkMode,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildSummaryCard(
+                          title: "Difference",
+                          value: difference >= 0
+                              ? "+₱${difference.toStringAsFixed(2)}"
+                              : "-₱${difference.abs().toStringAsFixed(2)}",
+                          backgroundColor: Color(0xFF4682B4), // pastel "peach blue"
+                          isDarkMode: _isDarkMode,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Comparison Chart
                     Text(
                       "Comparison: Previous vs Current Month",
                       style: TextStyle(
@@ -559,37 +606,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // --- EXISTING: Mini Chart for _salesData ---
-                    SizedBox(
-                      height: 200,
-                      child: SfCartesianChart(
-                        backgroundColor:
-                        _isDarkMode ? Colors.grey[900] : Colors.white,
-                        primaryXAxis: CategoryAxis(
-                          labelStyle: TextStyle(
-                            color: _isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                        primaryYAxis: NumericAxis(
-                          labelStyle: TextStyle(
-                            color: _isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                        series: <CartesianSeries<ChartData, String>>[
-                          ColumnSeries<ChartData, String>(
-                            dataSource: _salesData,
-                            xValueMapper: (ChartData data, _) => data.label,
-                            yValueMapper: (ChartData data, _) => data.value,
-                            color: _isDarkMode
-                                ? Colors.cyanAccent
-                                : const Color(0xFF0D2A5E),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- EXISTING: Transaction DataTable ---
+                    // Transaction DataTable
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
