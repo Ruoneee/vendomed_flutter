@@ -24,7 +24,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // You can adjust this color to match your brand palette
+  // Adjust this color to match your brand palette.
   final Color brandColor = const Color(0xFF0D2A5E);
 
   int _selectedTabIndex = 0;
@@ -310,8 +310,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Create a copy of the frequency data and sort descending by sales quantity.
     List<ChartData> sortedItems = List.from(_frequencyData);
     sortedItems.sort((a, b) => b.value.compareTo(a.value));
-    if (sortedItems.length > 5) {
-      sortedItems = sortedItems.sublist(0, 5);
+
+    // Show only top 3 items.
+    if (sortedItems.length > 3) {
+      sortedItems = sortedItems.sublist(0, 3);
     }
 
     return Card(
@@ -353,7 +355,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final index = entry.key;
                   final item = entry.value;
                   return ListTile(
-                    // Show rank (#1, #2, etc.) in a white circle
+                    // Show rank (#1, #2, etc.) in a white circle.
                     leading: CircleAvatar(
                       backgroundColor: Colors.white,
                       child: Text(
@@ -1055,7 +1057,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // Quick Stats / KPI Cards (enhanced design)
                 _buildQuickStats(),
                 const SizedBox(height: 20),
-                // Top-Selling Items Widget (enhanced design)
+                // Top-Selling Items Widget (enhanced design, showing Top 3)
                 _buildTopSellingItems(),
                 const SizedBox(height: 20),
                 _buildFiltersRow(),
