@@ -24,6 +24,9 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // You can adjust this color to match your brand palette
+  final Color brandColor = const Color(0xFF0D2A5E);
+
   int _selectedTabIndex = 0;
   bool _isDarkMode = false; // Dark mode state
   int totalTransactions = 0; // Total transaction count from DB
@@ -212,6 +215,171 @@ class _DashboardScreenState extends State<DashboardScreen> {
       default:
         return "";
     }
+  }
+
+  // --- HELPER WIDGET: Single KPI Card with gradient background ---
+  Widget _buildKpiCard({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [brandColor, brandColor.withOpacity(0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon in a circular container for contrast
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.black, size: 30),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- New Feature: Quick Stats / KPI Cards ---
+  Widget _buildQuickStats() {
+    double avgTransaction = totalTransactions > 0 ? _activeBalance / totalTransactions : 0;
+    return Row(
+      children: [
+        Expanded(
+          child: _buildKpiCard(
+            icon: Icons.attach_money,
+            label: "Total Sales",
+            value: "₱${_activeBalance.toStringAsFixed(2)}",
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildKpiCard(
+            icon: Icons.receipt_long,
+            label: "Transactions",
+            value: "$totalTransactions",
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildKpiCard(
+            icon: Icons.show_chart,
+            label: "Avg. Value",
+            value: "₱${avgTransaction.toStringAsFixed(2)}",
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- New Feature: Top-Selling Items Widget with gradient background ---
+  Widget _buildTopSellingItems() {
+    // Create a copy of the frequency data and sort descending by sales quantity.
+    List<ChartData> sortedItems = List.from(_frequencyData);
+    sortedItems.sort((a, b) => b.value.compareTo(a.value));
+    if (sortedItems.length > 5) {
+      sortedItems = sortedItems.sublist(0, 5);
+    }
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              brandColor.withOpacity(0.9),
+              brandColor.withOpacity(0.7),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Top-Selling Items",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              sortedItems.isEmpty
+                  ? const Text(
+                "No data available",
+                style: TextStyle(color: Colors.white),
+              )
+                  : Column(
+                children: sortedItems.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return ListTile(
+                    // Show rank (#1, #2, etc.) in a white circle
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        "#${index + 1}",
+                        style: TextStyle(
+                          color: brandColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      item.label,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    trailing: Text(
+                      "${item.value}",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildFiltersRow() {
@@ -431,7 +599,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Helper for summary cards
+  // Helper for summary cards in the "View Details" modal.
   Widget _buildSummaryCard({
     required String title,
     required String value,
@@ -538,20 +706,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Row of Summary Cards (monochrome + pastel for difference)
+                    // Row of Summary Cards
                     Row(
                       children: [
                         _buildSummaryCard(
                           title: "Previous Month",
                           value: "₱${previousMonthSales.toStringAsFixed(2)}",
-                          backgroundColor: Color(0xFF1B3B6F), // lighter navy
+                          backgroundColor: const Color(0xFF1B3B6F),
                           isDarkMode: _isDarkMode,
                         ),
                         const SizedBox(width: 8),
                         _buildSummaryCard(
                           title: "Current Month",
                           value: "₱${currentMonthSales.toStringAsFixed(2)}",
-                          backgroundColor: Color(0xFF0D2A5E), // main brand navy
+                          backgroundColor: const Color(0xFF0D2A5E),
                           isDarkMode: _isDarkMode,
                         ),
                         const SizedBox(width: 8),
@@ -560,7 +728,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           value: difference >= 0
                               ? "+₱${difference.toStringAsFixed(2)}"
                               : "-₱${difference.abs().toStringAsFixed(2)}",
-                          backgroundColor: Color(0xFF4682B4), // pastel "peach blue"
+                          backgroundColor: const Color(0xFF4682B4),
                           isDarkMode: _isDarkMode,
                         ),
                       ],
@@ -671,7 +839,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Transaction Details"),
+          title: const Text("Transaction Details"),
           content: Text(
             "Medicine: ${transaction['medicine']}\n"
                 "Quantity: ${transaction['quantity']}\n"
@@ -781,7 +949,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E),
+                      backgroundColor: brandColor,
                     ),
                     onPressed: _logOut,
                     child: const Text("Log Out",
@@ -849,7 +1017,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: TextStyle(
               fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF0D2A5E),
+        backgroundColor: brandColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
@@ -884,21 +1052,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _buildBalanceCard(),
                 const SizedBox(height: 20),
-                _buildFiltersRow(),
+                // Quick Stats / KPI Cards (enhanced design)
+                _buildQuickStats(),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    const Text(
-                      "Total Transactions: ",
-                      style: TextStyle(fontSize: 20, color: Colors.grey),
-                    ),
-                    Text(
-                      "$totalTransactions",
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
+                // Top-Selling Items Widget (enhanced design)
+                _buildTopSellingItems(),
+                const SizedBox(height: 20),
+                _buildFiltersRow(),
                 const SizedBox(height: 20),
                 _buildSalesChart(),
                 const SizedBox(height: 20),
@@ -943,7 +1103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ElevatedButton(
                   onPressed: _showViewDetailsModal,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2A5E),
+                    backgroundColor: brandColor,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
                   ),
@@ -960,7 +1120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSalesChart() {
     final Color chartBarColor =
-    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    _isDarkMode ? Colors.cyanAccent : brandColor;
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -1048,7 +1208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildFrequencyChart() {
     final Color chartLineColor =
-    _isDarkMode ? Colors.cyanAccent : const Color(0xFF0D2A5E);
+    _isDarkMode ? Colors.cyanAccent : brandColor;
     return GestureDetector(
       onTap: () {
         _showBigChart(
