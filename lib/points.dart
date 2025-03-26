@@ -4,9 +4,7 @@ import 'package:intl/intl.dart';
 import 'confirmation_screen.dart';
 import 'database_helper.dart';
 import 'medicine_menu.dart'; // To navigate back with existing orders
-import 'usb_helper.dart'; // If you need to send orders to the ESP32
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'usb_helper.dart';   // If you need to send orders to the ESP32
 
 class PointsPage extends StatefulWidget {
   final List<Map<String, String>> orders;
@@ -23,12 +21,22 @@ class PointsPage extends StatefulWidget {
 }
 
 class PointsPageState extends State<PointsPage> {
+  // For displaying how many points the user is redeeming
   final TextEditingController _pointsController = TextEditingController();
-  final USBHelper _usbHelper = USBHelper(); // If you need to send data to ESP32
 
+  // If you need to communicate with the ESP32 (e.g., vend a product)
+  final USBHelper _usbHelper = USBHelper();
+
+  // The total cost of the user’s orders
   double totalAmount = 0.0;
-  int pointsUsed = 0;   // How many points the user wants to redeem
-  int userPoints = 0;   // User's current VendoPoints
+
+  // How many points the user is choosing to redeem
+  int pointsUsed = 0;
+
+  // How many points the user currently has in the DB
+  int userPoints = 0;
+
+  // The user’s name (or their RFID if no record)
   String _userName = "";
 
   @override
@@ -36,11 +44,11 @@ class PointsPageState extends State<PointsPage> {
     super.initState();
     _calculateTotalAmount();
     _loadUserData();
-    // Initialize the points redeemed display
+    // Start with "0" in the "Points to Redeem" field
     _pointsController.text = "0";
   }
 
-  /// Calculate total amount from the orders
+  /// Sums up the prices in widget.orders to get totalAmount
   void _calculateTotalAmount() {
     double tempTotal = 0.0;
     for (var order in widget.orders) {
@@ -53,7 +61,7 @@ class PointsPageState extends State<PointsPage> {
     });
   }
 
-  /// Load user name and current points from DB
+  /// Loads the user’s NAME and POINTS from the 'users' table by RFID
   Future<void> _loadUserData() async {
     try {
       final db = await DatabaseHelper().db;
@@ -70,7 +78,7 @@ class PointsPageState extends State<PointsPage> {
           userPoints = int.tryParse(result.first['POINTS']?.toString() ?? '0') ?? 0;
         });
       } else {
-        // If no user found, treat as Guest
+        // If no user record is found, treat them as a Guest
         setState(() {
           _userName = widget.rfidData;
           userPoints = 0;
@@ -85,31 +93,29 @@ class PointsPageState extends State<PointsPage> {
     }
   }
 
-  /// Increment the pointsUsed by 20 (up to userPoints)
+  /// Increments the redeemed points by 20, not exceeding userPoints
   void _incrementPointsUsed() {
     setState(() {
       pointsUsed += 20;
-      // Make sure we don't exceed userPoints
       if (pointsUsed > userPoints) {
-        pointsUsed = userPoints;
+        pointsUsed = userPoints; // Don’t exceed total userPoints
       }
       _pointsController.text = pointsUsed.toString();
     });
   }
 
-  /// Insert each order as a transaction into DB
+  /// Inserts each order as a transaction (with payment_method = 'Points')
   Future<void> _insertTransactions() async {
-    // "RFID User" or "Guest"
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
     for (var order in widget.orders) {
-      String medicine = order['name'] ?? "Unknown";
-      int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
-      double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
-      double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
-      String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+      final String medicine = order['name'] ?? "Unknown";
+      final int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
+      final double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
+      final double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
+      final String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
-      Map<String, dynamic> transaction = {
+      final transaction = {
         'medicine': medicine,
         'quantity': quantity,
         'unit_price': unitPrice,
@@ -123,39 +129,13 @@ class PointsPageState extends State<PointsPage> {
     }
   }
 
-  /// Update the stock count for each ordered product
-  Future<void> _updateStocksForOrders() async {
-    for (var order in widget.orders) {
-      final String productName = order['name'] ?? "";
-      final int quantityOrdered = int.tryParse(order['quantity'] ?? "1") ?? 1;
-      final db = await DatabaseHelper().db;
-      final results = await db.query(
-        'stocks',
-        where: 'product_name = ?',
-        whereArgs: [productName],
-      );
-      if (results.isNotEmpty) {
-        final String currentCountString = results.first['count']?.toString() ?? "0";
-        final int currentCount = int.tryParse(currentCountString) ?? 0;
-        final int newCount = currentCount - quantityOrdered;
-        final int finalCount = newCount < 0 ? 0 : newCount;
-        final Map<String, dynamic> updatedData = {
-          'count': finalCount.toString(),
-        };
-        await DatabaseHelper().updateStock(updatedData, productName);
-      }
-    }
-  }
-
-  /// Deduct used points from user's total
+  /// Deduct the used points from the user’s DB record
   Future<void> _deductPoints(int pointsToDeduct) async {
-    // If user is a guest, do nothing
+    // If user is Guest, do nothing
     if (_userName == widget.rfidData) {
       return;
     }
     try {
-      final db = await DatabaseHelper().db;
-      // Subtract points from DB
       final newPoints = userPoints - pointsToDeduct;
       await DatabaseHelper.instance.updateUserByRFID(
         {'POINTS': newPoints.toString()},
@@ -166,34 +146,61 @@ class PointsPageState extends State<PointsPage> {
     }
   }
 
+  /// Decrements stock in DB for each ordered item
+  Future<void> _updateStocksForOrders() async {
+    for (var order in widget.orders) {
+      final String productName = order['name'] ?? "";
+      final int quantityOrdered = int.tryParse(order['quantity'] ?? "1") ?? 1;
+      final db = await DatabaseHelper().db;
+      final results = await db.query(
+        'stocks',
+        where: 'product_name = ?',
+        whereArgs: [productName],
+      );
+
+      if (results.isNotEmpty) {
+        final currentCountString = results.first['count']?.toString() ?? "0";
+        final int currentCount = int.tryParse(currentCountString) ?? 0;
+        final int newCount = currentCount - quantityOrdered;
+        final int finalCount = (newCount < 0) ? 0 : newCount;
+        await DatabaseHelper().updateStock(
+          {'count': finalCount.toString()},
+          productName,
+        );
+      }
+    }
+  }
+
   /// Called when user taps PROCEED
   Future<void> _onProceedButtonPressed() async {
-    // Check if user is redeeming enough points to cover total
+    // Check if the user is redeeming enough points to cover totalAmount
     if (pointsUsed >= totalAmount) {
-      // Also check if user actually has that many points
+      // Also ensure user actually has that many points
       if (pointsUsed <= userPoints) {
-        // 1) Insert transactions, update stocks, etc.
+        // 1) Insert transactions, update stock, etc.
         await _insertTransactions();
         await _updateStocksForOrders();
-        // If you need to send orders to ESP32, uncomment:
+
+        // 2) Deduct from user’s DB points
+        // totalAmount is double, so we convert to int
+        await _deductPoints(totalAmount.toInt());
+
+        // 3) If you need to vend a product, e.g., using ESP32:
         // await _usbHelper.sendOrdersToESP32(widget.orders);
 
-        // 2) Deduct points from user's account
-        await _deductPoints(totalAmount.toInt()); // totalAmount is double; cast to int
-
-        // 3) Navigate to ConfirmationScreen
+        // 4) Navigate to a Confirmation page
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => ConfirmationScreen()),
         );
       } else {
-        // Not enough total points
+        // Not enough total user points
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('You do not have enough points!')),
         );
       }
     } else {
-      // Not enough points used to cover total
+      // The user didn't redeem enough points to cover the cost
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Insufficient Points Redeemed')),
       );
@@ -203,7 +210,7 @@ class PointsPageState extends State<PointsPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // If you want to disable the back button or customize it, do so here
+      // If you want to disable or override the back button behavior, do so here
       onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
@@ -213,6 +220,7 @@ class PointsPageState extends State<PointsPage> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
+              // Navigate back to MedicineMenu, preserving the user’s orders
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
@@ -240,7 +248,7 @@ class PointsPageState extends State<PointsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1) Show VendoPoints above "YOUR ORDER/S"
+              // 1) Show current VendoPoints
               Container(
                 height: 80,
                 decoration: BoxDecoration(
@@ -268,7 +276,7 @@ class PointsPageState extends State<PointsPage> {
               ),
               const SizedBox(height: 16),
 
-              // 2) "YOUR ORDER/S" section
+              // 2) YOUR ORDER/S
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
@@ -385,6 +393,7 @@ class PointsPageState extends State<PointsPage> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () {
+                      // Return to MedicineMenu with orders
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
