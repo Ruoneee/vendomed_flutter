@@ -44,4 +44,5 @@ flutter:
     - assets/images/gcashlogo.png
     - assets/images/qrcode.png
     - assets/vendomed.db
+    - assets/images/points.png
   uses-material-design: true

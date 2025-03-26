@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'user_selection_screen.dart';
 import 'payment_method.dart';
+import 'payment.dart'; // <-- Import your PaymentPage here
 import 'database_helper.dart';
 import 'dart:async';
 
@@ -403,10 +404,12 @@ class MedicineMenuState extends State<MedicineMenu> {
   void _addToOrder(String productName, String unitPriceStr) {
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-      final existingIndex = orders.indexWhere((item) => item['name'] == productName);
+      final existingIndex =
+      orders.indexWhere((item) => item['name'] == productName);
 
       if (existingIndex != -1) {
-        final oldQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        final oldQuantity =
+            int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
         final newQuantity = oldQuantity + 1;
         final double newTotalPrice = unitPrice * newQuantity;
         orders[existingIndex]['quantity'] = newQuantity.toString();
@@ -428,14 +431,30 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _proceedToCheckout() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaymentMethodPage(
-          orders: orders,
-          rfidData: widget.rfidData,
+    // Check if this user is a "guest" (i.e., no record in DB => _userName == widget.rfidData)
+    if (_userName == widget.rfidData) {
+      // GUEST user => go directly to PaymentPage
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentPage(
+            orders: orders,
+            rfidData: widget.rfidData,
+            medicinesToBeDisabled: const [], // Provide an empty list if needed
+          ),
         ),
-      ),
-    ).then((_) => setState(() => orders.clear()));
+      ).then((_) => setState(() => orders.clear()));
+    } else {
+      // RFID user => proceed to PaymentMethodPage
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentMethodPage(
+            orders: orders,
+            rfidData: widget.rfidData,
+          ),
+        ),
+      ).then((_) => setState(() => orders.clear()));
+    }
   }
 }
