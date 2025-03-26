@@ -9,7 +9,6 @@ import 'database_helper.dart';
 import 'user.dart';
 import 'inventory.dart';
 
-// Model for chart data.
 class ChartData {
   final String label;
   final num value;
@@ -24,25 +23,24 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // Adjust this color to match your brand palette.
   final Color brandColor = const Color(0xFF0D2A5E);
 
   int _selectedTabIndex = 0;
-  bool _isDarkMode = false; // Dark mode state
-  int totalTransactions = 0; // Total transaction count from DB
-  double _activeBalance = 0.0; // Active balance (sum of total_amount)
-  // Chart data lists.
+  bool _isDarkMode = false;
+  int totalTransactions = 0;
+  double _activeBalance = 0.0;
+
   List<ChartData> _salesData = [];
   List<ChartData> _frequencyData = [];
-  // All transactions fetched from DB.
+
   List<Map<String, dynamic>> _transactions = [];
   Timer? _timer;
 
-  // Hierarchical filter state.
+
   int _selectedYear = DateTime.now().year;
-  int? _selectedMonth; // null means all months in the year
-  int? _selectedWeek;  // null means all weeks in the month
-  int? _selectedDay;   // null means all days in the week
+  int? _selectedMonth;
+  int? _selectedWeek;
+  int? _selectedDay;
 
   @override
   void initState() {

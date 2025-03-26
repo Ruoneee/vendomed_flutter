@@ -44,7 +44,6 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    // Adjust the logo/text sizes as needed
     final logoHeight = screenHeight * 0.60;
     final textSize = screenHeight * 0.05;
 
