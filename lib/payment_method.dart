@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'payment.dart'; // <-- Make sure this import points to your PaymentPage
+import 'package:vendomed_flutter/payment.dart' as cash_payment;
+import 'package:vendomed_flutter/points.dart' as reward_points;
 import 'medicine_menu.dart';
 import 'database_helper.dart';
 
@@ -20,10 +21,10 @@ class PaymentMethodPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D2A5E),
         iconTheme: const IconThemeData(color: Colors.white), // White arrow
-        // No centerTitle to keep the title on the left
+        // Title on the left
         title: const Text(
           'Choose Payment Method',
-          style: TextStyle(color: Colors.white), // White AppBar text
+          style: TextStyle(color: Colors.white),
         ),
       ),
       backgroundColor: const Color(0xFFF7EAF0),
@@ -31,33 +32,32 @@ class PaymentMethodPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         // Use Center to keep content in the middle horizontally
         child: Center(
-          // Use a Column so we can place the text above the row
+          // Use a Column so we can place the text above the row of buttons
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // "Select a Payment Method" in black, placed above the images
+              // "Please Choose your Payment Option" in black, placed above the images
               const Text(
                 'Please Choose your Payment Option',
                 style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black, // Keep it black
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Row of Cash & Redeem Points
+              // Row of Coins/Cash & Reward Points options
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // 1) Cash Option
+                  // 1) Coins/Cash Option
                   InkWell(
                     onTap: () {
-                      // Navigate to PaymentPage for Cash
+                      // Navigate to the PaymentPage for Cash using the alias
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PaymentPage(
+                          builder: (context) => cash_payment.PaymentPage(
                             orders: orders,
                             rfidData: rfidData,
                             medicinesToBeDisabled: const [],
@@ -75,25 +75,23 @@ class PaymentMethodPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Cash',
+                          'Coins/Cash',
                           style: TextStyle(fontSize: 30),
                           textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
-
-                  // 2) Redeem Points
+                  // 2) Reward Points Option
                   InkWell(
                     onTap: () {
-                      // Navigate to PaymentPage for Redeem Points
+                      // Navigate to the PointsPage for Reward Points using the alias
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PaymentPage(
+                          builder: (context) => reward_points.PointsPage(
                             orders: orders,
                             rfidData: rfidData,
-                            medicinesToBeDisabled: const [],
                           ),
                         ),
                       );
@@ -108,7 +106,7 @@ class PaymentMethodPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Redeem Points',
+                          'Reward Points',
                           style: TextStyle(fontSize: 30),
                           textAlign: TextAlign.center,
                         ),

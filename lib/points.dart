@@ -1,106 +1,105 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For formatting dates
+import 'package:intl/intl.dart';
 import 'confirmation_screen.dart';
 import 'database_helper.dart';
 import 'medicine_menu.dart'; // To navigate back with existing orders
-import 'usb_helper.dart'; // Import USB Helper
-import 'dart:async';
+import 'usb_helper.dart'; // If you need to send orders to the ESP32
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class PaymentPage extends StatefulWidget {
+class PointsPage extends StatefulWidget {
   final List<Map<String, String>> orders;
-  final List<String> medicinesToBeDisabled;
   final String rfidData;
 
-  const PaymentPage({
-    super.key,
+  const PointsPage({
+    Key? key,
     required this.orders,
-    required this.medicinesToBeDisabled,
     required this.rfidData,
-  });
+  }) : super(key: key);
 
   @override
-  PaymentPageState createState() => PaymentPageState();
+  PointsPageState createState() => PointsPageState();
 }
 
-class PaymentPageState extends State<PaymentPage> {
-  final TextEditingController _coinsInsertedController = TextEditingController();
-  final USBHelper _usbHelper = USBHelper(); // Global instance
+class PointsPageState extends State<PointsPage> {
+  final TextEditingController _pointsController = TextEditingController();
+  final USBHelper _usbHelper = USBHelper(); // If you need to send data to ESP32
 
-  int coinInserted = 0;
   double totalAmount = 0.0;
+  int pointsUsed = 0;   // How many points the user wants to redeem
+  int userPoints = 0;   // User's current VendoPoints
   String _userName = "";
-  StreamSubscription<int>? _creditSubscription;
 
   @override
   void initState() {
     super.initState();
     _calculateTotalAmount();
-    _loadUserName();
-    _usbHelper.initUSB(); // Ensure connection persists
+    _loadUserData();
+    // Initialize the points redeemed display
+    _pointsController.text = "0";
+  }
 
-    // Initialize the amount inserted display
-    _coinsInsertedController.text = "₱0.00";
-
-    // Subscribe to the credit stream from the ESP32
-    _creditSubscription = _usbHelper.creditStream.listen((int newCredit) {
-      setState(() {
-        coinInserted = newCredit;
-        _coinsInsertedController.text = "₱${coinInserted.toStringAsFixed(2)}";
-      });
+  /// Calculate total amount from the orders
+  void _calculateTotalAmount() {
+    double tempTotal = 0.0;
+    for (var order in widget.orders) {
+      String rawPrice = order['price'] ?? '0.00';
+      rawPrice = rawPrice.replaceAll('₱', '').trim();
+      tempTotal += double.parse(rawPrice);
+    }
+    setState(() {
+      totalAmount = tempTotal;
     });
   }
 
-  /// Load the user's name from the DB. If no match, treat as Guest.
-  Future<void> _loadUserName() async {
+  /// Load user name and current points from DB
+  Future<void> _loadUserData() async {
     try {
       final db = await DatabaseHelper().db;
       final result = await db.query(
         'users',
-        columns: ['NAME'],
+        columns: ['NAME', 'POINTS'],
         where: 'RFID = ?',
         whereArgs: [widget.rfidData],
       );
+
       if (result.isNotEmpty) {
         setState(() {
-          _userName = result.first['NAME'] as String;
+          _userName = result.first['NAME']?.toString() ?? widget.rfidData;
+          userPoints = int.tryParse(result.first['POINTS']?.toString() ?? '0') ?? 0;
         });
       } else {
         // If no user found, treat as Guest
         setState(() {
           _userName = widget.rfidData;
+          userPoints = 0;
         });
       }
     } catch (e) {
-      debugPrint("Error loading user name: $e");
+      debugPrint("Error loading user data: $e");
       setState(() {
         _userName = widget.rfidData;
+        userPoints = 0;
       });
     }
   }
 
-  /// Increment the coinInserted by 20
-  void _incrementAmountInserted() {
+  /// Increment the pointsUsed by 20 (up to userPoints)
+  void _incrementPointsUsed() {
     setState(() {
-      coinInserted += 20;
-      _coinsInsertedController.text = "₱${coinInserted.toStringAsFixed(2)}";
+      pointsUsed += 20;
+      // Make sure we don't exceed userPoints
+      if (pointsUsed > userPoints) {
+        pointsUsed = userPoints;
+      }
+      _pointsController.text = pointsUsed.toString();
     });
-  }
-
-  /// Calculate total amount from the orders
-  void _calculateTotalAmount() {
-    totalAmount = 0.0;
-    for (var order in widget.orders) {
-      String rawPrice = order['price'] ?? '0.00';
-      rawPrice = rawPrice.replaceAll('₱', '').trim();
-      totalAmount += double.parse(rawPrice);
-    }
   }
 
   /// Insert each order as a transaction into DB
   Future<void> _insertTransactions() async {
-    // Determine user type based on _userName
+    // "RFID User" or "Guest"
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
     for (var order in widget.orders) {
@@ -116,7 +115,7 @@ class PaymentPageState extends State<PaymentPage> {
         'unit_price': unitPrice,
         'total_amount': totalCost,
         'date': date,
-        'payment_method': 'Cash/Coins',
+        'payment_method': 'Points',
         'user_type': userType,
       };
 
@@ -148,148 +147,91 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  /// Returns how many points were actually awarded (0 if none).
-  Future<int> _awardPoints(double difference) async {
-    // If user is a guest, skip awarding points
+  /// Deduct used points from user's total
+  Future<void> _deductPoints(int pointsToDeduct) async {
+    // If user is a guest, do nothing
     if (_userName == widget.rfidData) {
-      // Means we didn't find them in the DB => treat as Guest => no points
-      return 0;
+      return;
     }
-
     try {
-      final db = await DatabaseHelper.instance.db;
-      final result = await db.query(
-        'users',
-        columns: ['POINTS'],
-        where: 'RFID = ?',
-        whereArgs: [widget.rfidData],
-      );
-      int oldPoints = 0;
-      if (result.isNotEmpty) {
-        oldPoints = int.tryParse(result.first['POINTS']?.toString() ?? '0') ?? 0;
-      }
-      // 1:1 ratio => difference.floor() points
-      int additionalPoints = difference.floor();
-      int newPoints = oldPoints + additionalPoints;
+      final db = await DatabaseHelper().db;
+      // Subtract points from DB
+      final newPoints = userPoints - pointsToDeduct;
       await DatabaseHelper.instance.updateUserByRFID(
         {'POINTS': newPoints.toString()},
         widget.rfidData,
       );
-
-      return additionalPoints;
     } catch (e) {
-      debugPrint("Error awarding points: $e");
-      return 0; // Return 0 if something goes wrong
+      debugPrint("Error deducting points: $e");
     }
   }
 
   /// Called when user taps PROCEED
   Future<void> _onProceedButtonPressed() async {
-    _calculateTotalAmount();
+    // Check if user is redeeming enough points to cover total
+    if (pointsUsed >= totalAmount) {
+      // Also check if user actually has that many points
+      if (pointsUsed <= userPoints) {
+        // 1) Insert transactions, update stocks, etc.
+        await _insertTransactions();
+        await _updateStocksForOrders();
+        // If you need to send orders to ESP32, uncomment:
+        // await _usbHelper.sendOrdersToESP32(widget.orders);
 
-    // Check if user inserted enough coins
-    if (coinInserted >= totalAmount) {
-      // 1) If user overpaid, award points
-      int pointsAwarded = 0;
-      if (coinInserted > totalAmount) {
-        double difference = coinInserted - totalAmount;
-        pointsAwarded = await _awardPoints(difference);
-      }
+        // 2) Deduct points from user's account
+        await _deductPoints(totalAmount.toInt()); // totalAmount is double; cast to int
 
-      // 2) Process transaction steps
-      await _insertTransactions();
-      await _updateStocksForOrders();
-      await _usbHelper.sendOrdersToESP32(widget.orders);
-
-      // 3) Reset the inserted coin amount
-      await _usbHelper.resetCredit();
-      setState(() {
-        coinInserted = 0;
-        _coinsInsertedController.text = "₱0.00";
-      });
-
-      // 4) If points awarded, show a 3-second pop-up, then auto-navigate
-      if (pointsAwarded > 0) {
-        showDialog(
-          context: context,
-          barrierDismissible: false, // user cannot dismiss by tapping outside
-          builder: (context) {
-            // After 3 seconds, close the dialog and go to Confirmation
-            Future.delayed(const Duration(seconds: 3), () {
-              Navigator.of(context).pop(); // Close the dialog
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => ConfirmationScreen()),
-              );
-            });
-
-            // A larger, styled AlertDialog with bigger text
-            return AlertDialog(
-              // Rounded corners
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              backgroundColor: Colors.white,
-              title: Text(
-                "Points Earned!",
-                style: TextStyle(
-                  fontSize: 32, // Larger title font
-                  color: const Color(0xFF0D2A5E),
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              content: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.6,
-                height: 140,
-                child: Center(
-                  child: Text(
-                    "You earned $pointsAwarded extra points!",
-                    style: const TextStyle(
-                      fontSize: 26, // Larger content font
-                      color: Colors.black,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      } else {
-        // If no points awarded or user didn't overpay, go directly
+        // 3) Navigate to ConfirmationScreen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => ConfirmationScreen()),
         );
+      } else {
+        // Not enough total points
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You do not have enough points!')),
+        );
       }
     } else {
-      // Not enough coins
+      // Not enough points used to cover total
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Insufficient Coins Inserted')),
+        const SnackBar(content: Text('Insufficient Points Redeemed')),
       );
     }
   }
 
   @override
-  void dispose() {
-    _creditSubscription?.cancel();
-    _coinsInsertedController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Disable the device back button
+      // If you want to disable the back button or customize it, do so here
       onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           automaticallyImplyLeading: false,
-          title: Text(
-            "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
-            style: const TextStyle(fontSize: 18, color: Colors.white),
+          // Custom back arrow that returns to MedicineMenu with existing orders
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MedicineMenu(
+                    rfidData: widget.rfidData,
+                    existingOrders: widget.orders,
+                  ),
+                ),
+              );
+            },
+          ),
+          title: Row(
+            children: [
+              const SizedBox(width: 10),
+              Text(
+                "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
+                style: const TextStyle(fontSize: 18, color: Colors.white),
+              ),
+            ],
           ),
         ),
         backgroundColor: const Color(0xFFF7EAF0),
@@ -298,6 +240,35 @@ class PaymentPageState extends State<PaymentPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 1) Show VendoPoints above "YOUR ORDER/S"
+              Container(
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF0D2A5E),
+                    width: 2,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "VendoPoints: $userPoints",
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 2) "YOUR ORDER/S" section
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
@@ -308,7 +279,7 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 8),
               Container(
-                height: 300,
+                height: 250,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: Colors.black),
@@ -338,6 +309,7 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 20),
 
+              // 3) TOTAL AMOUNT
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
@@ -360,9 +332,9 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 20),
 
-              // AMOUNT INSERTED SECTION
+              // 4) POINTS TO REDEEM
               const Text(
-                'AMOUNT INSERTED:',
+                'POINTS TO REDEEM:',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -371,19 +343,19 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: _coinsInsertedController,
+                controller: _pointsController,
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.black),
                   ),
-                  hintText: 'Amount inserted will appear here',
+                  hintText: 'Points to redeem will appear here',
                 ),
                 style: const TextStyle(color: Colors.black),
               ),
               const SizedBox(height: 20),
 
-              // ADD COINS BUTTON
+              // 5) ADD POINTS BUTTON
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -393,17 +365,17 @@ class PaymentPageState extends State<PaymentPage> {
                     ),
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: _incrementAmountInserted,
-                  child: const Text('ADD ₱20'),
+                  onPressed: _incrementPointsUsed,
+                  child: const Text('ADD 20 Points'),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // CANCEL / PROCEED Buttons
+              // 6) CANCEL / PROCEED Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // CANCEL button navigates back to MedicineMenu while preserving orders
+                  // CANCEL button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -425,7 +397,7 @@ class PaymentPageState extends State<PaymentPage> {
                     },
                     child: const Text('CANCEL'),
                   ),
-                  // PROCEED button processes payment, updates stock, awards points if user is RFID
+                  // PROCEED button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),
