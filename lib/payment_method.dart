@@ -16,98 +16,109 @@ class PaymentMethodPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Standard AppBar, if desired
+      // AppBar with white text and white arrow
       appBar: AppBar(
-        title: const Text('Choose Payment Method'),
         backgroundColor: const Color(0xFF0D2A5E),
+        iconTheme: const IconThemeData(color: Colors.white), // White arrow
+        // No centerTitle to keep the title on the left
+        title: const Text(
+          'Choose Payment Method',
+          style: TextStyle(color: Colors.white), // White AppBar text
+        ),
       ),
       backgroundColor: const Color(0xFFF7EAF0),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Title
-            const Text(
-              'Select a Payment Method',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+        // Use Center to keep content in the middle horizontally
+        child: Center(
+          // Use a Column so we can place the text above the row
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // "Select a Payment Method" in black, placed above the images
+              const Text(
+                'Please Choose your Payment Option',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black, // Keep it black
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Two options: Cash, Redeem Points
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Cash Payment
-                InkWell(
-                  onTap: () {
-                    // Navigate to PaymentPage with Cash
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PaymentPage(
-                          orders: orders,
-                          rfidData: rfidData,
-                          medicinesToBeDisabled: const [],
+              // Row of Cash & Redeem Points
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // 1) Cash Option
+                  InkWell(
+                    onTap: () {
+                      // Navigate to PaymentPage for Cash
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PaymentPage(
+                            orders: orders,
+                            rfidData: rfidData,
+                            medicinesToBeDisabled: const [],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  child: Column(
-                    children: [
-                      Image.asset(
-                        'assets/images/cash.png',
-                        width: 120,
-                        height: 120,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Cash',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ],
+                      );
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/cashcoins.png',
+                          width: 300,
+                          height: 300,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Cash',
+                          style: TextStyle(fontSize: 30),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                // Redeem Points (replacing GCash)
-                InkWell(
-                  onTap: () {
-                    // TODO: Implement redeem-points logic here
-                    // For example, you might navigate to PaymentPage with a parameter
-                    // indicating “Points” as the chosen payment method, or a dedicated
-                    // points redemption screen, etc.
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PaymentPage(
-                          orders: orders,
-                          rfidData: rfidData,
-                          medicinesToBeDisabled: const [],
+                  // 2) Redeem Points
+                  InkWell(
+                    onTap: () {
+                      // Navigate to PaymentPage for Redeem Points
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PaymentPage(
+                            orders: orders,
+                            rfidData: rfidData,
+                            medicinesToBeDisabled: const [],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  child: Column(
-                    children: [
-                      // Replace with your own "Redeem Points" image
-                      Image.asset(
-                        'assets/images/points.png',
-                        width: 120,
-                        height: 120,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Redeem Points',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ],
+                      );
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/points.png',
+                          width: 300,
+                          height: 300,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Redeem Points',
+                          style: TextStyle(fontSize: 30),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
