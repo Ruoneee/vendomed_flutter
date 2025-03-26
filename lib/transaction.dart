@@ -19,6 +19,7 @@ class TransactionItem {
   final String date;
   final double totalAmount;
   final String paymentMethod;
+
   TransactionItem({
     required this.medicine,
     required this.date,
@@ -30,7 +31,8 @@ class TransactionItem {
 /// TransactionScreen now accepts the dark mode setting.
 class TransactionScreen extends StatefulWidget {
   final bool isDarkMode;
-  TransactionScreen({Key? key, required this.isDarkMode}) : super(key: key);
+  const TransactionScreen({Key? key, required this.isDarkMode})
+      : super(key: key);
 
   @override
   _TransactionScreenState createState() => _TransactionScreenState();
@@ -46,7 +48,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
     super.initState();
     _isDarkMode = widget.isDarkMode;
     _futureTransactions = _fetchTransactions();
-    _timer = Timer.periodic(Duration(minutes: 1), (timer) {
+
+    // Periodically refresh the transactions every minute
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       setState(() {
         _futureTransactions = _fetchTransactions();
       });
@@ -114,6 +118,180 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
+  /// Builds the pie chart widget for payment methods.
+  Widget _buildPieChart(
+      BuildContext context,
+      List<PaymentMethodData> paymentMethods,
+      bool isDarkMode,
+      ) {
+    return SizedBox(
+      height: 400,
+      child: SfCircularChart(
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        legend: Legend(
+          isVisible: true,
+          overflowMode: LegendItemOverflowMode.wrap,
+          position: LegendPosition.bottom,
+          textStyle: TextStyle(
+            fontSize: 18,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        series: <CircularSeries>[
+          PieSeries<PaymentMethodData, String>(
+            dataSource: paymentMethods,
+            xValueMapper: (PaymentMethodData data, _) => data.method,
+            yValueMapper: (PaymentMethodData data, _) => data.percentage,
+            pointColorMapper: (PaymentMethodData data, _) {
+              switch (data.method) {
+                case 'Cash/Coins':
+                // Example brand color
+                  return const Color(0xFF0D2A5E);
+                case 'Points':
+                // Another shade in the brand palette
+                  return const Color(0xFF546E94);
+                default:
+                  return Colors.grey;
+              }
+            },
+            dataLabelSettings: const DataLabelSettings(
+              isVisible: true,
+              textStyle: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the stats section (Total Transactions, Most Used Method, etc.).
+  Widget _buildStats(
+      BuildContext context,
+      int totalCount,
+      String mostUsedMethod,
+      bool isDarkMode,
+      ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Row: Total Transactions & Most Used Method
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Total Transactions
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Total Transactions:",
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: isDarkMode ? Colors.white : Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "$totalCount",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+
+            // Most Used Method
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  "Most Used Method",
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: isDarkMode ? Colors.white : Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    // The ₱ icon is optional; remove if desired
+                    const Text(
+                      "₱",
+                      style: TextStyle(
+                        fontSize: 28,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      mostUsedMethod,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 40),
+      ],
+    );
+  }
+
+  /// Builds the entire analytics section with a responsive layout:
+  /// - Wide screens: chart & stats side by side
+  /// - Narrow screens: chart & stats stacked vertically
+  Widget _buildAnalyticsSection({
+    required BuildContext context,
+    required int totalCount,
+    required double percentCashCoins,
+    required double percentPoints,
+    required String mostUsedMethod,
+    required bool isDarkMode,
+    required List<PaymentMethodData> paymentMethods,
+  }) {
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        // If screen width > 600, show chart & stats side by side
+        if (constraints.maxWidth > 600) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 1,
+                child: _buildPieChart(ctx, paymentMethods, isDarkMode),
+              ),
+              const SizedBox(width: 30),
+              Expanded(
+                flex: 1,
+                child: _buildStats(ctx, totalCount, mostUsedMethod, isDarkMode),
+              ),
+            ],
+          );
+        } else {
+          // Otherwise, stack them vertically
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildPieChart(ctx, paymentMethods, isDarkMode),
+              const SizedBox(height: 30),
+              _buildStats(ctx, totalCount, mostUsedMethod, isDarkMode),
+            ],
+          );
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,8 +302,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
           'Transactions',
           style: TextStyle(color: Colors.white, fontSize: 28),
         ),
-        backgroundColor:
-        _isDarkMode ? Colors.grey[900] : const Color(0xFF0D2A5E),
+        backgroundColor: _isDarkMode ? Colors.grey[900] : const Color(0xFF0D2A5E),
       ),
       body: FutureBuilder<List<TransactionItem>>(
         future: _futureTransactions,
@@ -137,7 +314,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
               child: Text(
                 'Error: ${snapshot.error}',
                 style: TextStyle(
-                    color: _isDarkMode ? Colors.white : Colors.black),
+                  color: _isDarkMode ? Colors.white : Colors.black,
+                ),
               ),
             );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -145,29 +323,35 @@ class _TransactionScreenState extends State<TransactionScreen> {
               child: Text(
                 'No transactions available',
                 style: TextStyle(
-                    color: _isDarkMode ? Colors.white : Colors.black),
+                  color: _isDarkMode ? Colors.white : Colors.black,
+                ),
               ),
             );
           }
+
           final transactions = snapshot.data!;
           final totalCount = transactions.length;
 
-          // Payment method calculations
+          // Payment method calculations (Cash/Coins and Points only)
           int cashCoinsCount = transactions
               .where((tx) => tx.paymentMethod == 'Cash/Coins')
               .length;
-          int gCashCount =
-              transactions.where((tx) => tx.paymentMethod == 'GCash').length;
+          int pointsCount =
+              transactions.where((tx) => tx.paymentMethod == 'Points').length;
+
           double percentCashCoins =
           totalCount > 0 ? (cashCoinsCount / totalCount * 100) : 0;
-          double percentGCash =
-          totalCount > 0 ? (gCashCount / totalCount * 100) : 0;
-          String mostUsedMethod =
-          cashCoinsCount >= gCashCount ? "Cash/Coins" : "GCash";
+          double percentPoints =
+          totalCount > 0 ? (pointsCount / totalCount * 100) : 0;
+
+          // Determine most used method
+          String mostUsedMethod = (cashCoinsCount >= pointsCount)
+              ? "Cash/Coins"
+              : "Points";
 
           final List<PaymentMethodData> paymentMethods = [
             PaymentMethodData("Cash/Coins", percentCashCoins),
-            PaymentMethodData("GCash", percentGCash),
+            PaymentMethodData("Points", percentPoints),
           ];
 
           return SingleChildScrollView(
@@ -186,116 +370,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Pie Chart
-                SizedBox(
-                  height: 600,
-                  child: SfCircularChart(
-                    backgroundColor:
-                    _isDarkMode ? Colors.black : Colors.white,
-                    legend: Legend(
-                      isVisible: true,
-                      overflowMode: LegendItemOverflowMode.wrap,
-                      position: LegendPosition.bottom,
-                      textStyle: TextStyle(
-                        fontSize: 18,
-                        color: _isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    series: <CircularSeries>[
-                      PieSeries<PaymentMethodData, String>(
-                        dataSource: paymentMethods,
-                        xValueMapper: (PaymentMethodData data, _) =>
-                        data.method,
-                        yValueMapper: (PaymentMethodData data, _) =>
-                        data.percentage,
-                        pointColorMapper: (PaymentMethodData data, _) {
-                          if (data.method == 'Cash/Coins') {
-                            return const Color(0xFF142E6B);
-                          } else if (data.method == 'GCash') {
-                            return const Color(0xFF2F4D8A);
-                          }
-                          return null;
-                        },
-                        // Changed color to white for better visibility.
-                        dataLabelSettings: const DataLabelSettings(
-                          isVisible: true,
-                          textStyle: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                // Responsive analytics section
+                _buildAnalyticsSection(
+                  context: context,
+                  totalCount: totalCount,
+                  percentCashCoins: percentCashCoins,
+                  percentPoints: percentPoints,
+                  mostUsedMethod: mostUsedMethod,
+                  isDarkMode: _isDarkMode,
+                  paymentMethods: paymentMethods,
                 ),
-                const SizedBox(height: 30),
-
-                // Row: Total Transactions & Most Used Method
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Total Transactions
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Total Transactions:",
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: _isDarkMode ? Colors.white : Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          "$totalCount",
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: _isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Most Used Method
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          "Most Used Method",
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: _isDarkMode ? Colors.white : Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            const Text(
-                              "₱",
-                              style: TextStyle(
-                                fontSize: 28,
-                                color: Colors.orange,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              mostUsedMethod,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color:
-                                _isDarkMode ? Colors.white : Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
 
                 // Transactions header & "See All" button
                 Row(
@@ -332,11 +416,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Display all transactions
+                // Display all transactions (up to however many you want here)
                 Column(
-                  children: transactions
-                      .map((tx) => _buildTransactionCard(tx))
-                      .toList(),
+                  children: transactions.map(_buildTransactionCard).toList(),
                 ),
               ],
             ),
@@ -358,33 +440,28 @@ class _TransactionScreenState extends State<TransactionScreen> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                  builder: (context) =>
-                      UserScreen(isDarkMode: _isDarkMode)),
+                builder: (context) => UserScreen(isDarkMode: _isDarkMode),
+              ),
             );
           } else if (index == 3) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                  builder: (context) =>
-                      InventoryScreen(isDarkMode: _isDarkMode)),
+                builder: (context) => InventoryScreen(isDarkMode: _isDarkMode),
+              ),
             );
           }
         },
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
-        // MATCHED VALUES
         iconSize: 28,
         selectedFontSize: 14,
         unselectedFontSize: 12,
         items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.payment), label: "Payments"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
     );
@@ -428,24 +505,24 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     List<Map<String, dynamic>> txList =
     await DatabaseHelper().getTransactions();
 
-    // Date range filter.
+    // Date range filter
     if (_selectedDateRange != null) {
       txList = txList.where((tx) {
         DateTime dt = DateTime.tryParse(tx['date']) ?? DateTime.now();
         return dt.isAfter(
-            _selectedDateRange!.start.subtract(Duration(days: 1))) &&
-            dt.isBefore(_selectedDateRange!.end.add(Duration(days: 1)));
+            _selectedDateRange!.start.subtract(const Duration(days: 1))) &&
+            dt.isBefore(_selectedDateRange!.end.add(const Duration(days: 1)));
       }).toList();
     }
 
-    // Payment method filter.
+    // Payment method filter (Cash/Coins, Points)
     if (_filterPaymentMethod != 'All') {
       txList = txList
           .where((tx) => tx['payment_method'] == _filterPaymentMethod)
           .toList();
     }
 
-    // Search query filter.
+    // Search query filter (medicine or transaction_id)
     if (_searchQuery.isNotEmpty) {
       txList = txList.where((tx) {
         final medicine = tx['medicine']?.toString().toLowerCase() ?? '';
@@ -455,7 +532,7 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
       }).toList();
     }
 
-    // Transaction amount filters.
+    // Transaction amount filters
     double? minAmount = double.tryParse(_minAmountController.text);
     double? maxAmount = double.tryParse(_maxAmountController.text);
     if (minAmount != null) {
@@ -469,7 +546,7 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
           .toList();
     }
 
-    // Sorting.
+    // Sorting
     if (_sortOption == 'Date Ascending') {
       txList.sort((a, b) {
         DateTime da = DateTime.tryParse(a['date']) ?? DateTime.now();
@@ -497,22 +574,20 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
     return ListTile(
       title: Text(
         tx['medicine'],
-        style:
-        TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+        style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
       ),
       subtitle: Text(
         tx['date'],
         style: TextStyle(
-            color: _isDarkMode ? Colors.white70 : Colors.grey),
+          color: _isDarkMode ? Colors.white70 : Colors.grey,
+        ),
       ),
-      trailing:
-      Text("₱${(tx['total_amount'] as num).toStringAsFixed(2)}"),
+      trailing: Text("₱${(tx['total_amount'] as num).toStringAsFixed(2)}"),
       onTap: () {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor:
-            _isDarkMode ? Colors.grey[900] : Colors.white,
+            backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
             title: const Text("Transaction Details"),
             content: Text(
               "Medicine: ${tx['medicine']}\n"
@@ -523,8 +598,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                   "Payment Method: ${tx['payment_method']}\n"
                   "User Type: ${tx['user_type']}",
               style: TextStyle(
-                  color:
-                  _isDarkMode ? Colors.white : Colors.black),
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
             ),
             actions: [
               TextButton(
@@ -550,10 +625,13 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
             decoration: InputDecoration(
               labelText: 'Search by Medicine or ID',
               labelStyle: TextStyle(
-                  color: _isDarkMode ? Colors.white : Colors.black),
-              prefixIcon: Icon(Icons.search,
-                  color: _isDarkMode ? Colors.white : Colors.black),
-              border: OutlineInputBorder(),
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+              border: const OutlineInputBorder(),
             ),
             onChanged: (value) {
               setState(() {
@@ -568,8 +646,7 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
             children: [
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                  _isDarkMode ? Colors.grey[800] : null,
+                  backgroundColor: _isDarkMode ? Colors.grey[800] : null,
                 ),
                 onPressed: () async {
                   DateTimeRange? picked = await showDateRangePicker(
@@ -598,10 +675,11 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                 Padding(
                   padding: const EdgeInsets.only(left: 8.0),
                   child: Text(
-                    "${_selectedDateRange!.start.toLocal().toShortDateString()} - ${_selectedDateRange!.end.toLocal().toShortDateString()}",
+                    "${_selectedDateRange!.start.toLocal().toShortDateString()} - "
+                        "${_selectedDateRange!.end.toLocal().toShortDateString()}",
                     style: TextStyle(
-                        color:
-                        _isDarkMode ? Colors.white : Colors.black),
+                      color: _isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
             ],
@@ -616,16 +694,14 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                 value: _filterPaymentMethod,
                 dropdownColor:
                 _isDarkMode ? Colors.grey[800] : Colors.white,
-                items: <String>['All', 'Cash/Coins', 'GCash']
+                items: <String>['All', 'Cash/Coins', 'Points']
                     .map(
                       (option) => DropdownMenuItem(
                     value: option,
                     child: Text(
                       option,
                       style: TextStyle(
-                        color: _isDarkMode
-                            ? Colors.white
-                            : Colors.black,
+                        color: _isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
                   ),
@@ -655,9 +731,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                     child: Text(
                       option,
                       style: TextStyle(
-                        color: _isDarkMode
-                            ? Colors.white
-                            : Colors.black,
+                        color:
+                        _isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
                   ),
@@ -683,12 +758,14 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                   controller: _minAmountController,
                   keyboardType: TextInputType.number,
                   style: TextStyle(
-                      color: _isDarkMode ? Colors.white : Colors.black),
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Min Amount',
                     labelStyle: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black),
-                    border: OutlineInputBorder(),
+                      color: _isDarkMode ? Colors.white : Colors.black,
+                    ),
+                    border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) {
                     setState(() {});
@@ -701,12 +778,14 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
                   controller: _maxAmountController,
                   keyboardType: TextInputType.number,
                   style: TextStyle(
-                      color: _isDarkMode ? Colors.white : Colors.black),
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Max Amount',
                     labelStyle: TextStyle(
-                        color: _isDarkMode ? Colors.white : Colors.black),
-                    border: OutlineInputBorder(),
+                      color: _isDarkMode ? Colors.white : Colors.black,
+                    ),
+                    border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) {
                     setState(() {});
@@ -720,8 +799,7 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
           // Apply filters button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-              _isDarkMode ? Colors.grey[800] : null,
+              backgroundColor: _isDarkMode ? Colors.grey[800] : null,
             ),
             onPressed: () {
               setState(() {
@@ -738,13 +816,11 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-      _isDarkMode ? Colors.black : Colors.white,
+      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
         title: const Text("All Transactions"),
-        backgroundColor: _isDarkMode
-            ? Colors.grey[900]
-            : const Color(0xFF0D2A5E),
+        backgroundColor:
+        _isDarkMode ? Colors.grey[900] : const Color(0xFF0D2A5E),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -752,8 +828,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
               // Export/Print stub
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content: Text(
-                        "Export/Print feature not implemented")),
+                  content: Text("Export/Print feature not implemented"),
+                ),
               );
             },
           ),
@@ -766,29 +842,24 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _getProcessedTransactions(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(
                     child: Text(
                       "Error: ${snapshot.error}",
                       style: TextStyle(
-                          color: _isDarkMode
-                              ? Colors.white
-                              : Colors.black),
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                   );
-                } else if (!snapshot.hasData ||
-                    snapshot.data!.isEmpty) {
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(
                     child: Text(
                       "No transactions available",
                       style: TextStyle(
-                          color: _isDarkMode
-                              ? Colors.white
-                              : Colors.black),
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                   );
                 }
@@ -811,6 +882,8 @@ class _AllTransactionsPopupState extends State<AllTransactionsPopup> {
 /// Extension on DateTime for short date formatting.
 extension DateTimeExtension on DateTime {
   String toShortDateString() {
-    return "${this.year}-${this.month.toString().padLeft(2, '0')}-${this.day.toString().padLeft(2, '0')}";
+    return "${year.toString().padLeft(4, '0')}-"
+        "${month.toString().padLeft(2, '0')}-"
+        "${day.toString().padLeft(2, '0')}";
   }
 }
