@@ -287,18 +287,9 @@ class PaymentPageState extends State<PaymentPage> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           automaticallyImplyLeading: false,
-          title: Row(
-            children: [
-              const CircleAvatar(
-                backgroundImage: AssetImage('assets/userIcons/user_icon.png'),
-                radius: 20,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
-                style: const TextStyle(fontSize: 18, color: Colors.white),
-              ),
-            ],
+          title: Text(
+            "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
+            style: const TextStyle(fontSize: 18, color: Colors.white),
           ),
         ),
         backgroundColor: const Color(0xFFF7EAF0),

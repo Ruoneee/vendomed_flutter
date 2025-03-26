@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'medicine_menu.dart';
 import 'database_helper.dart';
 import 'dashboard.dart';
+import 'user_selection_screen.dart'; // Make sure this import is correct
 
 class RfidScreen extends StatefulWidget {
   const RfidScreen({super.key});
@@ -74,17 +75,13 @@ class _RfidScreenState extends State<RfidScreen> {
         whereArgs: [rfid],
       );
 
-      print("Checking RFID: $rfid");
-      print("Result from 'users' table: $result");
-
       if (result.isNotEmpty) {
         final roleValue = result.first['ROLE']?.toString();
-        print("ROLE column value: $roleValue");
         return (roleValue == 'Admin');
       }
       return false;
     } catch (e) {
-      print("Error checking Admin: $e");
+      debugPrint("Error checking Admin: $e");
       return false;
     }
   }
@@ -101,7 +98,7 @@ class _RfidScreenState extends State<RfidScreen> {
       );
       return result.isNotEmpty;
     } catch (e) {
-      print("Error querying RFID: $e");
+      debugPrint("Error querying RFID: $e");
       return false;
     }
   }
@@ -116,9 +113,31 @@ class _RfidScreenState extends State<RfidScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Allow back button to exit the app or return to a previous screen if needed.
-      onWillPop: () async => true,
+      // We allow the back button, but override its behavior to navigate to user_selection_screen.dart.
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
+        );
+        return false; // Prevent default pop
+      },
       child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0D2A5E),
+          title: const Text(
+            'RFID Screen',
+            style: TextStyle(color: Colors.white),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
+              );
+            },
+          ),
+        ),
         backgroundColor: Colors.white,
         body: GestureDetector(
           onTap: () => _rfidFocusNode.requestFocus(),

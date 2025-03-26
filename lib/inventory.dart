@@ -16,11 +16,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   bool _isDarkMode = false;
   int _selectedTabIndex = 3; // Inventory tab index
 
-  // "Manage Inventory" form fields (BATCH_ID is auto)
+  // "Manage Inventory" form fields
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _productIdController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  // We keep the "status" field in the UI (if needed) but we compute status dynamically.
   final TextEditingController _statusController = TextEditingController();
   final TextEditingController _countController = TextEditingController();
 
@@ -40,7 +39,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   int _warningCount = 0;
   int _outOfStockCount = 0;
 
-  // Track the selected row's Batch ID for updating.
+  // Track the selected row's Batch ID for updating
   int? _selectedBatchId;
 
   @override
@@ -66,23 +65,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Future<void> _fetchStocksFromDB() async {
     try {
       final stockList = await DatabaseHelper.instance.getAllStocks();
-      // Convert each map to a modifiable map.
+      // Convert each map to a modifiable map so we can override status
       final modifiableStockList = stockList
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
+
       setState(() {
         _stocks = modifiableStockList;
         _filteredStocks = List.from(modifiableStockList);
       });
       debugPrint("Fetched ${modifiableStockList.length} items from 'stocks' table");
-      // Now compute stock indicators by ignoring any old 'status'
       _computeStockIndicators();
     } catch (e) {
       debugPrint("Error fetching stocks from DB: $e");
     }
   }
 
-  // 2) Fetch batch expiry data from the 'batch_expiry' table
+  // 2) Fetch batch expiry data
   Future<void> _fetchBatchExpiryFromDB() async {
     try {
       final expiryList = await DatabaseHelper.instance.getAllBatchExpiry();
@@ -118,7 +117,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       "product_name": _productNameController.text,
       "product_id": _productIdController.text,
       "amount": _amountController.text,
-      "status": _statusController.text, // Optional
+      "status": _statusController.text,
       "count": newCountStr,
     };
 
@@ -131,7 +130,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  // 4) Update the selected stock record using its Batch ID.
+  // 4) Update the selected stock record
   Future<void> _onUpdate() async {
     if (_selectedBatchId == null) return;
 
@@ -170,7 +169,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  // 5) Clear the Manage Inventory form fields and deselect the record.
+  // 5) Clear the Manage Inventory form fields
   void _clearManageInventoryFields() {
     _productNameController.clear();
     _productIdController.clear();
@@ -182,10 +181,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  // 6) Compute stock indicators based on the "count" value.
-  //    count == 0 → "Out of stock"
-  //    1 <= count <= 7 → "Warning"
-  //    count > 7 → "In Stock"
+  // 6) Compute stock indicators from 'count'
   void _computeStockIndicators() {
     int inStock = 0;
     int warning = 0;
@@ -205,9 +201,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         computedStatus = "In Stock";
         inStock++;
       }
-      // Override the status in the map.
       item["status"] = computedStatus;
-      debugPrint("Product: ${item['product_name']} | Count: $countVal => Status: $computedStatus");
     }
 
     setState(() {
@@ -217,7 +211,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  // 7) Return a color based on the computed status.
+  // 7) Return a color based on the computed status
   Color _getStatusColor(String status) {
     final lower = status.toLowerCase();
     if (lower == "in stock") return Colors.green;
@@ -245,7 +239,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  // 9) Bottom navigation logic.
+  // 9) Bottom navigation
   void _onTabSelected(int index) {
     setState(() {
       _selectedTabIndex = index;
@@ -257,7 +251,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     } else if (index == 2) {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)));
     }
-    // index == 3: remain on Inventory.
+    // index == 3 => remain on Inventory
   }
 
   @override
@@ -356,7 +350,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // STOCK INDICATORS (Larger boxes)
+              // STOCK INDICATORS
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -397,18 +391,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   dataRowHeight: 56.0,
                   headingRowHeight: 56.0,
                   columns: [
+                    // 1. Batch ID
                     DataColumn(
                       label: Text("Batch ID", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
+                    // 2. Product Name
                     DataColumn(
                       label: Text("Product Name", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
+                    // 3. Product ID
                     DataColumn(
                       label: Text("Product ID", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
+                    // 4. Count
                     DataColumn(
-                      label: Text("Amount", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      label: Text("Count", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
+                    // 5. Status
                     DataColumn(
                       label: Expanded(
                         child: Center(
@@ -416,17 +415,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         ),
                       ),
                     ),
+                    // 6. Amount (moved to last column)
                     DataColumn(
-                      label: Text("Count", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      label: Text("Amount", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ],
                   rows: _filteredStocks.map((item) {
                     final batchIdStr = item["BATCH_ID"]?.toString() ?? item["batch_id"]?.toString() ?? "";
                     final productNameStr = item["product_name"]?.toString() ?? "";
                     final productIdStr = item["product_id"]?.toString() ?? "";
-                    final amountStr = item["amount"]?.toString() ?? "0";
-                    final statusStr = item["status"]?.toString() ?? "Out of stock";
                     final countStr = item["count"]?.toString() ?? "0";
+                    final statusStr = item["status"]?.toString() ?? "Out of stock";
+                    final amountStr = item["amount"]?.toString() ?? "0";
+
                     final batchIdInt = int.tryParse(batchIdStr);
 
                     return DataRow(
@@ -437,9 +438,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             _selectedBatchId = batchIdInt;
                             _productNameController.text = productNameStr;
                             _productIdController.text = productIdStr;
-                            _amountController.text = amountStr;
-                            _statusController.text = statusStr;
                             _countController.text = countStr;
+                            _statusController.text = statusStr;
+                            _amountController.text = amountStr;
                           });
                         } else {
                           setState(() {
@@ -449,10 +450,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         }
                       },
                       cells: [
+                        // 1. Batch ID
                         DataCell(Text(batchIdStr, style: const TextStyle(fontSize: 16))),
+                        // 2. Product Name
                         DataCell(Text(productNameStr, style: const TextStyle(fontSize: 16))),
+                        // 3. Product ID
                         DataCell(Text(productIdStr, style: const TextStyle(fontSize: 16))),
-                        DataCell(Text(amountStr, style: const TextStyle(fontSize: 16))),
+                        // 4. Count
+                        DataCell(Text(countStr, style: const TextStyle(fontSize: 16))),
+                        // 5. Status
                         DataCell(
                           Center(
                             child: Text(
@@ -465,7 +471,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ),
                           ),
                         ),
-                        DataCell(Text(countStr, style: const TextStyle(fontSize: 16))),
+                        // 6. Amount (last column)
+                        DataCell(Text(amountStr, style: const TextStyle(fontSize: 16))),
                       ],
                     );
                   }).toList(),
@@ -538,7 +545,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  // Helper for building text fields.
+  // Helper for building text fields
   Widget _buildTextField({required TextEditingController controller, required String label}) {
     return TextField(
       controller: controller,
@@ -551,7 +558,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  // Helper for the colored stock indicator boxes.
+  // Helper for the colored stock indicator boxes
   Widget _buildStockIndicator({required int count, required String label, required Color color}) {
     return Container(
       width: 120,
