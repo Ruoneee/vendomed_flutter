@@ -181,7 +181,6 @@ class PointsPageState extends State<PointsPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          // You can adjust the shape, background, etc. as needed
           title: Text(
             title,
             style: const TextStyle(
@@ -276,11 +275,11 @@ class PointsPageState extends State<PointsPage> {
               ),
               const SizedBox(height: 16),
 
-              // YOUR ORDER/S
+              // YOUR ORDER/S (Larger text)
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 22,  // Increased from 16
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -305,7 +304,7 @@ class PointsPageState extends State<PointsPage> {
                         child: Text(
                           '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 20, // Increased from 16
                             color: Colors.black,
                           ),
                           softWrap: true,
@@ -317,11 +316,11 @@ class PointsPageState extends State<PointsPage> {
               ),
               const SizedBox(height: 20),
 
-              // TOTAL AMOUNT
+              // TOTAL AMOUNT (Increased text size, thinner border)
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -331,20 +330,28 @@ class PointsPageState extends State<PointsPage> {
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black),
+                    borderSide: BorderSide(color: Colors.black, width: 1),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
                   ),
                   hintText: 'Total amount will appear here',
+                  hintStyle: TextStyle(fontSize: 24),
                 ),
                 initialValue: '₱${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(color: Colors.black),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 24,
+                ),
               ),
               const SizedBox(height: 20),
 
-              // POINTS TO REDEEM
+              // POINTS TO REDEEM (Increased text size, thinner border)
               const Text(
                 'POINTS TO REDEEM:',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -355,18 +362,30 @@ class PointsPageState extends State<PointsPage> {
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black),
+                    borderSide: BorderSide(color: Colors.black, width: 1),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
                   ),
                   hintText: 'Points to redeem will appear here',
+                  hintStyle: TextStyle(fontSize: 24),
                 ),
-                style: const TextStyle(color: Colors.black),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 24,
+                ),
               ),
               const SizedBox(height: 20),
 
-              // ADD POINTS BUTTON
+              // ADD POINTS BUTTON (Larger text)
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
@@ -374,17 +393,24 @@ class PointsPageState extends State<PointsPage> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: _incrementPointsUsed,
-                  child: const Text('ADD 20 Points'),
+                  child: const Text(
+                    'ADD 20 Points',
+                    style: TextStyle(fontSize: 20), // Larger
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // CANCEL / PROCEED Buttons
+              // CANCEL / PROCEED Buttons (Larger text)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       backgroundColor: Colors.red,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
@@ -402,18 +428,28 @@ class PointsPageState extends State<PointsPage> {
                         ),
                       );
                     },
-                    child: const Text('CANCEL'),
+                    child: const Text(
+                      'CANCEL',
+                      style: TextStyle(fontSize: 20), // Larger
+                    ),
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      backgroundColor: Color(0xFF0D2A5E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                       foregroundColor: Colors.white,
                     ),
                     onPressed: _onProceedButtonPressed,
-                    child: const Text('PROCEED'),
+                    child: const Text(
+                      'PROCEED',
+                      style: TextStyle(fontSize: 20), // Larger
+                    ),
                   ),
                 ],
               ),

@@ -14,11 +14,11 @@ class PaymentPage extends StatefulWidget {
   final String rfidData;
 
   const PaymentPage({
-    super.key,
+    Key? key,
     required this.orders,
     required this.medicinesToBeDisabled,
     required this.rfidData,
-  });
+  }) : super(key: key);
 
   @override
   PaymentPageState createState() => PaymentPageState();
@@ -298,10 +298,11 @@ class PaymentPageState extends State<PaymentPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // YOUR ORDER/S (Larger label)
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 22, // Increased
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -326,7 +327,7 @@ class PaymentPageState extends State<PaymentPage> {
                         child: Text(
                           '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 20, // Increased
                             color: Colors.black,
                           ),
                           softWrap: true,
@@ -338,10 +339,11 @@ class PaymentPageState extends State<PaymentPage> {
               ),
               const SizedBox(height: 20),
 
+              // TOTAL AMOUNT (Larger label & text field)
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 24, // Larger
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -351,20 +353,28 @@ class PaymentPageState extends State<PaymentPage> {
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black),
+                    borderSide: BorderSide(color: Colors.black, width: 1), // Thinner border
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
                   ),
                   hintText: 'Total amount will appear here',
+                  hintStyle: TextStyle(fontSize: 24),
                 ),
                 initialValue: '₱${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(color: Colors.black),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 24, // Larger text
+                ),
               ),
               const SizedBox(height: 20),
 
-              // AMOUNT INSERTED SECTION
+              // AMOUNT INSERTED (Larger label & text field)
               const Text(
                 'AMOUNT INSERTED:',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 24, // Larger
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -375,18 +385,30 @@ class PaymentPageState extends State<PaymentPage> {
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black),
+                    borderSide: BorderSide(color: Colors.black, width: 1), // Thinner border
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
                   ),
                   hintText: 'Amount inserted will appear here',
+                  hintStyle: TextStyle(fontSize: 24),
                 ),
-                style: const TextStyle(color: Colors.black),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 24, // Larger text
+                ),
               ),
               const SizedBox(height: 20),
 
-              // ADD COINS BUTTON
+              // ADD COINS BUTTON (Larger text)
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
@@ -394,18 +416,25 @@ class PaymentPageState extends State<PaymentPage> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: _incrementAmountInserted,
-                  child: const Text('ADD ₱20'),
+                  child: const Text(
+                    'ADD ₱20',
+                    style: TextStyle(fontSize: 20), // Larger text
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // CANCEL / PROCEED Buttons
+              // CANCEL / PROCEED Buttons (Larger text)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // CANCEL button navigates back to MedicineMenu while preserving orders
+                  // CANCEL button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       backgroundColor: Colors.red,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
@@ -423,19 +452,29 @@ class PaymentPageState extends State<PaymentPage> {
                         ),
                       );
                     },
-                    child: const Text('CANCEL'),
+                    child: const Text(
+                      'CANCEL',
+                      style: TextStyle(fontSize: 20), // Larger text
+                    ),
                   ),
-                  // PROCEED button processes payment, updates stock, awards points if user is RFID
+                  // PROCEED button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      backgroundColor: Color(0xFF0D2A5E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                       foregroundColor: Colors.white,
                     ),
                     onPressed: _onProceedButtonPressed,
-                    child: const Text('PROCEED'),
+                    child: const Text(
+                      'PROCEED',
+                      style: TextStyle(fontSize: 20), // Larger text
+                    ),
                   ),
                 ],
               ),
