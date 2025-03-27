@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+// ADD THIS:
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'transaction.dart';
 import 'splash_screen.dart';
 import 'database_helper.dart';
@@ -27,15 +30,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   int _selectedTabIndex = 0;
   bool _isDarkMode = false;
+
   int totalTransactions = 0;
+
+  // _totalSales: the grand total from all transactions (historical).
+  double _totalSales = 0.0;
+
+  // _clearedSales: the value of _totalSales at the time of last clearing,
+  // persisted in SharedPreferences so we remember across sessions.
+  double _clearedSales = 0.0;
+
+  // _activeBalance = _totalSales - _clearedSales
   double _activeBalance = 0.0;
 
   List<ChartData> _salesData = [];
   List<ChartData> _frequencyData = [];
-
   List<Map<String, dynamic>> _transactions = [];
-  Timer? _timer;
 
+  Timer? _timer;
 
   int _selectedYear = DateTime.now().year;
   int? _selectedMonth;
@@ -45,11 +57,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+
+    // 1) Load the previously saved clearedSales from SharedPreferences
+    _loadClearedSales().then((_) {
+      // After loading _clearedSales, fetch transactions & do the rest.
+      _fetchDashboardData();
+    });
+
     _selectedYear = DateTime.now().year;
     _selectedMonth = null;
     _selectedWeek = null;
     _selectedDay = null;
-    _fetchDashboardData();
+
+    // If you want to refresh periodically:
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       _fetchDashboardData();
     });
@@ -61,18 +81,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  // Fetch transactions and compute active balance.
+  // ----------------- PERSISTENCE METHODS -----------------
+  Future<void> _loadClearedSales() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _clearedSales = prefs.getDouble('clearedSales') ?? 0.0;
+    });
+  }
+
+  Future<void> _saveClearedSales(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('clearedSales', value);
+  }
+  // --------------------------------------------------------
+
+  // Fetch transactions, compute total sales, then compute active balance.
   Future<void> _fetchDashboardData() async {
     _transactions = await DatabaseHelper().getTransactions();
     double sum = 0.0;
     for (var tx in _transactions) {
       sum += (tx['total_amount'] as num).toDouble();
     }
+
     setState(() {
       totalTransactions = _transactions.length;
-      _activeBalance = sum;
+      _totalSales = sum;
+
+      // Recompute active balance using the loaded/remembered _clearedSales
+      _activeBalance = _totalSales - _clearedSales;
+      if (_activeBalance < 0) {
+        // Just in case something odd happened:
+        _activeBalance = 0.0;
+      }
     });
+
     _updateChartData();
+  }
+
+  // When clearing balance, set _clearedSales to the current total,
+  // so that going forward, new transactions show up in _activeBalance.
+  void _clearActiveBalance() {
+    setState(() {
+      _clearedSales = _totalSales;
+      _activeBalance = 0.0;
+    });
+    // Save the updated clearedSales so that after log-out/log-in,
+    // we still remember that we cleared at this total.
+    _saveClearedSales(_clearedSales);
   }
 
   // Update chart data based on the hierarchical filters.
@@ -121,17 +176,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         key = dt.day.toString();
       }
-      salesMap[key] = (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
+      salesMap[key] =
+          (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
     }
 
     // 4) Sort the keys in a logical order.
     final sortedKeys = salesMap.keys.toList();
     if (groupingMode == "month") {
       final monthOrder = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
       ];
-      sortedKeys.sort((a, b) => monthOrder.indexOf(a).compareTo(monthOrder.indexOf(b)));
+      sortedKeys.sort(
+              (a, b) => monthOrder.indexOf(a).compareTo(monthOrder.indexOf(b)));
     } else if (groupingMode == "week") {
       sortedKeys.sort((a, b) {
         final aNum = int.tryParse(a.replaceAll("Week ", "")) ?? 0;
@@ -273,14 +340,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- New Feature: Quick Stats / KPI Cards ---
   Widget _buildQuickStats() {
-    double avgTransaction = totalTransactions > 0 ? _activeBalance / totalTransactions : 0;
+    // Use _totalSales for "Total Sales"
+    // Use _totalSales / totalTransactions for "Avg. Value"
+    double avgTransaction =
+    totalTransactions > 0 ? _totalSales / totalTransactions : 0;
     return Row(
       children: [
         Expanded(
           child: _buildKpiCard(
             icon: Icons.attach_money,
             label: "Total Sales",
-            value: "₱${_activeBalance.toStringAsFixed(2)}",
+            value: "₱${_totalSales.toStringAsFixed(2)}",
           ),
         ),
         const SizedBox(width: 8),
@@ -991,7 +1061,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)),
+        MaterialPageRoute(
+            builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)),
       );
     } else if (index == 2) {
       Navigator.pushReplacement(
@@ -1001,7 +1072,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else if (index == 3) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => InventoryScreen(isDarkMode: _isDarkMode)),
+        MaterialPageRoute(
+            builder: (context) => InventoryScreen(isDarkMode: _isDarkMode)),
       );
     }
   }
@@ -1035,27 +1107,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildBalanceCard(),
                 const SizedBox(height: 20),
-                // Quick Stats / KPI Cards (enhanced design)
                 _buildQuickStats(),
                 const SizedBox(height: 20),
-                // Top-Selling Items Widget (enhanced design, showing Top 3)
                 _buildTopSellingItems(),
                 const SizedBox(height: 20),
                 _buildFiltersRow(),
@@ -1100,15 +1167,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: _isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _showViewDetailsModal,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: brandColor,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                  ),
-                  child: const Text("View Details",
-                      style: TextStyle(color: Colors.white, fontSize: 16)),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: _showViewDetailsModal,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: brandColor,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                      ),
+                      child: const Text("View Details",
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                    ),
+                    const SizedBox(width: 10),
+                    // The new Clear button
+                    ElevatedButton(
+                      onPressed: _clearActiveBalance,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      child: const Text(
+                        "Clear Balance",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1119,8 +1204,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSalesChart() {
-    final Color chartBarColor =
-    _isDarkMode ? Colors.cyanAccent : brandColor;
+    final Color chartBarColor = _isDarkMode ? Colors.cyanAccent : brandColor;
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -1128,8 +1212,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor:
-              _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
                 labelStyle: TextStyle(
                     color: _isDarkMode ? Colors.white : Colors.black),
@@ -1157,8 +1240,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -1207,8 +1289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFrequencyChart() {
-    final Color chartLineColor =
-    _isDarkMode ? Colors.cyanAccent : brandColor;
+    final Color chartLineColor = _isDarkMode ? Colors.cyanAccent : brandColor;
     return GestureDetector(
       onTap: () {
         _showBigChart(
@@ -1216,8 +1297,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             height: 500,
             child: SfCartesianChart(
-              backgroundColor:
-              _isDarkMode ? Colors.grey[900] : Colors.white,
+              backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
               primaryXAxis: CategoryAxis(
                 labelStyle: TextStyle(
                     color: _isDarkMode ? Colors.white : Colors.black),
@@ -1246,8 +1326,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Card(
         elevation: 4,
         color: _isDarkMode ? Colors.grey[800] : Colors.white,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
