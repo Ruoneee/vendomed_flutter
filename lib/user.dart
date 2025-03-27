@@ -63,30 +63,6 @@ class _UserScreenState extends State<UserScreen> {
     super.dispose();
   }
 
-  // Insert a new user
-  Future<void> _onConfirm() async {
-    final newUser = {
-      'RFID': _rfidController.text,
-      'NAME': _nameController.text,
-      'EMAIL': _emailController.text,
-      'EXPIRATION': _expirationController.text,
-      'POINTS': '0',  // Default
-      // ROLE column if you have it, e.g. 'ROLE': 'User'
-    };
-
-    try {
-      await DatabaseHelper.instance.insertUser(newUser);
-      await _fetchUsersFromDB();
-      // Clear the form
-      _rfidController.clear();
-      _nameController.clear();
-      _emailController.clear();
-      _expirationController.clear();
-    } catch (e) {
-      debugPrint("Error inserting user: $e");
-    }
-  }
-
   // Update the selected user using RFID
   Future<void> _onEditUser() async {
     if (_selectedRfid == null) {
@@ -96,14 +72,10 @@ class _UserScreenState extends State<UserScreen> {
       return;
     }
 
-    // We generally don't update the RFID if it's your unique key,
-    // so we exclude it from userData. If you do want to change RFID,
-    // that complicates the logic (since the WHERE clause uses old RFID).
     final updatedUser = {
       'NAME': _nameController.text,
       'EMAIL': _emailController.text,
       'EXPIRATION': _expirationController.text,
-      // 'POINTS': ... if you want to change points
     };
 
     try {
@@ -254,23 +226,7 @@ class _UserScreenState extends State<UserScreen> {
                     _buildTextField(controller: _emailController, label: "Email Address"),
                     const SizedBox(height: 10),
                     _buildTextField(controller: _expirationController, label: "Expiration"),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.center,
-                      child: SizedBox(
-                        width: 150,
-                        child: ElevatedButton(
-                          onPressed: _onConfirm,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0D2A5E),
-                            foregroundColor: Colors.white,
-                            textStyle: const TextStyle(fontSize: 18),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text("Confirm"),
-                        ),
-                      ),
-                    ),
+                    // Removed the Confirm button
                   ],
                 ),
               ),
@@ -313,7 +269,7 @@ class _UserScreenState extends State<UserScreen> {
               ),
               const SizedBox(height: 10),
 
-              // Data Table (no checkboxes)
+              // Data Table with swapped columns (POINTS, then EMAIL)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
@@ -321,12 +277,11 @@ class _UserScreenState extends State<UserScreen> {
                   columns: const [
                     DataColumn(label: Text("RFID")),
                     DataColumn(label: Text("NAME")),
-                    DataColumn(label: Text("EMAIL")),
+                    DataColumn(label: Text("POINTS")),      // Swapped up
                     DataColumn(label: Text("EXPIRATION")),
-                    DataColumn(label: Text("POINTS")),
+                    DataColumn(label: Text("EMAIL")),       // Swapped down
                   ],
                   rows: _filteredUsers.map((user) {
-                    // Use RFID as the unique key
                     final rfid = user["RFID"]?.toString();
                     return DataRow(
                       selected: rfid == _selectedRfid,
@@ -340,7 +295,6 @@ class _UserScreenState extends State<UserScreen> {
                             _expirationController.text = user["EXPIRATION"]?.toString() ?? "";
                           });
                         } else {
-                          // Deselect
                           setState(() {
                             if (_selectedRfid == rfid) {
                               _selectedRfid = null;
@@ -351,9 +305,9 @@ class _UserScreenState extends State<UserScreen> {
                       cells: [
                         DataCell(Text(rfid ?? "")),
                         DataCell(Text(user["NAME"]?.toString() ?? "")),
-                        DataCell(Text(user["EMAIL"]?.toString() ?? "")),
+                        DataCell(Text(user["POINTS"]?.toString() ?? "")), // Moved up
                         DataCell(Text(user["EXPIRATION"]?.toString() ?? "")),
-                        DataCell(Text(user["POINTS"]?.toString() ?? "")),
+                        DataCell(Text(user["EMAIL"]?.toString() ?? "")),    // Moved down
                       ],
                     );
                   }).toList(),
