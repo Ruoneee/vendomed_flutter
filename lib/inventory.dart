@@ -20,7 +20,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _productIdController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _statusController = TextEditingController();
+  // Removed _statusController because status is now computed automatically.
   final TextEditingController _countController = TextEditingController();
 
   // For searching inventory
@@ -55,7 +55,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _productNameController.dispose();
     _productIdController.dispose();
     _amountController.dispose();
-    _statusController.dispose();
     _countController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -66,9 +65,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     try {
       final stockList = await DatabaseHelper.instance.getAllStocks();
       // Convert each map to a modifiable map so we can override status
-      final modifiableStockList = stockList
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
+      final modifiableStockList =
+      stockList.map((item) => Map<String, dynamic>.from(item)).toList();
 
       setState(() {
         _stocks = modifiableStockList;
@@ -102,6 +100,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+  // Helper function to compute status based on count
+  String _computeStatusFromCount(int countVal) {
+    if (countVal == 0) {
+      return "Out of stock";
+    } else if (countVal <= 7) {
+      return "Warning";
+    } else {
+      return "In Stock";
+    }
+  }
+
   // 3) Insert a new row into 'stocks'
   Future<void> _onSubmit() async {
     final newCountStr = _countController.text.trim();
@@ -113,11 +122,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return;
     }
 
+    // Compute status from the count
+    final computedStatus = _computeStatusFromCount(newCountVal);
+
     final newItem = {
       "product_name": _productNameController.text,
       "product_id": _productIdController.text,
       "amount": _amountController.text,
-      "status": _statusController.text,
+      "status": computedStatus,
       "count": newCountStr,
     };
 
@@ -143,11 +155,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return;
     }
 
+    // Compute status from the count
+    final computedStatus = _computeStatusFromCount(newCountVal);
+
     final updatedItem = {
       "product_name": _productNameController.text,
       "product_id": _productIdController.text,
       "amount": _amountController.text,
-      "status": _statusController.text,
+      "status": computedStatus,
       "count": newCountStr,
     };
 
@@ -174,7 +189,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _productNameController.clear();
     _productIdController.clear();
     _amountController.clear();
-    _statusController.clear();
     _countController.clear();
     setState(() {
       _selectedBatchId = null;
@@ -190,18 +204,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
     for (var item in _stocks) {
       final countStr = (item["count"] ?? "0").toString().trim();
       final countVal = int.tryParse(countStr) ?? 0;
-      String computedStatus;
-      if (countVal == 0) {
-        computedStatus = "Out of stock";
-        outOfStock++;
-      } else if (countVal <= 7) {
-        computedStatus = "Warning";
-        warning++;
-      } else {
-        computedStatus = "In Stock";
-        inStock++;
-      }
+      final computedStatus = _computeStatusFromCount(countVal);
       item["status"] = computedStatus;
+      if (computedStatus == "In Stock") {
+        inStock++;
+      } else if (computedStatus == "Warning") {
+        warning++;
+      } else if (computedStatus == "Out of stock") {
+        outOfStock++;
+      }
     }
 
     setState(() {
@@ -245,11 +256,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
       _selectedTabIndex = index;
     });
     if (index == 0) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => DashboardScreen()));
     } else if (index == 1) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)));
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)));
     } else if (index == 2) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)));
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => UserScreen(isDarkMode: _isDarkMode)));
     }
     // index == 3 => remain on Inventory
   }
@@ -330,8 +348,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     const SizedBox(height: 10),
                     _buildTextField(controller: _amountController, label: "Enter amount"),
                     const SizedBox(height: 10),
-                    _buildTextField(controller: _statusController, label: "Enter status (In Stock, Warning, Out of stock)"),
-                    const SizedBox(height: 10),
+                    // Removed the status text field since status is now computed.
                     _buildTextField(controller: _countController, label: "Enter count"),
                     const SizedBox(height: 10),
                     Align(
@@ -349,7 +366,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               // STOCK INDICATORS
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -360,7 +376,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-
               // SEARCH
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
@@ -382,7 +397,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-
               // MAIN INVENTORY TABLE
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -415,7 +429,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         ),
                       ),
                     ),
-                    // 6. Amount (moved to last column)
+                    // 6. Amount
                     DataColumn(
                       label: Text("Amount", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
@@ -439,7 +453,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             _productNameController.text = productNameStr;
                             _productIdController.text = productIdStr;
                             _countController.text = countStr;
-                            _statusController.text = statusStr;
                             _amountController.text = amountStr;
                           });
                         } else {
@@ -471,7 +484,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ),
                           ),
                         ),
-                        // 6. Amount (last column)
+                        // 6. Amount
                         DataCell(Text(amountStr, style: const TextStyle(fontSize: 16))),
                       ],
                     );
@@ -479,7 +492,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               // BATCH EXPIRY MANAGEMENT TABLE
               Text(
                 "Batch Expiry Management",
@@ -520,7 +532,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               // REFRESH BUTTON
               Center(
                 child: ElevatedButton(
