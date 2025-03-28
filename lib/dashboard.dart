@@ -197,8 +197,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         "November",
         "December"
       ];
-      sortedKeys.sort(
-              (a, b) => monthOrder.indexOf(a).compareTo(monthOrder.indexOf(b)));
+      sortedKeys.sort((a, b) => monthOrder.indexOf(a).compareTo(monthOrder.indexOf(b)));
     } else if (groupingMode == "week") {
       sortedKeys.sort((a, b) {
         final aNum = int.tryParse(a.replaceAll("Week ", "")) ?? 0;
@@ -731,6 +730,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final double difference = currentMonthSales - previousMonthSales;
 
+    // NEW CODE: Calculate % difference
+    double percentChange = 0.0;
+    if (previousMonthSales != 0) {
+      percentChange = (difference / previousMonthSales) * 100;
+    }
+    // END NEW CODE
+
     // Prepare chart data
     List<ChartData> comparisonData = [
       ChartData(label: 'Previous Month', value: previousMonthSales),
@@ -803,6 +809,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+
+                    // NEW CODE: Display the % difference with the specified color (0xFF0D2A5E)
+                    if (previousMonthSales == 0)
+                      Text(
+                        "No previous month data to compare.",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0D2A5E),
+                        ),
+                      )
+                    else
+                      Text(
+                        difference >= 0
+                            ? "Your Current Month is ${percentChange.toStringAsFixed(2)}% higher than the Previous Month."
+                            : "Your Current Month is ${percentChange.abs().toStringAsFixed(2)}% lower than the Previous Month.",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0D2A5E),
+                        ),
+                      ),
+                    // END NEW CODE
+
                     const SizedBox(height: 16),
 
                     // Comparison Chart
@@ -1067,7 +1098,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else if (index == 2) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
+        MaterialPageRoute(
+            builder: (context) => UserScreen(isDarkMode: _isDarkMode)),
       );
     } else if (index == 3) {
       Navigator.pushReplacement(
