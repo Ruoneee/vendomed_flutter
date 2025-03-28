@@ -142,7 +142,6 @@ class MedicineMenuState extends State<MedicineMenu> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           automaticallyImplyLeading: false,
-          // Removed the user icon from the title.
           title: Text(
             "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
             style: const TextStyle(fontSize: 18, color: Colors.white),
@@ -401,27 +400,76 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
+  /// This method now checks:
+  /// 1) The maximum allowed of 13.
+  /// 2) The actual remaining stock.
   void _addToOrder(String productName, String unitPriceStr) {
+    // Find this product's available stock in `medicines`.
+    final medicineIndex = medicines.indexWhere(
+          (m) => m['product_name'] == productName,
+    );
+    if (medicineIndex == -1) {
+      // Just in case the product wasn't found in the medicines list.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("$productName not found in stock list."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    final int availableStock = medicines[medicineIndex]['count'] ?? 0;
+
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-      final existingIndex = orders.indexWhere((item) => item['name'] == productName);
+      final existingIndex =
+      orders.indexWhere((item) => item['name'] == productName);
 
       if (existingIndex != -1) {
-        final int currentQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
-        if (currentQuantity < 13) {
-          final int newQuantity = currentQuantity + 1;
-          final double newTotalPrice = unitPrice * newQuantity;
-          orders[existingIndex]['quantity'] = newQuantity.toString();
-          orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
-        } else {
+        // Already in the orders list
+        final int currentQuantity =
+            int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        final int newQuantity = currentQuantity + 1;
+
+        // Check maximum of 13
+        if (newQuantity > 13) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Maximum of 13 pieces allowed for $productName."),
               backgroundColor: Colors.red,
             ),
           );
+          return;
         }
+
+        // Check stock availability
+        if (newQuantity > availableStock) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Only $availableStock pieces available for $productName."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        // If it passes both checks, update the order
+        final double newTotalPrice = unitPrice * newQuantity;
+        orders[existingIndex]['quantity'] = newQuantity.toString();
+        orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
       } else {
+        // If it's a new item to the order
+        // First check if there's at least 1 in stock
+        if (availableStock < 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Out of stock!"),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
         orders.add({
           'name': productName,
           'quantity': '1',
