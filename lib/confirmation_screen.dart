@@ -29,6 +29,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
 
   void _startAutoNavigateTimer() {
     _autoNavigateTimer?.cancel();
+    // 5-second delay before navigating away
     _autoNavigateTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
         Navigator.pushReplacement(
@@ -55,7 +56,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Lottie success animation (uncommented now)
+              // Lottie success animation
               Lottie.asset(
                 'assets/animations/success.json',
                 width: 150,
@@ -64,7 +65,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Your large splash logo
+              // Splash logo (same size as your splash screen)
               Image.asset(
                 'assets/images/splash_logo.png',
                 height: 600,
@@ -72,9 +73,9 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
               const SizedBox(height: 20),
 
               // "Order confirmed!" text
-              Text(
-                _dispensingMessage,
-                style: const TextStyle(
+              const Text(
+                "Order confirmed!",
+                style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
@@ -82,28 +83,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Purchase summary
-              if (widget.orders.isNotEmpty) ...[
-                const Text(
-                  "Purchase Summary:",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                for (var order in widget.orders) ...[
-                  Text(
-                    "${order['name']} x ${order['quantity']} = ₱${order['price']}",
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  "Total: ₱${widget.totalPrice.toStringAsFixed(2)}",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Retrieval message
+              // Retrieval instruction
               const Text(
                 "Please retrieve your items from the dispenser.",
                 style: TextStyle(
