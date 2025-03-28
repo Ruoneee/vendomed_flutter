@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-// ADD THIS:
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'transaction.dart';
 import 'splash_screen.dart';
@@ -31,16 +29,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedTabIndex = 0;
   bool _isDarkMode = false;
 
+  // Keep track of total transactions count:
   int totalTransactions = 0;
 
   // _totalSales: the grand total from all transactions (historical).
   double _totalSales = 0.0;
 
-  // _clearedSales: the value of _totalSales at the time of last clearing,
-  // persisted in SharedPreferences so we remember across sessions.
-  double _clearedSales = 0.0;
-
-  // _activeBalance = _totalSales - _clearedSales
+  // _activeBalance: separate from totalSales, in case you want a balance that can be cleared, etc.
   double _activeBalance = 0.0;
 
   List<ChartData> _salesData = [];
@@ -57,19 +52,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-
-    // 1) Load the previously saved clearedSales from SharedPreferences
-    _loadClearedSales().then((_) {
-      // After loading _clearedSales, fetch transactions & do the rest.
-      _fetchDashboardData();
-    });
-
     _selectedYear = DateTime.now().year;
     _selectedMonth = null;
     _selectedWeek = null;
     _selectedDay = null;
 
-    // If you want to refresh periodically:
+    // Initial fetch of data + periodic refresh
+    _fetchDashboardData();
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       _fetchDashboardData();
     });
@@ -81,21 +70,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  // ----------------- PERSISTENCE METHODS -----------------
-  Future<void> _loadClearedSales() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _clearedSales = prefs.getDouble('clearedSales') ?? 0.0;
-    });
-  }
-
-  Future<void> _saveClearedSales(double value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('clearedSales', value);
-  }
-  // --------------------------------------------------------
-
-  // Fetch transactions, compute total sales, then compute active balance.
+  // Fetch transactions and compute total sales, etc.
   Future<void> _fetchDashboardData() async {
     _transactions = await DatabaseHelper().getTransactions();
     double sum = 0.0;
@@ -106,28 +81,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       totalTransactions = _transactions.length;
       _totalSales = sum;
-
-      // Recompute active balance using the loaded/remembered _clearedSales
-      _activeBalance = _totalSales - _clearedSales;
-      if (_activeBalance < 0) {
-        // Just in case something odd happened:
-        _activeBalance = 0.0;
-      }
+      // Example: if you want _activeBalance to track totalSales exactly:
+      _activeBalance = _totalSales;
+      // Or do your custom logic if you have "clearing" features, etc.
     });
 
     _updateChartData();
   }
 
-  // When clearing balance, set _clearedSales to the current total,
-  // so that going forward, new transactions show up in _activeBalance.
+  // Example clear function (optional):
   void _clearActiveBalance() {
     setState(() {
-      _clearedSales = _totalSales;
       _activeBalance = 0.0;
     });
-    // Save the updated clearedSales so that after log-out/log-in,
-    // we still remember that we cleared at this total.
-    _saveClearedSales(_clearedSales);
   }
 
   // Update chart data based on the hierarchical filters.
@@ -338,7 +304,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- New Feature: Quick Stats / KPI Cards ---
+  // --- Quick Stats / KPI Cards ---
   Widget _buildQuickStats() {
     // Use _totalSales for "Total Sales"
     // Use _totalSales / totalTransactions for "Avg. Value"
@@ -373,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- New Feature: Top-Selling Items Widget with gradient background ---
+  // --- Top-Selling Items Widget with gradient background ---
   Widget _buildTopSellingItems() {
     // Create a copy of the frequency data and sort descending by sales quantity.
     List<ChartData> sortedItems = List.from(_frequencyData);
@@ -708,7 +674,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // The "View Details" modal.
+  // The "View Details" modal, updated to show a percentage difference
   void _showViewDetailsModal() {
     // --- Calculate Previous vs Current Month Sales ---
     final now = DateTime.now();
@@ -730,6 +696,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final double difference = currentMonthSales - previousMonthSales;
+
+    // Percentage difference (Month-over-Month)
+    double percentageChange = 0.0;
+    if (previousMonthSales != 0) {
+      percentageChange = (difference / previousMonthSales) * 100;
+    }
+    // Build a text string describing the change
+    final String percentageText;
+    if (difference > 0) {
+      percentageText =
+      "Your Current Month is ${percentageChange.toStringAsFixed(2)}% HIGHER than Previous Month";
+    } else if (difference < 0) {
+      percentageText =
+      "Your Current Month is ${percentageChange.abs().toStringAsFixed(2)}% LOWER than Previous Month";
+    } else {
+      percentageText = "Your Current Month is the SAME as Previous Month";
+    }
 
     // Prepare chart data
     List<ChartData> comparisonData = [
@@ -803,6 +786,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                     ),
+
+                    // Show the "percentageText" in brand color for positive, red if negative
+                    const SizedBox(height: 16),
+                    Text(
+                      percentageText,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: difference >= 0
+                            ? Color(0xFF0D2A5E) // brand color
+                            : Colors.red,       // red for negative
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
                     const SizedBox(height: 16),
 
                     // Comparison Chart
@@ -1121,8 +1119,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _buildBalanceCard(),
                 const SizedBox(height: 20),
+                // Quick Stats / KPI Cards
                 _buildQuickStats(),
                 const SizedBox(height: 20),
+                // Top-Selling Items Widget
                 _buildTopSellingItems(),
                 const SizedBox(height: 20),
                 _buildFiltersRow(),
@@ -1180,7 +1180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(color: Colors.white, fontSize: 16)),
                     ),
                     const SizedBox(width: 10),
-                    // The new Clear button
+                    // Example Clear button
                     ElevatedButton(
                       onPressed: _clearActiveBalance,
                       style: ElevatedButton.styleFrom(
