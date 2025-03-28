@@ -404,16 +404,23 @@ class MedicineMenuState extends State<MedicineMenu> {
   void _addToOrder(String productName, String unitPriceStr) {
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-      final existingIndex =
-      orders.indexWhere((item) => item['name'] == productName);
+      final existingIndex = orders.indexWhere((item) => item['name'] == productName);
 
       if (existingIndex != -1) {
-        final oldQuantity =
-            int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
-        final newQuantity = oldQuantity + 1;
-        final double newTotalPrice = unitPrice * newQuantity;
-        orders[existingIndex]['quantity'] = newQuantity.toString();
-        orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
+        final int currentQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        if (currentQuantity < 13) {
+          final int newQuantity = currentQuantity + 1;
+          final double newTotalPrice = unitPrice * newQuantity;
+          orders[existingIndex]['quantity'] = newQuantity.toString();
+          orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Maximum of 13 pieces allowed for $productName."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } else {
         orders.add({
           'name': productName,

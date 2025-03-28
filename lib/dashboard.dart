@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-// ADD THIS:
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'transaction.dart';
@@ -228,6 +227,128 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  // NAIVE FORECAST FUNCTION + NEXT-MONTH FORECAST
+  double naiveForecast(List<double> historicalSales) {
+    if (historicalSales.length < 2) {
+      return historicalSales.isNotEmpty ? historicalSales.last : 0.0;
+    }
+    double totalGrowthRate = 0.0;
+    int count = 0;
+    for (int i = 1; i < historicalSales.length; i++) {
+      if (historicalSales[i - 1] != 0) {
+        double growthRate =
+            (historicalSales[i] - historicalSales[i - 1]) / historicalSales[i - 1];
+        totalGrowthRate += growthRate;
+        count++;
+      }
+    }
+    double avgGrowthRate = count > 0 ? (totalGrowthRate / count) : 0.0;
+    return historicalSales.last * (1 + avgGrowthRate);
+  }
+
+  double _forecastNextMonthSales() {
+    int year = DateTime.now().year;
+    Map<int, double> monthlySales = {};
+
+    // Sum sales for each month in the current year
+    for (var tx in _transactions) {
+      DateTime dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
+      if (dt.year == year) {
+        monthlySales[dt.month] =
+            (monthlySales[dt.month] ?? 0) + (tx['total_amount'] as num).toDouble();
+      }
+    }
+
+    // Build a list of monthly sales from January up to current month
+    List<double> salesList = [];
+    for (int m = 1; m <= DateTime.now().month; m++) {
+      salesList.add(monthlySales[m] ?? 0.0);
+    }
+
+    if (salesList.isEmpty) return 0.0;
+    return naiveForecast(salesList);
+  }
+
+  // MERGED FORECAST: Single Chart that displays the numeric forecast
+  Widget _buildForecastChart() {
+    // 1) Calculate the forecast value
+    double forecastVal = _forecastNextMonthSales();
+
+    // 2) Gather monthly sales for the current year
+    int currentYear = DateTime.now().year;
+    int currentMonth = DateTime.now().month;
+    Map<int, double> monthlySales = {};
+    for (var tx in _transactions) {
+      DateTime dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
+      if (dt.year == currentYear) {
+        monthlySales[dt.month] =
+            (monthlySales[dt.month] ?? 0) + (tx['total_amount'] as num).toDouble();
+      }
+    }
+
+    // 3) Build a list of ChartData for each month so far
+    List<ChartData> chartData = [];
+    for (int m = 1; m <= currentMonth; m++) {
+      double val = monthlySales[m] ?? 0;
+      String shortLabel = _monthName(m).substring(0, 3); // e.g. "Jan"
+      chartData.add(ChartData(label: shortLabel, value: val));
+    }
+
+    // 4) Append the forecast as "Fcast"
+    chartData.add(ChartData(label: "Fcast", value: forecastVal));
+
+    // 5) Return a single card that displays the numeric forecast + chart
+    return Card(
+      elevation: 4,
+      color: _isDarkMode ? Colors.grey[800] : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Forecast Value in the header
+            Text(
+              "Next Month Forecast: ₱${forecastVal.toStringAsFixed(2)}",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // The mini chart
+            SizedBox(
+              height: 220, // adjust as needed
+              child: SfCartesianChart(
+                backgroundColor:
+                _isDarkMode ? Colors.grey[900] : Colors.white,
+                primaryXAxis: CategoryAxis(
+                  labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+                primaryYAxis: NumericAxis(
+                  labelStyle: TextStyle(
+                    color: _isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+                series: <CartesianSeries<ChartData, String>>[
+                  LineSeries<ChartData, String>(
+                    dataSource: chartData,
+                    xValueMapper: (ChartData data, _) => data.label,
+                    yValueMapper: (ChartData data, _) => data.value,
+                    markerSettings: const MarkerSettings(isVisible: true),
+                    color: _isDarkMode ? Colors.cyanAccent : brandColor,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Helpers
   String _weekdayName(int weekday) {
     switch (weekday) {
@@ -337,10 +458,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- New Feature: Quick Stats / KPI Cards ---
+  // Quick Stats
   Widget _buildQuickStats() {
-    // Use _totalSales for "Total Sales"
-    // Use _totalSales / totalTransactions for "Avg. Value"
     double avgTransaction =
     totalTransactions > 0 ? _totalSales / totalTransactions : 0;
     return Row(
@@ -372,13 +491,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- New Feature: Top-Selling Items Widget with gradient background ---
+  // Top-Selling Items
   Widget _buildTopSellingItems() {
-    // Create a copy of the frequency data and sort descending by sales quantity.
     List<ChartData> sortedItems = List.from(_frequencyData);
     sortedItems.sort((a, b) => b.value.compareTo(a.value));
-
-    // Show only top 3 items.
     if (sortedItems.length > 3) {
       sortedItems = sortedItems.sublist(0, 3);
     }
@@ -422,7 +538,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final index = entry.key;
                   final item = entry.value;
                   return ListTile(
-                    // Show rank (#1, #2, etc.) in a white circle.
                     leading: CircleAvatar(
                       backgroundColor: Colors.white,
                       child: Text(
@@ -709,7 +824,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // The "View Details" modal.
   void _showViewDetailsModal() {
-    // --- Calculate Previous vs Current Month Sales ---
     final now = DateTime.now();
     final currentMonth = now.month;
     final currentYear = now.year;
@@ -730,12 +844,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final double difference = currentMonthSales - previousMonthSales;
 
-    // NEW CODE: Calculate % difference
+    // Calculate % difference
     double percentChange = 0.0;
     if (previousMonthSales != 0) {
       percentChange = (difference / previousMonthSales) * 100;
     }
-    // END NEW CODE
 
     // Prepare chart data
     List<ChartData> comparisonData = [
@@ -759,7 +872,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Title + Close Button
+                    // Title + Close
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -782,7 +895,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Row of Summary Cards
+                    // Summary Cards
                     Row(
                       children: [
                         _buildSummaryCard(
@@ -811,7 +924,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // NEW CODE: Display the % difference with the specified color (0xFF0D2A5E)
                     if (previousMonthSales == 0)
                       Text(
                         "No previous month data to compare.",
@@ -832,8 +944,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           color: const Color(0xFF0D2A5E),
                         ),
                       ),
-                    // END NEW CODE
-
                     const SizedBox(height: 16),
 
                     // Comparison Chart
@@ -1154,6 +1264,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildBalanceCard(),
                 const SizedBox(height: 20),
                 _buildQuickStats(),
+                const SizedBox(height: 20),
+                // NEW: Single chart card that includes forecast value
+                _buildForecastChart(),
                 const SizedBox(height: 20),
                 _buildTopSellingItems(),
                 const SizedBox(height: 20),
