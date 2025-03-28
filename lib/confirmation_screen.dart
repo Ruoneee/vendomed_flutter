@@ -1,18 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'splash_screen.dart';
+import 'package:lottie/lottie.dart';
 
 class ConfirmationScreen extends StatefulWidget {
-  const ConfirmationScreen({Key? key}) : super(key: key);
+  final List<Map<String, String>> orders;
+  final double totalPrice;
+
+  const ConfirmationScreen({
+    Key? key,
+    required this.orders,
+    required this.totalPrice,
+  }) : super(key: key);
 
   @override
   ConfirmationScreenState createState() => ConfirmationScreenState();
 }
 
 class ConfirmationScreenState extends State<ConfirmationScreen> {
-  // Changed to lowercase
   final String _dispensingMessage = "Order confirmed!";
-
   Timer? _autoNavigateTimer;
 
   @override
@@ -22,10 +28,8 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
   }
 
   void _startAutoNavigateTimer() {
-    // Cancel any existing timer and start a new one
     _autoNavigateTimer?.cancel();
-    // Auto-navigate after 2 seconds
-    _autoNavigateTimer = Timer(const Duration(seconds: 2), () {
+    _autoNavigateTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -43,30 +47,73 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final logoHeight = screenHeight * 0.60;
-    final textSize = screenHeight * 0.05;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/splash_logo.png',
-              height: logoHeight,
-            ),
-            SizedBox(height: screenHeight * 0.05),
-            Text(
-              _dispensingMessage,
-              style: TextStyle(
-                fontSize: textSize,
-                fontWeight: FontWeight.bold,
+        // SingleChildScrollView in case the screen is too small
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Lottie success animation (uncommented now)
+              Lottie.asset(
+                'assets/animations/success.json',
+                width: 150,
+                height: 150,
+                repeat: false,
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: 20),
+
+              // Your large splash logo
+              Image.asset(
+                'assets/images/splash_logo.png',
+                height: 600,
+              ),
+              const SizedBox(height: 20),
+
+              // "Order confirmed!" text
+              Text(
+                _dispensingMessage,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+
+              // Purchase summary
+              if (widget.orders.isNotEmpty) ...[
+                const Text(
+                  "Purchase Summary:",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                for (var order in widget.orders) ...[
+                  Text(
+                    "${order['name']} x ${order['quantity']} = ₱${order['price']}",
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  "Total: ₱${widget.totalPrice.toStringAsFixed(2)}",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Retrieval message
+              const Text(
+                "Please retrieve your items from the dispenser.",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w400,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

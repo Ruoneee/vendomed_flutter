@@ -67,20 +67,6 @@ class GCashPaymentPage extends StatelessWidget {
     }
   }
 
-  /// Called when the "PROCEED" button is pressed.
-  /// Inserts transactions, updates stocks, then navigates to SplashScreen.
-  Future<void> _onProceedPayment(BuildContext context) async {
-    await _insertTransactions();
-    await _updateStocksForOrders();
-    // Changed only this line to navigate to ConfirmationScreen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ConfirmationScreen(),
-      ),
-    );
-  }
-
   /// Calculates the total amount (in PHP) from the orders.
   double _calculateTotalAmount() {
     double total = 0.0;
@@ -89,6 +75,23 @@ class GCashPaymentPage extends StatelessWidget {
       total += price;
     }
     return total;
+  }
+
+  /// Called when the "PROCEED" button is pressed.
+  /// Inserts transactions, updates stocks, then navigates to SplashScreen.
+  Future<void> _onProceedPayment(BuildContext context) async {
+    await _insertTransactions();
+    await _updateStocksForOrders();
+    // Pass the required parameters to ConfirmationScreen.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ConfirmationScreen(
+          orders: orders,
+          totalPrice: _calculateTotalAmount(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -242,7 +245,6 @@ class GCashPaymentPage extends StatelessWidget {
                       ),
                     ),
                     onPressed: () async {
-                      // Same logic as "PAYMENT COMPLETED" in your old code
                       await _onProceedPayment(context);
                     },
                     child: const Text(

@@ -154,12 +154,15 @@ class PointsPageState extends State<PointsPage> {
         await _insertTransactions();
         await _updateStocksForOrders();
         await _deductPoints(totalAmount.toInt());
-        // If needed, send orders to the ESP32:
-        // await _usbHelper.sendOrdersToESP32(widget.orders);
-
+        // Navigate to ConfirmationScreen with required parameters
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ConfirmationScreen()),
+          MaterialPageRoute(
+            builder: (context) => ConfirmationScreen(
+              orders: widget.orders,
+              totalPrice: totalAmount,
+            ),
+          ),
         );
       } else {
         _showErrorDialog(
@@ -395,7 +398,7 @@ class PointsPageState extends State<PointsPage> {
                   onPressed: _incrementPointsUsed,
                   child: const Text(
                     'ADD 20 Points',
-                    style: TextStyle(fontSize: 20), // Larger
+                    style: TextStyle(fontSize: 20),
                   ),
                 ),
               ),
@@ -430,7 +433,7 @@ class PointsPageState extends State<PointsPage> {
                     },
                     child: const Text(
                       'CANCEL',
-                      style: TextStyle(fontSize: 20), // Larger
+                      style: TextStyle(fontSize: 20),
                     ),
                   ),
                   ElevatedButton(
@@ -448,7 +451,7 @@ class PointsPageState extends State<PointsPage> {
                     onPressed: _onProceedButtonPressed,
                     child: const Text(
                       'PROCEED',
-                      style: TextStyle(fontSize: 20), // Larger
+                      style: TextStyle(fontSize: 20),
                     ),
                   ),
                 ],

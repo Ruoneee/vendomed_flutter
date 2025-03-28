@@ -24,6 +24,7 @@ dependencies:
   url_launcher: ^6.1.7
   qr_flutter: ^4.0.0
   shared_preferences: ^2.0.17
+  lottie: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -46,4 +47,6 @@ flutter:
     - assets/images/qrcode.png
     - assets/vendomed.db
     - assets/images/points.png
+    - assets/animations/success.json
+    - assets/animations/medicine.json
   uses-material-design: true

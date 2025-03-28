@@ -219,7 +219,12 @@ class PaymentPageState extends State<PaymentPage> {
               Navigator.of(context).pop(); // Close the dialog
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => ConfirmationScreen()),
+                MaterialPageRoute(
+                  builder: (context) => ConfirmationScreen(
+                    orders: widget.orders,
+                    totalPrice: totalAmount,
+                  ),
+                ),
               );
             });
 
@@ -260,7 +265,12 @@ class PaymentPageState extends State<PaymentPage> {
         // If no points awarded or user didn't overpay, go directly
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ConfirmationScreen()),
+          MaterialPageRoute(
+            builder: (context) => ConfirmationScreen(
+              orders: widget.orders,
+              totalPrice: totalAmount,
+            ),
+          ),
         );
       }
     } else {
