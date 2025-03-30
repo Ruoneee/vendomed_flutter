@@ -249,7 +249,11 @@ class MedicineMenuState extends State<MedicineMenu> {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         "VendoPoints: $_userPoints",
-                        style: titleLarge?.copyWith(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+                        style: titleLarge?.copyWith(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ),
@@ -408,7 +412,7 @@ class MedicineMenuState extends State<MedicineMenu> {
               const SizedBox(height: 6),
               Text(
                 'Remaining: $stockCount pc/s',
-                style: titleMedium?.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0D2A5E)),
+                style: titleMedium?.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF0D2A5E)),
                 textAlign: TextAlign.center,
               ),
               const Spacer(),
@@ -532,6 +536,9 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
@@ -545,7 +552,10 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                 Flexible(
                   child: Text(
                     widget.productName,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 26, fontWeight: FontWeight.bold),
+                    style: textTheme.titleLarge?.copyWith(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -555,109 +565,154 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
               ],
             ),
             const SizedBox(height: 12),
-            // Price & Stock
+            // Price, Favorite Icon and Stock.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Price: ₱${widget.amountStr}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 18),
-                ),
-                Text(
-                  'In Stock: ${widget.stockCount}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 18),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Quantity selector + Favorite
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+                // Price with favorite icon beside it.
                 Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () {
-                        if (_quantity > 1) {
-                          setState(() {
-                            _quantity--;
-                          });
-                        }
-                      },
-                    ),
                     Text(
-                      _quantity.toString(),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 18),
+                      'Price: ₱${widget.amountStr}',
+                      style: textTheme.bodyMedium?.copyWith(fontSize: 20),
                     ),
+                    const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
+                      icon: Icon(
+                        _isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: _isFavorite ? Colors.red : Colors.grey,
+                      ),
+                      iconSize: 30,
                       onPressed: () {
-                        if (_quantity < widget.stockCount) {
-                          setState(() {
-                            _quantity++;
-                          });
-                        }
+                        setState(() {
+                          _isFavorite = !_isFavorite;
+                        });
                       },
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: Icon(
-                    _isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: _isFavorite ? Colors.red : Colors.grey,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isFavorite = !_isFavorite;
-                    });
-                  },
+                // Stock.
+                Text(
+                  'In Stock: ${widget.stockCount}',
+                  style: textTheme.bodyMedium?.copyWith(fontSize: 20),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            // Product Image (if available)
+            // Enlarged Product Image.
             Center(
               child: widget.imagePath.isNotEmpty
-                  ? Image.asset(widget.imagePath, height: 170, fit: BoxFit.contain)
-                  : Text("No image", style: Theme.of(context).textTheme.bodyMedium),
+                  ? Image.asset(widget.imagePath, height: 350, fit: BoxFit.contain)
+                  : Text("No image", style: textTheme.bodyMedium?.copyWith(fontSize: 20)),
+            ),
+            const SizedBox(height: 12),
+            // Enlarged Quantity Selector.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  iconSize: 36,
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: () {
+                    if (_quantity > 1) {
+                      setState(() {
+                        _quantity--;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _quantity.toString(),
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  iconSize: 36,
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: () {
+                    if (_quantity < widget.stockCount) {
+                      setState(() {
+                        _quantity++;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Dosage Information.
+            Text(
+              "Dosage Information:",
+              style: textTheme.titleMedium?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.dosage,
+              style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
             ),
             const SizedBox(height: 16),
-            Text("Dosage Information:",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(widget.dosage,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 18, height: 1.4)),
-            const SizedBox(height: 16),
-            Text("Ingredients:",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(widget.ingredients,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 18, height: 1.4)),
-            const SizedBox(height: 16),
-            Text("Warnings & Side Effects:",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(widget.warnings,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 18, height: 1.4)),
-            const SizedBox(height: 16),
-            if (widget.additionalMedia.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Additional Information:",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text(widget.additionalMedia,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 18, height: 1.4)),
-                ],
+            // Ingredients.
+            Text(
+              "Ingredients:",
+              style: textTheme.titleMedium?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
-            const SizedBox(height: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.ingredients,
+              style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            // Warnings & Side Effects.
+            Text(
+              "Warnings & Side Effects:",
+              style: textTheme.titleMedium?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.warnings,
+              style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            // Additional Information.
+            if (widget.additionalMedia.isNotEmpty) ...[
+              Text(
+                "Additional Information:",
+                style: textTheme.titleMedium?.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.additionalMedia,
+                style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+            ],
+            // Disclaimer.
             Text(
               "Information provided here is for reference only. Always consult a healthcare professional for medical advice.",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14, color: Colors.grey[700]),
+              style: textTheme.bodyMedium?.copyWith(
+                fontSize: 16,
+                color: Colors.grey[700],
+                height: 1.3,
+              ),
             ),
             const SizedBox(height: 24),
+            // Action Buttons.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -665,8 +720,10 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                   child: ElevatedButton(
                     onPressed: () => widget.onAddToCart(_quantity),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      backgroundColor: const Color(0xFF0D2A5E), // Navy blue
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     child: const Text("Add to Cart"),
                   ),
@@ -676,9 +733,10 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      backgroundColor: Colors.grey[800], // Dark grey
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     child: const Text("Close"),
                   ),
