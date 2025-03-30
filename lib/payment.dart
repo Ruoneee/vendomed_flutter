@@ -380,7 +380,7 @@ class PaymentPageState extends State<PaymentPage> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Insufficient Coins Inserted')),
+        SnackBar(content: Text(tr("insufficient"))),
       );
     }
   }
@@ -396,7 +396,6 @@ class PaymentPageState extends State<PaymentPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate progress value for the progress bar (0 to 1)
     double progressValue = 0.0;
     if (totalAmount > 0) {
       progressValue = coinInserted / totalAmount;
@@ -408,8 +407,6 @@ class PaymentPageState extends State<PaymentPage> {
     double remainingBalance = (totalAmount - coinInserted) < 0
         ? 0
         : totalAmount - coinInserted;
-
-    // For a circular countdown, compute the fraction of elapsed time
     double countdownProgress = 1 - (_remainingSeconds / 60.0);
 
     return WillPopScope(
@@ -424,7 +421,7 @@ class PaymentPageState extends State<PaymentPage> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.language),
+              icon: const Icon(Icons.language, color: Colors.white),
               onPressed: _toggleLanguage,
               tooltip: "Toggle Language",
             )
@@ -500,7 +497,6 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
               // Card for Order List
               Card(
                 elevation: 4,
@@ -540,7 +536,6 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
               // Enlarged Card for Payment Information
               Card(
                 elevation: 4,
@@ -564,7 +559,6 @@ class PaymentPageState extends State<PaymentPage> {
                         ],
                       ),
                       const SizedBox(height: 16),
-
                       // Display Inserted Amount with larger text
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -580,7 +574,6 @@ class PaymentPageState extends State<PaymentPage> {
                         ],
                       ),
                       const SizedBox(height: 16),
-
                       // Thicker Progress Bar
                       LinearProgressIndicator(
                         value: progressValue,
@@ -588,7 +581,6 @@ class PaymentPageState extends State<PaymentPage> {
                         backgroundColor: Colors.grey[300],
                       ),
                       const SizedBox(height: 8),
-
                       // Display Remaining Balance with enlarged text
                       Align(
                         alignment: Alignment.centerRight,
@@ -598,7 +590,6 @@ class PaymentPageState extends State<PaymentPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-
                       // Display error message if any
                       if (errorMessage.isNotEmpty)
                         Center(
@@ -613,7 +604,6 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
               // Button for adding cash/coins.
               Center(
                 child: Wrap(
@@ -638,7 +628,6 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
               // Navigation buttons: CANCEL and PROCEED.
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -669,7 +658,7 @@ class PaymentPageState extends State<PaymentPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 60),
+                  const SizedBox(width: 120),
                   SizedBox(
                     width: 300,
                     child: ElevatedButton(
