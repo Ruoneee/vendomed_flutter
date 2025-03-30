@@ -135,6 +135,11 @@ class MedicineMenuState extends State<MedicineMenu> {
 
   @override
   Widget build(BuildContext context) {
+    // Use the current theme's text styles to maintain consistency.
+    final titleLarge = Theme.of(context).textTheme.titleLarge;
+    final titleMedium = Theme.of(context).textTheme.titleMedium;
+    final bodyMedium = Theme.of(context).textTheme.bodyMedium;
+
     return WillPopScope(
       // Disable Android's back button.
       onWillPop: () async => false,
@@ -144,7 +149,7 @@ class MedicineMenuState extends State<MedicineMenu> {
           automaticallyImplyLeading: false,
           title: Text(
             "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
-            style: const TextStyle(fontSize: 18, color: Colors.white),
+            style: titleLarge?.copyWith(fontSize: 20, color: Colors.white),
           ),
           actions: [
             IconButton(
@@ -185,7 +190,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         "VendoPoints: $_userPoints",
-                        style: const TextStyle(
+                        style: titleLarge?.copyWith(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
@@ -198,9 +203,9 @@ class MedicineMenuState extends State<MedicineMenu> {
               ],
 
               // "Your Orders"
-              const Text(
+              Text(
                 "Your Orders:",
-                style: TextStyle(
+                style: titleLarge?.copyWith(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
@@ -230,7 +235,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                         ),
                         child: Text(
                           '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                          style: const TextStyle(fontSize: 16),
+                          style: bodyMedium?.copyWith(fontSize: 16),
                         ),
                       );
                     },
@@ -274,9 +279,12 @@ class MedicineMenuState extends State<MedicineMenu> {
                         vertical: 10,
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       "RESET",
-                      style: TextStyle(fontSize: 18, color: Colors.white),
+                      style: titleMedium?.copyWith(
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   ElevatedButton(
@@ -288,9 +296,12 @@ class MedicineMenuState extends State<MedicineMenu> {
                         vertical: 10,
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       "CHECKOUT",
-                      style: TextStyle(fontSize: 18, color: Colors.white),
+                      style: titleMedium?.copyWith(
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -311,6 +322,9 @@ class MedicineMenuState extends State<MedicineMenu> {
       ) {
     final double imageHeight = MediaQuery.of(context).size.height * 0.18;
     bool isTapped = _isTapped[productName] ?? false;
+    final titleLarge = Theme.of(context).textTheme.titleLarge;
+    final titleMedium = Theme.of(context).textTheme.titleMedium;
+    final bodyMedium = Theme.of(context).textTheme.bodyMedium;
 
     return GestureDetector(
       onTapDown: (_) {
@@ -362,33 +376,29 @@ class MedicineMenuState extends State<MedicineMenu> {
                 Container(
                   height: imageHeight,
                   alignment: Alignment.center,
-                  child: const Text(
+                  child: Text(
                     "No image",
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: bodyMedium?.copyWith(fontSize: 16, color: Colors.grey),
                   ),
                 ),
               const SizedBox(height: 10),
               Text(
                 productName,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+                style: titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               Text(
                 '₱$amountStr',
-                style: const TextStyle(fontSize: 18, color: Colors.black54),
+                style: titleMedium?.copyWith(fontSize: 18, color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
               Text(
                 'Remaining: $stockCount pc/s',
-                style: const TextStyle(
+                style: titleMedium?.copyWith(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D2A5E),
+                  color: const Color(0xFF0D2A5E),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -405,9 +415,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   /// 2) The actual remaining stock.
   void _addToOrder(String productName, String unitPriceStr) {
     // Find this product's available stock in `medicines`.
-    final medicineIndex = medicines.indexWhere(
-          (m) => m['product_name'] == productName,
-    );
+    final medicineIndex = medicines.indexWhere((m) => m['product_name'] == productName);
     if (medicineIndex == -1) {
       // Just in case the product wasn't found in the medicines list.
       ScaffoldMessenger.of(context).showSnackBar(
@@ -422,13 +430,11 @@ class MedicineMenuState extends State<MedicineMenu> {
 
     setState(() {
       final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-      final existingIndex =
-      orders.indexWhere((item) => item['name'] == productName);
+      final existingIndex = orders.indexWhere((item) => item['name'] == productName);
 
       if (existingIndex != -1) {
         // Already in the orders list
-        final int currentQuantity =
-            int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        final int currentQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
         final int newQuantity = currentQuantity + 1;
 
         // Check maximum of 13
