@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart'; // Import the database helper
+import 'database_helper.dart';
 import 'splash_screen.dart';
 import 'user_selection_screen.dart';
 import 'rfid_screen.dart';
 import 'medicine_menu.dart';
 import 'usb_helper.dart';
 import 'package:flutter/services.dart';
+import 'stocks_monitoring.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Set full screen mode
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  // Initialize the database (vendomed.db)
-  await DatabaseHelper().db;
-  USBHelper().initUSB(); // ✅ Initialize USB connection at app startup
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // Set full screen mode
+  await DatabaseHelper().db; // Initialize the database (vendomed.db)
+  USBHelper().initUSB(); // Initialize USB connection at app startup
+  StocksMonitoring().start(); //  Start the monitoring loop
+
   runApp(const MyApp());
 }
 

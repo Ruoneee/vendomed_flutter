@@ -30,6 +30,16 @@ class USBHelper {
   final StreamController<int> _creditController = StreamController<int>.broadcast();
   Stream<int> get creditStream => _creditController.stream;
 
+  Future<void> sendRawCommand(String command) async {
+    if (_port != null && _isConnected) {
+      Uint8List data = Uint8List.fromList(command.codeUnits);
+      await _port!.write(data);
+      print("Sent raw command to ESP32: $command");
+    } else {
+      print("Failed to send: USB not connected.");
+    }
+  }
+
   Future<void> initUSB() async {
     if (_isConnected) return; // Prevent reinitialization if already connected
 
