@@ -25,8 +25,9 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
   @override
   void initState() {
     super.initState();
-    // Start confetti animation for 3 seconds.
-    _confettiController = ConfettiController(duration: const Duration(seconds: 8));
+    // Start confetti animation for 8 seconds.
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 8));
     _confettiController.play();
 
     // Auto-return to home after 5 seconds.
@@ -54,70 +55,83 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Use a Stack to overlay confetti over the main content.
+    // Wrap content in a container with gradient background.
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Main content: success animation, messages, and detailed e‑receipt.
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Animated success checkmark (Lottie animation).
-                  Lottie.asset(
-                    'assets/animations/success.json',
-                    width: 200,
-                    height: 200,
-                    repeat: false,
-                  ),
-                  const SizedBox(height: 30),
-                  // Order confirmation text (larger font).
-                  const Text(
-                    "Order confirmed!",
-                    style: TextStyle(
-                      fontSize: 40, // Larger
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0D2A5E), // Start color
+              Color(0xFF1E5D6F), // End color
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Main content: success animation, messages, and detailed e‑receipt.
+            Center(
+              child: SingleChildScrollView(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Animated success checkmark (Lottie animation).
+                    Lottie.asset(
+                      'assets/animations/success.json',
+                      width: 200,
+                      height: 200,
+                      repeat: false,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  // Instruction for retrieval (larger font).
-                  const Text(
-                    "Please retrieve your items from the dispenser.",
-                    style: TextStyle(
-                      fontSize: 28, // Larger
-                      fontWeight: FontWeight.w400,
+                    const SizedBox(height: 30),
+                    // "Order confirmed!" text in green.
+                    const Text(
+                      "Order confirmed!",
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green, // Remains green
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 40),
-                  // Detailed e-receipt based on the transaction.
-                  _buildReceipt(),
-                  const SizedBox(height: 24),
-                  // Auto-return message (larger).
-                  const Text(
-                    "Returning to Home soon...",
-                    style: TextStyle(fontSize: 20, color: Colors.black54),
-                  ),
-                ],
+                    const SizedBox(height: 24),
+                    // Retrieval instruction in white.
+                    const Text(
+                      "Please retrieve your items from the dispenser.",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 40),
+                    // Detailed e-receipt based on the transaction.
+                    _buildReceipt(),
+                    const SizedBox(height: 24),
+                    // Auto-return message in white.
+                    const Text(
+                      "Returning to Home soon...",
+                      style: TextStyle(fontSize: 20, color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          // Confetti overlay.
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: const [Colors.green, Colors.blue, Colors.purple],
+            // Confetti overlay.
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: const [Colors.green, Colors.blue, Colors.purple],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -131,7 +145,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(28), // More padding for a larger feel
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
@@ -145,7 +159,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
             child: Text(
               "E‑Receipt",
               style: TextStyle(
-                fontSize: 32, // Larger
+                fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey.shade800,
               ),
@@ -196,7 +210,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
     );
   }
 
-  /// Helper widget to build a line with a label and value, with bigger font sizes.
+  /// Helper widget to build a line with a label and value.
   Widget _receiptLine(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
