@@ -5,6 +5,7 @@ import 'confirmation_screen.dart';
 import 'database_helper.dart';
 import 'medicine_menu.dart'; // To navigate back with existing orders
 import 'usb_helper.dart';   // If you need to send orders to the ESP32
+import 'splash_screen.dart'; // For session timeout redirection
 
 class PointsPage extends StatefulWidget {
   final List<Map<String, String>> orders;
@@ -22,12 +23,62 @@ class PointsPage extends StatefulWidget {
 
 class PointsPageState extends State<PointsPage> {
   final TextEditingController _pointsController = TextEditingController();
-  final USBHelper _usbHelper = USBHelper(); // If you need to communicate with ESP32
+  final USBHelper _usbHelper = USBHelper(); // For ESP32 communication if needed
 
   double totalAmount = 0.0;
   int pointsUsed = 0;
   int userPoints = 0;
   String _userName = "";
+
+  // Session timeout variables
+  Timer? _timeoutTimer;
+  Timer? _countdownTimer;
+  int _remainingSeconds = 60;
+
+  // Multi-language support variables
+  String _currentLanguage = "en";
+  final Map<String, Map<String, String>> _localizedStrings = {
+    "en": {
+      "redeem_points": "Please redeem your points here.",
+      "inactivity_note": "After 60 seconds of inactivity,\nthis session will return to Home.",
+      "session_timeout": "Session Timeout",
+      "your_orders": "YOUR ORDER/S:",
+      "total_amount": "TOTAL AMOUNT:",
+      "points_to_redeem": "POINTS TO REDEEM:",
+      "add_points": "ADD 20 Points",
+      "cancel": "CANCEL",
+      "proceed": "PROCEED",
+      "not_enough_points": "Not Enough Points",
+      "insufficient_points": "You did not redeem enough points to cover the total amount.",
+      "points_error": "You do not have enough points to complete this purchase."
+    },
+    "fil": {
+      "redeem_points": "Mangyaring gamitin ang iyong puntos dito.",
+      "inactivity_note": "Pagkatapos ng 60 segundong walang aktibidad,\nibabalik ang sesyon sa Home.",
+      "session_timeout": "Timeout ng Sesyon",
+      "your_orders": "MGA INYONG ORDER:",
+      "total_amount": "KABUUANG HALAGA:",
+      "points_to_redeem": "PUNTOS NA GAGAMITIN:",
+      "add_points": "IDAGDAG NG 20 Puntos",
+      "cancel": "KANSELAHIN",
+      "proceed": "MAG‑PROCEED",
+      "not_enough_points": "Hindi Sapat na Puntos",
+      "insufficient_points": "Hindi sapat ang puntos na iyong ginamit para sa kabuuang halaga.",
+      "points_error": "Wala kang sapat na puntos upang makumpleto ang pagbili."
+    },
+  };
+
+  /// Returns the localized string for the given key.
+  String tr(String key) {
+    return _localizedStrings[_currentLanguage]?[key] ?? key;
+  }
+
+  /// Toggle language between English and Filipino.
+  void _toggleLanguage() {
+    setState(() {
+      _currentLanguage = _currentLanguage == "en" ? "fil" : "en";
+    });
+  }
 
   @override
   void initState() {
@@ -35,6 +86,7 @@ class PointsPageState extends State<PointsPage> {
     _calculateTotalAmount();
     _loadUserData();
     _pointsController.text = "0";
+    _startTimeout();
   }
 
   void _calculateTotalAmount() {
@@ -58,7 +110,6 @@ class PointsPageState extends State<PointsPage> {
         where: 'RFID = ?',
         whereArgs: [widget.rfidData],
       );
-
       if (result.isNotEmpty) {
         setState(() {
           _userName = result.first['NAME']?.toString() ?? widget.rfidData;
@@ -79,7 +130,35 @@ class PointsPageState extends State<PointsPage> {
     }
   }
 
+  /// Starts or restarts the inactivity timeout (60 seconds) and visible countdown.
+  void _startTimeout() {
+    _timeoutTimer?.cancel();
+    _countdownTimer?.cancel();
+
+    setState(() {
+      _remainingSeconds = 60;
+    });
+
+    _timeoutTimer = Timer(const Duration(seconds: 60), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SplashScreen()),
+      );
+    });
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        _countdownTimer?.cancel();
+      }
+    });
+  }
+
   void _incrementPointsUsed() {
+    _startTimeout(); // Reset the timeout on user interaction
     setState(() {
       pointsUsed += 20;
       if (pointsUsed > userPoints) {
@@ -89,8 +168,7 @@ class PointsPageState extends State<PointsPage> {
     });
   }
 
-  /// Insert each order as a transaction into DB.
-  /// For Points transactions we now set 'amount_inserted' to 0 so that it doesn't affect Active Balance.
+  /// Insert each order as a transaction into the database.
   Future<void> _insertTransactions() async {
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
@@ -106,7 +184,7 @@ class PointsPageState extends State<PointsPage> {
         'quantity': quantity,
         'unit_price': unitPrice,
         'total_amount': totalCost,
-        // Set amount_inserted to 0 because payment is made using points.
+        // Payment is done via points so set amount_inserted to 0.
         'amount_inserted': 0,
         'date': date,
         'payment_method': 'Points',
@@ -118,9 +196,8 @@ class PointsPageState extends State<PointsPage> {
   }
 
   Future<void> _deductPoints(int pointsToDeduct) async {
-    if (_userName == widget.rfidData) {
-      return;
-    }
+    // Deduct points only if the user is not a guest.
+    if (_userName == widget.rfidData) return;
     try {
       final newPoints = userPoints - pointsToDeduct;
       await DatabaseHelper.instance.updateUserByRFID(
@@ -153,10 +230,13 @@ class PointsPageState extends State<PointsPage> {
   }
 
   Future<void> _onProceedButtonPressed() async {
+    _startTimeout();
+    // Check if redeemed points cover the total amount.
     if (pointsUsed >= totalAmount) {
       if (pointsUsed <= userPoints) {
         await _insertTransactions();
         await _updateStocksForOrders();
+        // Deduct only the total amount from user points.
         await _deductPoints(totalAmount.toInt());
         Navigator.pushReplacement(
           context,
@@ -169,19 +249,19 @@ class PointsPageState extends State<PointsPage> {
         );
       } else {
         _showErrorDialog(
-          title: "Not Enough Points",
-          message: "You do not have enough points to complete this purchase.",
+          title: tr("not_enough_points"),
+          message: tr("points_error"),
         );
       }
     } else {
       _showErrorDialog(
-        title: "Insufficient Points Redeemed",
-        message: "You did not redeem enough points to cover the total amount.",
+        title: tr("not_enough_points"),
+        message: tr("insufficient_points"),
       );
     }
   }
 
-  /// A helper method to show a simple AlertDialog with bigger text.
+  /// Show an AlertDialog with larger text for errors.
   void _showErrorDialog({required String title, required String message}) {
     showDialog<void>(
       context: context,
@@ -189,16 +269,11 @@ class PointsPageState extends State<PointsPage> {
         return AlertDialog(
           title: Text(
             title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           content: Text(
             message,
-            style: const TextStyle(
-              fontSize: 20,
-            ),
+            style: const TextStyle(fontSize: 20),
           ),
           actions: <Widget>[
             TextButton(
@@ -215,11 +290,23 @@ class PointsPageState extends State<PointsPage> {
   }
 
   @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    _countdownTimer?.cancel();
+    _pointsController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Calculate circular countdown progress.
+    double countdownProgress = 1 - (_remainingSeconds / 60.0);
+
     return WillPopScope(
       // Disable the device back button.
       onWillPop: () async => false,
       child: Scaffold(
+        backgroundColor: const Color(0xFFF7EAF0),
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           automaticallyImplyLeading: false,
@@ -246,14 +333,84 @@ class PointsPageState extends State<PointsPage> {
               ),
             ],
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.language, color: Colors.white),
+              onPressed: _toggleLanguage,
+              tooltip: "Toggle Language",
+            )
+          ],
         ),
-        backgroundColor: const Color(0xFFF7EAF0),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Current vendopoints.
+              // Card for session timeout info and countdown.
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Instructions and inactivity note.
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tr("redeem_points"),
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              tr("inactivity_note"),
+                              style: const TextStyle(fontSize: 16, color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Session Timeout heading and Circular Countdown.
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            tr("session_timeout"),
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox(
+                                width: 90,
+                                height: 90,
+                                child: CircularProgressIndicator(
+                                  value: countdownProgress,
+                                  strokeWidth: 8,
+                                  backgroundColor: Colors.grey[300],
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                                ),
+                              ),
+                              Text(
+                                '$_remainingSeconds s',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // VendoPoints display.
               Container(
                 height: 80,
                 decoration: BoxDecoration(
@@ -270,186 +427,162 @@ class PointsPageState extends State<PointsPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "VendoPoints: $userPoints",
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'YOUR ORDER/S:',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 250,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.black),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Scrollbar(
-                  child: ListView.builder(
-                    itemCount: widget.orders.length,
-                    itemBuilder: (context, index) {
-                      final orderName = widget.orders[index]['name'] ?? 'Unknown';
-                      final orderQuantity = widget.orders[index]['quantity'] ?? '1';
-                      final orderPrice = widget.orders[index]['price'] ?? '0.00';
-                      return Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            color: Colors.black,
-                          ),
-                          softWrap: true,
+              // Order List Card.
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr("your_orders"),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 250,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.black),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                      );
-                    },
+                        child: Scrollbar(
+                          child: ListView.builder(
+                            itemCount: widget.orders.length,
+                            itemBuilder: (context, index) {
+                              final orderName = widget.orders[index]['name'] ?? 'Unknown';
+                              final orderQuantity = widget.orders[index]['quantity'] ?? '1';
+                              final orderPrice = widget.orders[index]['price'] ?? '0.00';
+                              return Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
+                                  style: const TextStyle(fontSize: 20, color: Colors.black),
+                                  softWrap: true,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'TOTAL AMOUNT:',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              const SizedBox(height: 16),
+              // Total Amount (non-editable)
+              Text(
+                tr("total_amount"),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 enabled: false,
                 decoration: const InputDecoration(
-                  disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black, width: 1),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
+                  disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.black, width: 1)),
+                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   hintText: 'Total amount will appear here',
                   hintStyle: TextStyle(fontSize: 24),
                 ),
                 initialValue: '₱${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 24,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 24),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'POINTS TO REDEEM:',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              const SizedBox(height: 16),
+              // Points to Redeem (non-editable)
+              Text(
+                tr("points_to_redeem"),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _pointsController,
                 enabled: false,
                 decoration: const InputDecoration(
-                  disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black, width: 1),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
+                  disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.black, width: 1)),
+                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   hintText: 'Points to redeem will appear here',
                   hintStyle: TextStyle(fontSize: 24),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 24,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 24),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              // Button to add 20 points.
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     foregroundColor: Colors.white,
                   ),
                   onPressed: _incrementPointsUsed,
-                  child: const Text(
-                    'ADD 20 Points',
-                    style: TextStyle(fontSize: 20),
+                  child: Text(
+                    tr("add_points"),
+                    style: const TextStyle(fontSize: 20),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              // Cancel and Proceed buttons (larger and wider)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                  // Cancel Button
+                  SizedBox(
+                    width: 300,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        foregroundColor: Colors.white,
                       ),
-                      backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MedicineMenu(
-                            rfidData: widget.rfidData,
-                            existingOrders: widget.orders,
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MedicineMenu(
+                              rfidData: widget.rfidData,
+                              existingOrders: widget.orders,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'CANCEL',
-                      style: TextStyle(fontSize: 20),
+                        );
+                      },
+                      child: Text(
+                        tr("cancel"),
+                        style: const TextStyle(fontSize: 30),
+                      ),
                     ),
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                  const SizedBox(width: 100),
+                  // Proceed Button
+                  SizedBox(
+                    width: 300,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: const Color(0xFF0D2A5E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        foregroundColor: Colors.white,
                       ),
-                      backgroundColor: const Color(0xFF0D2A5E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                      onPressed: _onProceedButtonPressed,
+                      child: Text(
+                        tr("proceed"),
+                        style: const TextStyle(fontSize: 30),
                       ),
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: _onProceedButtonPressed,
-                    child: const Text(
-                      'PROCEED',
-                      style: TextStyle(fontSize: 20),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
             ],
           ),
         ),
