@@ -305,6 +305,18 @@ class DatabaseHelper {
     );
   }
 
+  // ========== HELPER METHOD: GET ROW COUNT ==========
+
+  /// Returns the total number of rows for the specified table.
+  Future<int> getRowCount(String tableName) async {
+    final database = await db;
+    final result = await database.rawQuery('SELECT COUNT(*) as count FROM $tableName');
+    // result.first['count'] is expected to be an int or can be converted to int.
+    return result.first['count'] is int
+        ? result.first['count'] as int
+        : int.tryParse(result.first['count'].toString()) ?? 0;
+  }
+
   // ========== CLOSE DB ==========
 
   void dispose() {

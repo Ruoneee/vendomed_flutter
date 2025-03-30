@@ -20,7 +20,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _productIdController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  // Removed _statusController because status is now computed automatically.
   final TextEditingController _countController = TextEditingController();
 
   // For searching inventory
@@ -113,11 +112,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   // 3) Insert a new row into 'stocks'
   Future<void> _onSubmit() async {
+    // Check how many rows we have
+    final totalRows = await DatabaseHelper.instance.getRowCount('stocks');
+    if (totalRows >= 6) {
+      // Block new insertion: show dialog instead of snackbar
+      _showCenterDialog(
+        title: "Limit Reached",
+        message: "You already have 6 medicines. Update existing ones instead.",
+      );
+      return;
+    }
+
     final newCountStr = _countController.text.trim();
     final newCountVal = int.tryParse(newCountStr) ?? 0;
     if (newCountVal > 13) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Maximum allowed is 13 pieces.")),
+      _showCenterDialog(
+        title: "Error",
+        message: "Maximum allowed is 13 pieces.",
       );
       return;
     }
@@ -149,13 +160,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final newCountStr = _countController.text.trim();
     final newCountVal = int.tryParse(newCountStr) ?? 0;
     if (newCountVal > 13) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Maximum allowed is 13 pieces.")),
+      _showCenterDialog(
+        title: "Error",
+        message: "Maximum allowed is 13 pieces.",
       );
       return;
     }
 
-    // Compute status from the count
     final computedStatus = _computeStatusFromCount(newCountVal);
 
     final updatedItem = {
@@ -168,8 +179,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
     try {
       await DatabaseHelper.instance.updateStockByBatchId(updatedItem, _selectedBatchId!);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Stock updated successfully")),
+      _showCenterDialog(
+        title: "Success",
+        message: "Stock updated successfully",
       );
       setState(() {
         _selectedBatchId = null;
@@ -178,8 +190,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
       _clearManageInventoryFields();
     } catch (e) {
       debugPrint("Error updating stock: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error updating stock: $e")),
+      _showCenterDialog(
+        title: "Error",
+        message: "Error updating stock: $e",
       );
     }
   }
@@ -348,7 +361,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     const SizedBox(height: 10),
                     _buildTextField(controller: _amountController, label: "Enter amount"),
                     const SizedBox(height: 10),
-                    // Removed the status text field since status is now computed.
                     _buildTextField(controller: _countController, label: "Enter count"),
                     const SizedBox(height: 10),
                     Align(
@@ -405,23 +417,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   dataRowHeight: 56.0,
                   headingRowHeight: 56.0,
                   columns: [
-                    // 1. Batch ID
                     DataColumn(
                       label: Text("Batch ID", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                    // 2. Product Name
                     DataColumn(
                       label: Text("Product Name", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                    // 3. Product ID
                     DataColumn(
                       label: Text("Product ID", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                    // 4. Count
                     DataColumn(
                       label: Text("Count", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                    // 5. Status
                     DataColumn(
                       label: Expanded(
                         child: Center(
@@ -429,7 +436,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         ),
                       ),
                     ),
-                    // 6. Amount
                     DataColumn(
                       label: Text("Amount", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
@@ -463,15 +469,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         }
                       },
                       cells: [
-                        // 1. Batch ID
                         DataCell(Text(batchIdStr, style: const TextStyle(fontSize: 16))),
-                        // 2. Product Name
                         DataCell(Text(productNameStr, style: const TextStyle(fontSize: 16))),
-                        // 3. Product ID
                         DataCell(Text(productIdStr, style: const TextStyle(fontSize: 16))),
-                        // 4. Count
                         DataCell(Text(countStr, style: const TextStyle(fontSize: 16))),
-                        // 5. Status
                         DataCell(
                           Center(
                             child: Text(
@@ -484,7 +485,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ),
                           ),
                         ),
-                        // 6. Amount
                         DataCell(Text(amountStr, style: const TextStyle(fontSize: 16))),
                       ],
                     );
@@ -604,6 +604,46 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Helper function to show a centered dialog with a title and message.
+  /// Text styles have been enlarged for readability.
+  void _showCenterDialog({required String title, required String message}) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 20,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(
+                "OK",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

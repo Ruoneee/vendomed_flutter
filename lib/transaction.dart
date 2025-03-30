@@ -52,7 +52,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   // Replace with your actual brand color in light mode.
-  // This example uses the same blue as your app bar: 0xFF0D2A5E
   final Color brandColorLight = const Color(0xFF0D2A5E);
 
   @override
@@ -83,12 +82,19 @@ class _TransactionScreenState extends State<TransactionScreen> {
   Future<List<TransactionItem>> _fetchAndFilterTransactions() async {
     final rawData = await DatabaseHelper().getTransactions();
     List<TransactionItem> list = rawData.map((row) {
+      // Check if amount_inserted exists; if so, use it.
+      double amountInserted = row['amount_inserted'] != null
+          ? (row['amount_inserted'] is int
+          ? (row['amount_inserted'] as int).toDouble()
+          : row['amount_inserted'])
+          : (row['total_amount'] is int
+          ? (row['total_amount'] as int).toDouble()
+          : row['total_amount']);
+
       return TransactionItem(
         medicine: row['medicine'],
         date: row['date'],
-        totalAmount: row['total_amount'] is int
-            ? (row['total_amount'] as int).toDouble()
-            : row['total_amount'],
+        totalAmount: amountInserted,
         paymentMethod: row['payment_method'],
       );
     }).toList();
@@ -220,7 +226,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ) {
     return Container(
       width: double.infinity,
-      height: 350, // Increase as needed for better readability
+      height: 350,
       child: SfCircularChart(
         backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
         legend: Legend(
@@ -270,7 +276,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
         : Colors.blue[300]!;
 
     return Card(
-      // Use brand color in light mode, dark gray in dark mode
       color: isDarkMode ? Colors.grey[850] : brandColorLight,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
@@ -297,13 +302,12 @@ class _TransactionScreenState extends State<TransactionScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            // The count in large bold text
             Text(
               "$totalCount",
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Colors.white, // White text for contrast
+                color: Colors.white,
               ),
             ),
             const Divider(height: 20, color: Colors.white70),
@@ -325,7 +329,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            // Colored chip for the method
             Chip(
               label: Text(
                 mostUsedMethod,
@@ -357,7 +360,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
             left: 16,
             right: 16,
             top: 16,
-            // Add bottom padding to account for the keyboard or safe area
             bottom: MediaQuery.of(context).viewInsets.bottom + 16,
           ),
           child: SingleChildScrollView(
@@ -541,7 +543,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   ),
                   onPressed: () {
                     setState(() {
-                      Navigator.pop(context); // Close bottom sheet
+                      Navigator.pop(context);
                       _futureTransactions = _fetchAndFilterTransactions();
                     });
                   },
@@ -598,7 +600,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            // Make the text/icon color white:
             foregroundColor: Colors.white,
           ),
           icon: const Icon(Icons.filter_list),
@@ -684,24 +685,18 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              // Decide if we display chart & stats side by side (wide screen)
-              // or stacked (narrow screen).
               bool isWideScreen = constraints.maxWidth > 600;
 
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Column(
                   children: [
-                    // Search & Filter Row
                     _buildSearchAndFilterRow(),
                     const SizedBox(height: 16),
-
-                    // Analytics (Pie chart & Stats)
                     if (isWideScreen)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Pie Chart
                           Expanded(
                             flex: 2,
                             child: Card(
@@ -709,9 +704,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              color: _isDarkMode
-                                  ? Colors.grey[900]
-                                  : Colors.white,
+                              color: _isDarkMode ? Colors.grey[900] : Colors.white,
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: _buildPieChart(
@@ -723,7 +716,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          // Stats
                           Expanded(
                             flex: 1,
                             child: _buildStats(
@@ -736,7 +728,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         ],
                       )
                     else
-                    // Narrow screen: stack them
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -745,9 +736,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            color: _isDarkMode
-                                ? Colors.grey[900]
-                                : Colors.white,
+                            color: _isDarkMode ? Colors.grey[900] : Colors.white,
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: _buildPieChart(
@@ -766,10 +755,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           ),
                         ],
                       ),
-
                     const SizedBox(height: 16),
-
-                    // Transactions Header
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -782,8 +768,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // Transaction List
                     Expanded(
                       child: ListView.builder(
                         itemCount: transactions.length,
@@ -801,7 +785,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: _isDarkMode ? Colors.grey[850] : Colors.white,
-        currentIndex: 1, // Payments tab is active.
+        currentIndex: 1,
         onTap: (index) {
           if (index == 0) {
             Navigator.pushReplacement(
