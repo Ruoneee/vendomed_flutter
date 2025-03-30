@@ -89,6 +89,8 @@ class PointsPageState extends State<PointsPage> {
     });
   }
 
+  /// Insert each order as a transaction into DB.
+  /// For Points transactions we now set 'amount_inserted' to 0 so that it doesn't affect Active Balance.
   Future<void> _insertTransactions() async {
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
@@ -104,6 +106,8 @@ class PointsPageState extends State<PointsPage> {
         'quantity': quantity,
         'unit_price': unitPrice,
         'total_amount': totalCost,
+        // Set amount_inserted to 0 because payment is made using points.
+        'amount_inserted': 0,
         'date': date,
         'payment_method': 'Points',
         'user_type': userType,
@@ -154,7 +158,6 @@ class PointsPageState extends State<PointsPage> {
         await _insertTransactions();
         await _updateStocksForOrders();
         await _deductPoints(totalAmount.toInt());
-        // Navigate to ConfirmationScreen with required parameters
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -178,7 +181,7 @@ class PointsPageState extends State<PointsPage> {
     }
   }
 
-  /// A helper method to show a simple AlertDialog with bigger text
+  /// A helper method to show a simple AlertDialog with bigger text.
   void _showErrorDialog({required String title, required String message}) {
     showDialog<void>(
       context: context,
@@ -187,21 +190,21 @@ class PointsPageState extends State<PointsPage> {
           title: Text(
             title,
             style: const TextStyle(
-              fontSize: 22, // Larger title
+              fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
             message,
             style: const TextStyle(
-              fontSize: 20, // Larger content
+              fontSize: 20,
             ),
           ),
           actions: <Widget>[
             TextButton(
               child: const Text(
                 'OK',
-                style: TextStyle(fontSize: 20), // Make OK text bigger
+                style: TextStyle(fontSize: 20),
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -214,7 +217,7 @@ class PointsPageState extends State<PointsPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // If you want to disable or override the device back button, do so here
+      // Disable the device back button.
       onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
@@ -250,7 +253,7 @@ class PointsPageState extends State<PointsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Current vendopoints
+              // Current vendopoints.
               Container(
                 height: 80,
                 decoration: BoxDecoration(
@@ -277,12 +280,10 @@ class PointsPageState extends State<PointsPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // YOUR ORDER/S (Larger text)
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
-                  fontSize: 22,  // Increased from 16
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -307,7 +308,7 @@ class PointsPageState extends State<PointsPage> {
                         child: Text(
                           '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
                           style: const TextStyle(
-                            fontSize: 20, // Increased from 16
+                            fontSize: 20,
                             color: Colors.black,
                           ),
                           softWrap: true,
@@ -318,8 +319,6 @@ class PointsPageState extends State<PointsPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // TOTAL AMOUNT (Increased text size, thinner border)
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
@@ -349,8 +348,6 @@ class PointsPageState extends State<PointsPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // POINTS TO REDEEM (Increased text size, thinner border)
               const Text(
                 'POINTS TO REDEEM:',
                 style: TextStyle(
@@ -380,8 +377,6 @@ class PointsPageState extends State<PointsPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // ADD POINTS BUTTON (Larger text)
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -403,8 +398,6 @@ class PointsPageState extends State<PointsPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // CANCEL / PROCEED Buttons (Larger text)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -442,7 +435,7 @@ class PointsPageState extends State<PointsPage> {
                         horizontal: 24,
                         vertical: 12,
                       ),
-                      backgroundColor: Color(0xFF0D2A5E),
+                      backgroundColor: const Color(0xFF0D2A5E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),

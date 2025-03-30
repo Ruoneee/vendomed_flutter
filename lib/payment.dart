@@ -67,7 +67,6 @@ class PaymentPageState extends State<PaymentPage> {
           _userName = result.first['NAME'] as String;
         });
       } else {
-        // If no user found, treat as Guest
         setState(() {
           _userName = widget.rfidData;
         });
@@ -98,9 +97,10 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  /// Insert each order as a transaction into DB
+  /// Insert each order as a transaction into DB.
+  /// Here we include an extra field 'amount_inserted' to record the full coin value.
   Future<void> _insertTransactions() async {
-    // Determine user type based on _userName
+    // Determine user type based on _userName.
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
     for (var order in widget.orders) {
@@ -118,6 +118,8 @@ class PaymentPageState extends State<PaymentPage> {
         'date': date,
         'payment_method': 'Cash/Coins',
         'user_type': userType,
+        // Record the full inserted amount.
+        'amount_inserted': coinInserted,
       };
 
       await DatabaseHelper().insertTransaction(transaction);
@@ -150,9 +152,8 @@ class PaymentPageState extends State<PaymentPage> {
 
   /// Returns how many points were actually awarded (0 if none).
   Future<int> _awardPoints(double difference) async {
-    // If user is a guest, skip awarding points
+    // If user is a guest, skip awarding points.
     if (_userName == widget.rfidData) {
-      // Means we didn't find them in the DB => treat as Guest => no points
       return 0;
     }
 
@@ -168,7 +169,7 @@ class PaymentPageState extends State<PaymentPage> {
       if (result.isNotEmpty) {
         oldPoints = int.tryParse(result.first['POINTS']?.toString() ?? '0') ?? 0;
       }
-      // 1:1 ratio => difference.floor() points
+      // 1:1 ratio => difference.floor() points.
       int additionalPoints = difference.floor();
       int newPoints = oldPoints + additionalPoints;
       await DatabaseHelper.instance.updateUserByRFID(
@@ -179,44 +180,39 @@ class PaymentPageState extends State<PaymentPage> {
       return additionalPoints;
     } catch (e) {
       debugPrint("Error awarding points: $e");
-      return 0; // Return 0 if something goes wrong
+      return 0;
     }
   }
 
-  /// Called when user taps PROCEED
+  /// Called when user taps PROCEED.
   Future<void> _onProceedButtonPressed() async {
     _calculateTotalAmount();
 
-    // Check if user inserted enough coins
+    // Check if user inserted enough coins.
     if (coinInserted >= totalAmount) {
-      // 1) If user overpaid, award points
       int pointsAwarded = 0;
       if (coinInserted > totalAmount) {
         double difference = coinInserted - totalAmount;
         pointsAwarded = await _awardPoints(difference);
       }
 
-      // 2) Process transaction steps
       await _insertTransactions();
       await _updateStocksForOrders();
       await _usbHelper.sendOrdersToESP32(widget.orders);
 
-      // 3) Reset the inserted coin amount
       await _usbHelper.resetCredit();
       setState(() {
         coinInserted = 0;
         _coinsInsertedController.text = "₱0.00";
       });
 
-      // 4) If points awarded, show a 3-second pop-up, then auto-navigate
       if (pointsAwarded > 0) {
         showDialog(
           context: context,
-          barrierDismissible: false, // user cannot dismiss by tapping outside
+          barrierDismissible: false,
           builder: (context) {
-            // After 3 seconds, close the dialog and go to Confirmation
             Future.delayed(const Duration(seconds: 3), () {
-              Navigator.of(context).pop(); // Close the dialog
+              Navigator.of(context).pop();
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
@@ -228,9 +224,7 @@ class PaymentPageState extends State<PaymentPage> {
               );
             });
 
-            // A larger, styled AlertDialog with bigger text
             return AlertDialog(
-              // Rounded corners
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -238,7 +232,7 @@ class PaymentPageState extends State<PaymentPage> {
               title: Text(
                 "Points Earned!",
                 style: TextStyle(
-                  fontSize: 32, // Larger title font
+                  fontSize: 32,
                   color: const Color(0xFF0D2A5E),
                   fontWeight: FontWeight.bold,
                 ),
@@ -251,7 +245,7 @@ class PaymentPageState extends State<PaymentPage> {
                   child: Text(
                     "You earned $pointsAwarded extra points!",
                     style: const TextStyle(
-                      fontSize: 26, // Larger content font
+                      fontSize: 26,
                       color: Colors.black,
                     ),
                     textAlign: TextAlign.center,
@@ -262,7 +256,6 @@ class PaymentPageState extends State<PaymentPage> {
           },
         );
       } else {
-        // If no points awarded or user didn't overpay, go directly
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -274,7 +267,6 @@ class PaymentPageState extends State<PaymentPage> {
         );
       }
     } else {
-      // Not enough coins
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Insufficient Coins Inserted')),
       );
@@ -291,7 +283,6 @@ class PaymentPageState extends State<PaymentPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // Disable the device back button
       onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
@@ -308,11 +299,10 @@ class PaymentPageState extends State<PaymentPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // YOUR ORDER/S (Larger label)
               const Text(
                 'YOUR ORDER/S:',
                 style: TextStyle(
-                  fontSize: 22, // Increased
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -337,7 +327,7 @@ class PaymentPageState extends State<PaymentPage> {
                         child: Text(
                           '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
                           style: const TextStyle(
-                            fontSize: 20, // Increased
+                            fontSize: 20,
                             color: Colors.black,
                           ),
                           softWrap: true,
@@ -348,12 +338,10 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // TOTAL AMOUNT (Larger label & text field)
               const Text(
                 'TOTAL AMOUNT:',
                 style: TextStyle(
-                  fontSize: 24, // Larger
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -363,7 +351,7 @@ class PaymentPageState extends State<PaymentPage> {
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black, width: 1), // Thinner border
+                    borderSide: BorderSide(color: Colors.black, width: 1),
                   ),
                   contentPadding: EdgeInsets.symmetric(
                     vertical: 12,
@@ -375,16 +363,14 @@ class PaymentPageState extends State<PaymentPage> {
                 initialValue: '₱${totalAmount.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.black,
-                  fontSize: 24, // Larger text
+                  fontSize: 24,
                 ),
               ),
               const SizedBox(height: 20),
-
-              // AMOUNT INSERTED (Larger label & text field)
               const Text(
                 'AMOUNT INSERTED:',
                 style: TextStyle(
-                  fontSize: 24, // Larger
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -395,7 +381,7 @@ class PaymentPageState extends State<PaymentPage> {
                 enabled: false,
                 decoration: const InputDecoration(
                   disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black, width: 1), // Thinner border
+                    borderSide: BorderSide(color: Colors.black, width: 1),
                   ),
                   contentPadding: EdgeInsets.symmetric(
                     vertical: 12,
@@ -406,12 +392,10 @@ class PaymentPageState extends State<PaymentPage> {
                 ),
                 style: const TextStyle(
                   color: Colors.black,
-                  fontSize: 24, // Larger text
+                  fontSize: 24,
                 ),
               ),
               const SizedBox(height: 20),
-
-              // ADD COINS BUTTON (Larger text)
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -428,17 +412,14 @@ class PaymentPageState extends State<PaymentPage> {
                   onPressed: _incrementAmountInserted,
                   child: const Text(
                     'ADD ₱20',
-                    style: TextStyle(fontSize: 20), // Larger text
+                    style: TextStyle(fontSize: 20),
                   ),
                 ),
               ),
               const SizedBox(height: 20),
-
-              // CANCEL / PROCEED Buttons (Larger text)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // CANCEL button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -464,17 +445,16 @@ class PaymentPageState extends State<PaymentPage> {
                     },
                     child: const Text(
                       'CANCEL',
-                      style: TextStyle(fontSize: 20), // Larger text
+                      style: TextStyle(fontSize: 20),
                     ),
                   ),
-                  // PROCEED button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
                       ),
-                      backgroundColor: Color(0xFF0D2A5E),
+                      backgroundColor: const Color(0xFF0D2A5E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -483,7 +463,7 @@ class PaymentPageState extends State<PaymentPage> {
                     onPressed: _onProceedButtonPressed,
                     child: const Text(
                       'PROCEED',
-                      style: TextStyle(fontSize: 20), // Larger text
+                      style: TextStyle(fontSize: 20),
                     ),
                   ),
                 ],
