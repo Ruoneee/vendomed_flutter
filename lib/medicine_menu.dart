@@ -524,13 +524,15 @@ class MedicineMenuState extends State<MedicineMenu> {
     });
   }
 
+  // Updated checkout method: pass a copy of the orders list
   void _proceedToCheckout() {
+    List<Map<String, String>> ordersCopy = List.from(orders);
     if (_userName == widget.rfidData) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => PaymentPage(
-            orders: orders,
+            orders: ordersCopy,
             rfidData: widget.rfidData,
             medicinesToBeDisabled: const [],
           ),
@@ -541,7 +543,7 @@ class MedicineMenuState extends State<MedicineMenu> {
         context,
         MaterialPageRoute(
           builder: (context) => PaymentMethodPage(
-            orders: orders,
+            orders: ordersCopy,
             rfidData: widget.rfidData,
           ),
         ),
