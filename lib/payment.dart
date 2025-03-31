@@ -647,7 +647,7 @@ class PaymentPageState extends State<PaymentPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
-                      width: 300,
+                      width: 250,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -674,7 +674,7 @@ class PaymentPageState extends State<PaymentPage> {
                     ),
                     const SizedBox(width: 120),
                     SizedBox(
-                      width: 300,
+                      width: 250,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),

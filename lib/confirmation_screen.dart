@@ -27,7 +27,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
     super.initState();
     // Start confetti animation for 8 seconds.
     _confettiController =
-        ConfettiController(duration: const Duration(seconds: 8));
+        ConfettiController(duration: const Duration(seconds: 10));
     _confettiController.play();
 
     // Auto-return to home after 5 seconds.
