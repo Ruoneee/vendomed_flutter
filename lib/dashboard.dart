@@ -4,12 +4,12 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'transaction.dart';
 import 'splash_screen.dart';
 import 'database_helper.dart';
 import 'user.dart';
 import 'inventory.dart';
+import 'package:flutter/material.dart';
 
 class ChartData {
   final String label;
@@ -31,11 +31,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isDarkMode = false;
 
   int totalTransactions = 0;
-  // Total sales computed from transaction data.
   double _totalSales = 0.0;
-  // _clearedSales is the value of active balance cleared previously.
   double _clearedSales = 0.0;
-  // _activeBalance is computed as the sum of inserted amounts minus cleared amount.
   double _activeBalance = 0.0;
 
   List<ChartData> _salesData = [];
@@ -53,9 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
 
-    // Load the previously saved clearedSales so that active balance is computed correctly.
     _loadClearedSales().then((_) {
-      // After loading _clearedSales, fetch transactions and update data.
       _fetchDashboardData();
     });
 
@@ -64,7 +59,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _selectedWeek = null;
     _selectedDay = null;
 
-    // Refresh data periodically.
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       _fetchDashboardData();
     });
@@ -90,17 +84,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
   // --------------------------------------------------------
 
-  // Fetch transactions, compute total sales and active balance.
   Future<void> _fetchDashboardData() async {
     _transactions = await DatabaseHelper().getTransactions();
     double totalSalesSum = 0.0;
     double totalInsertedSum = 0.0;
 
     for (var tx in _transactions) {
-      // Total Sales always uses the total_amount field.
       totalSalesSum += (tx['total_amount'] as num).toDouble();
-
-      // Active Balance uses the amount_inserted field (if available).
       if (tx.containsKey('amount_inserted')) {
         totalInsertedSum += (tx['amount_inserted'] as num).toDouble();
       }
@@ -109,7 +99,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       totalTransactions = _transactions.length;
       _totalSales = totalSalesSum;
-      // Active Balance now based solely on the sum of coins inserted minus cleared amount.
       _activeBalance = totalInsertedSum - _clearedSales;
       if (_activeBalance < 0) {
         _activeBalance = 0.0;
@@ -119,17 +108,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _updateChartData();
   }
 
-  // When clearing balance, set _clearedSales to the current inserted sum.
   void _clearActiveBalance() {
     setState(() {
       _clearedSales += _activeBalance;
       _activeBalance = 0.0;
     });
-    // Save the updated clearedSales so that after log-out/log-in, it remains.
     _saveClearedSales(_clearedSales);
   }
 
-  // Update chart data based on the hierarchical filters.
   void _updateChartData() {
     if (_transactions.isEmpty) {
       setState(() {
@@ -139,7 +125,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    // 1) Filter transactions by year, month, week, and day.
     List<Map<String, dynamic>> filtered = _transactions.where((tx) {
       final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
       if (dt.year != _selectedYear) return false;
@@ -152,7 +137,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return true;
     }).toList();
 
-    // 2) Decide how to group the filtered data: month, week, or day.
     String groupingMode;
     if (_selectedMonth == null) {
       groupingMode = "month";
@@ -162,7 +146,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       groupingMode = "day";
     }
 
-    // 3) Build salesMap for the chosen grouping.
     final Map<String, double> salesMap = {};
     for (var tx in filtered) {
       final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
@@ -179,7 +162,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
     }
 
-    // 4) Sort the keys in a logical order.
     final sortedKeys = salesMap.keys.toList();
     if (groupingMode == "month") {
       final monthOrder = [
@@ -212,7 +194,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .map((key) => ChartData(label: key, value: salesMap[key]!))
         .toList();
 
-    // 5) Build frequency data (group by medicine).
     final Map<String, int> freqMap = {};
     for (var tx in filtered) {
       final med = tx['medicine'] ?? 'Unknown';
@@ -228,7 +209,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // NAIVE FORECAST FUNCTION + NEXT-MONTH FORECAST
   double naiveForecast(List<double> historicalSales) {
     if (historicalSales.length < 2) {
       return historicalSales.isNotEmpty ? historicalSales.last : 0.0;
@@ -251,7 +231,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     int year = DateTime.now().year;
     Map<int, double> monthlySales = {};
 
-    // Sum sales for each month in the current year
     for (var tx in _transactions) {
       DateTime dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
       if (dt.year == year) {
@@ -260,7 +239,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // Build a list of monthly sales from January up to current month
     List<double> salesList = [];
     for (int m = 1; m <= DateTime.now().month; m++) {
       salesList.add(monthlySales[m] ?? 0.0);
@@ -270,7 +248,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return naiveForecast(salesList);
   }
 
-  // MERGED FORECAST: Single Chart that displays the numeric forecast
   Widget _buildForecastChart() {
     double forecastVal = _forecastNextMonthSales();
 
@@ -505,9 +482,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 "Top-Selling Items",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -990,7 +967,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 onTap: () => _showDrillDownDetails(tx),
                               ),
                               DataCell(
-                                // Display amount_inserted or '0' if null.
                                 Text(tx['amount_inserted']?.toString() ?? '0'),
                                 onTap: () => _showDrillDownDetails(tx),
                               ),
@@ -1131,6 +1107,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _exportDataAsPDF();
                     },
                     child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
+                  ),
+                  const SizedBox(height: 10),
+                  // About Us button with asset icon in the dialog
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const AboutUsDialog(),
+                      );
+                    },
+                    child: const Text("About Us", style: TextStyle(color: Colors.white)),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
@@ -1466,4 +1456,279 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+}
+
+// --------------------- ABOUT US DIALOG ---------------------
+class AboutUsDialog extends StatefulWidget {
+  const AboutUsDialog({Key? key}) : super(key: key);
+
+  @override
+  _AboutUsDialogState createState() => _AboutUsDialogState();
+}
+
+class _AboutUsDialogState extends State<AboutUsDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+
+  // Team members
+  final List<Map<String, String>> teamMembers = [
+    {
+      "name": "Maritonee Cardenas \n [Project Manager]",
+      "image": "assets/images/angelo.png",
+    },
+    {
+      "name": "Rustan  Chavez \n [Developer",
+      "image": "assets/images/rustan.png",
+    },
+    {
+      "name": "Russel Jr.\n [Quality Tester]",
+      "image": "assets/images/angelo.png",
+    },
+    {
+      "name": "John Mark Romulo \n [Developer]",
+      "image": "assets/images/angelo.png",
+    },
+    {
+      "name": "Angelo Delos Santos \n [Developer]",
+      "image": "assets/images/angelo.png",
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// A helper method to build a bigger card that expands within its parent.
+  Widget _buildMemberCard(Map<String, String> member) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        // Let it expand to fill available space.
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 60, // Bigger avatar
+              backgroundImage: AssetImage(member["image"]!),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              member["name"]!,
+              style: const TextStyle(
+                fontSize: 19, // Larger font for better readability
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Container(
+          // Remove or reduce the minHeight to avoid forcing overflow on smaller devices.
+          constraints: const BoxConstraints(
+            maxWidth: 1000,
+            // minHeight: 700, // <- Removed to prevent overflow
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF0D2A5E),
+                Color(0xFF1E5D6F),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          // Wrap content in SingleChildScrollView to allow scrolling if needed.
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: ConstrainedBox(
+                // Constrain the overall content width so it doesn't shrink too much.
+                constraints: const BoxConstraints(
+                  maxWidth: 1000,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    const Text(
+                      "About Us",
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 25),
+                    const Text(
+                      "We are Group 2 of Block 3 Computer Engineering, consisting of 5 dedicated members:",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 25),
+
+                    // Two rows of two columns each, then one centered row for the last member
+                    Row(
+                      children: [
+                        Expanded(child: _buildMemberCard(teamMembers[0])),
+                        const SizedBox(width: 20),
+                        Expanded(child: _buildMemberCard(teamMembers[1])),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(child: _buildMemberCard(teamMembers[2])),
+                        const SizedBox(width: 20),
+                        Expanded(child: _buildMemberCard(teamMembers[3])),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Final member, centered
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 400, // Make the last card wide if desired
+                          child: _buildMemberCard(teamMembers[4]),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --------------------- END ABOUT US DIALOG ---------------------
+
+void _showSettingsDialogStatic(BuildContext context, bool isDarkMode,
+    Function(bool) onDarkModeChanged, VoidCallback onExportPDF, VoidCallback onLogOut) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text("Settings"),
+        content: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setStateDialog) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Dark Mode"),
+                    Switch(
+                      value: isDarkMode,
+                      onChanged: (bool value) {
+                        onDarkModeChanged(value);
+                        setStateDialog(() {});
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                  ),
+                  onPressed: onExportPDF,
+                  child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
+                ),
+                const SizedBox(height: 10),
+                // About Us button added here
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const AboutUsDialog(),
+                    );
+                  },
+                  child: const Text("About Us", style: TextStyle(color: Colors.white)),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D2A5E),
+                  ),
+                  onPressed: onLogOut,
+                  child: const Text("Log Out", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+extension SettingsExtension on _DashboardScreenState {
+  void _showSettingsDialog() {
+    _showSettingsDialogStatic(context, _isDarkMode, (bool value) {
+      setState(() {
+        _isDarkMode = value;
+      });
+    }, _exportDataAsPDF, _logOut);
+  }
+}
+
+Future<void> main() async {
+  runApp(MaterialApp(
+    home: DashboardScreen(),
+    debugShowCheckedModeBanner: false,
+  ));
 }

@@ -51,4 +51,6 @@ flutter:
     - assets/animations/success.json
     - assets/animations/medicine.json
     - assets/animations/rfida.json
+    - assets/images/angelo.png
+    - assets/images/rustan.png
   uses-material-design: true
