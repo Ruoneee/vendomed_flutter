@@ -427,258 +427,273 @@ class PaymentPageState extends State<PaymentPage> {
             )
           ],
         ),
-        backgroundColor: const Color(0xFFF7EAF0),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Merged Card for Session Timeout and Denomination Info in a Row
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left side: Instructions & Note
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tr("insert_coins"),
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              tr("inactivity_note"),
-                              style: const TextStyle(fontSize: 16, color: Colors.black54),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Right side: Timeout heading + Circular Countdown
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            tr("session_timeout"),
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Stack(
-                            alignment: Alignment.center,
+        // Use a Container with gradient background.
+        backgroundColor: Colors.transparent,
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0D2A5E),
+                Color(0xFF1E5D6F),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Merged Card for Session Timeout and Denomination Info in a Row
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left side: Instructions & Note
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 90,
-                                height: 90,
-                                child: CircularProgressIndicator(
-                                  value: countdownProgress,
-                                  strokeWidth: 8,
-                                  backgroundColor: Colors.grey[300],
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                                ),
-                              ),
                               Text(
-                                '$_remainingSeconds s',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                                tr("insert_coins"),
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                tr("inactivity_note"),
+                                style: const TextStyle(fontSize: 16, color: Colors.black54),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: 16),
+                        // Right side: Timeout heading + Circular Countdown
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              tr("session_timeout"),
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 90,
+                                  height: 90,
+                                  child: CircularProgressIndicator(
+                                    value: countdownProgress,
+                                    strokeWidth: 8,
+                                    backgroundColor: Colors.grey[300],
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                                  ),
+                                ),
+                                Text(
+                                  '$_remainingSeconds s',
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // Card for Order List
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tr("your_orders"),
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 300,
-                        child: Scrollbar(
-                          child: ListView.builder(
-                            itemCount: widget.orders.length,
-                            itemBuilder: (context, index) {
-                              final orderName = widget.orders[index]['name'] ?? 'Unknown';
-                              final orderQuantity = widget.orders[index]['quantity'] ?? '1';
-                              final orderPrice = widget.orders[index]['price'] ?? '0.00';
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                child: Text(
-                                  '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                              );
-                            },
+                const SizedBox(height: 20),
+                // Card for Order List
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr("your_orders"),
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 300,
+                          child: Scrollbar(
+                            child: ListView.builder(
+                              itemCount: widget.orders.length,
+                              itemBuilder: (context, index) {
+                                final orderName = widget.orders[index]['name'] ?? 'Unknown';
+                                final orderQuantity = widget.orders[index]['quantity'] ?? '1';
+                                final orderPrice = widget.orders[index]['price'] ?? '0.00';
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                  child: Text(
+                                    '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // Enlarged Card for Payment Information
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
+                const SizedBox(height: 20),
+                // Enlarged Card for Payment Information
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        // Display Total Amount with larger text
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'TOTAL:',
+                              style: TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              '₱${totalAmount.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Display Inserted Amount with larger text
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'INSERTED:',
+                              style: TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              _coinsInsertedController.text,
+                              style: const TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Thicker Progress Bar
+                        LinearProgressIndicator(
+                          value: progressValue,
+                          minHeight: 16,
+                          backgroundColor: Colors.grey[300],
+                        ),
+                        const SizedBox(height: 8),
+                        // Display Remaining Balance with enlarged text
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '${tr("remaining")} ₱${remainingBalance.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Display error message if any
+                        if (errorMessage.isNotEmpty)
+                          Center(
+                            child: Text(
+                              errorMessage,
+                              style: const TextStyle(color: Colors.red, fontSize: 16),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Button for adding cash/coins.
+                Center(
+                  child: Wrap(
+                    spacing: 16.0,
+                    runSpacing: 16.0,
+                    alignment: WrapAlignment.center,
                     children: [
-                      // Display Total Amount with larger text
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'TOTAL:',
-                            style: TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '₱${totalAmount.toStringAsFixed(2)}',
-                            style: const TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Display Inserted Amount with larger text
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'INSERTED:',
-                            style: TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            _coinsInsertedController.text,
-                            style: const TextStyle(fontSize: 33, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Thicker Progress Bar
-                      LinearProgressIndicator(
-                        value: progressValue,
-                        minHeight: 16,
-                        backgroundColor: Colors.grey[300],
-                      ),
-                      const SizedBox(height: 8),
-                      // Display Remaining Balance with enlarged text
-                      Align(
-                        alignment: Alignment.centerRight,
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: _incrementAmountInserted,
                         child: Text(
-                          '${tr("remaining")} ₱${remainingBalance.toStringAsFixed(2)}',
+                          tr("add_amount"),
                           style: const TextStyle(fontSize: 20),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // Display error message if any
-                      if (errorMessage.isNotEmpty)
-                        Center(
-                          child: Text(
-                            errorMessage,
-                            style: const TextStyle(color: Colors.red, fontSize: 16),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // Button for adding cash/coins.
-              Center(
-                child: Wrap(
-                  spacing: 16.0,
-                  runSpacing: 16.0,
-                  alignment: WrapAlignment.center,
+                const SizedBox(height: 20),
+                // Navigation buttons: CANCEL and PROCEED.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    SizedBox(
+                      width: 300,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MedicineMenu(
+                                rfidData: widget.rfidData,
+                                existingOrders: widget.orders,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          tr("cancel"),
+                          style: const TextStyle(fontSize: 30),
+                        ),
                       ),
-                      onPressed: _incrementAmountInserted,
-                      child: Text(
-                        tr("add_amount"),
-                        style: const TextStyle(fontSize: 20),
+                    ),
+                    const SizedBox(width: 120),
+                    SizedBox(
+                      width: 300,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: const Color(0xFF0D2A5E),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: _onProceedButtonPressed,
+                        child: Text(
+                          tr("proceed"),
+                          style: const TextStyle(fontSize: 30),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              // Navigation buttons: CANCEL and PROCEED.
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 300,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MedicineMenu(
-                              rfidData: widget.rfidData,
-                              existingOrders: widget.orders,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        tr("cancel"),
-                        style: const TextStyle(fontSize: 30),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 120),
-                  SizedBox(
-                    width: 300,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: const Color(0xFF0D2A5E),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
-                      onPressed: _onProceedButtonPressed,
-                      child: Text(
-                        tr("proceed"),
-                        style: const TextStyle(fontSize: 30),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),

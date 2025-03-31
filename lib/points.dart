@@ -306,9 +306,10 @@ class PointsPageState extends State<PointsPage> {
       // Disable the device back button.
       onWillPop: () async => false,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7EAF0),
+        // Only the background color & AppBar changed:
         appBar: AppBar(
-          backgroundColor: const Color(0xFF0D2A5E),
+          // Make the AppBar show the same gradient
+          backgroundColor: Colors.transparent,
           automaticallyImplyLeading: false,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -340,250 +341,295 @@ class PointsPageState extends State<PointsPage> {
               tooltip: "Toggle Language",
             )
           ],
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF0D2A5E),
+                  Color(0xFF0D2A5E),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Card for session timeout info and countdown.
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Instructions and inactivity note.
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tr("redeem_points"),
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              tr("inactivity_note"),
-                              style: const TextStyle(fontSize: 16, color: Colors.black54),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Session Timeout heading and Circular Countdown.
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            tr("session_timeout"),
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Stack(
-                            alignment: Alignment.center,
+        backgroundColor: Colors.transparent,
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0D2A5E),
+                Color(0xFF1E5D6F),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Card for session timeout info and countdown.
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Instructions and inactivity note.
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 90,
-                                height: 90,
-                                child: CircularProgressIndicator(
-                                  value: countdownProgress,
-                                  strokeWidth: 8,
-                                  backgroundColor: Colors.grey[300],
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                                ),
-                              ),
                               Text(
-                                '$_remainingSeconds s',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                                tr("redeem_points"),
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                tr("inactivity_note"),
+                                style: const TextStyle(fontSize: 16, color: Colors.black54),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // VendoPoints display.
-              Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFF0D2A5E),
-                    width: 2,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "VendoPoints: $userPoints",
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+                        ),
+                        const SizedBox(width: 16),
+                        // Session Timeout heading and Circular Countdown.
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              tr("session_timeout"),
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 90,
+                                  height: 90,
+                                  child: CircularProgressIndicator(
+                                    value: countdownProgress,
+                                    strokeWidth: 8,
+                                    backgroundColor: Colors.grey[300],
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                                  ),
+                                ),
+                                Text(
+                                  '$_remainingSeconds s',
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              // Order List Card.
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tr("your_orders"),
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                const SizedBox(height: 16),
+                // VendoPoints display.
+                Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF0D2A5E),
+                      width: 2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "VendoPoints: $userPoints",
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 250,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: Colors.black),
-                          borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Order List Card.
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr("your_orders"),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                         ),
-                        child: Scrollbar(
-                          child: ListView.builder(
-                            itemCount: widget.orders.length,
-                            itemBuilder: (context, index) {
-                              final orderName = widget.orders[index]['name'] ?? 'Unknown';
-                              final orderQuantity = widget.orders[index]['quantity'] ?? '1';
-                              final orderPrice = widget.orders[index]['price'] ?? '0.00';
-                              return Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                                  style: const TextStyle(fontSize: 20, color: Colors.black),
-                                  softWrap: true,
-                                ),
-                              );
-                            },
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 250,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.black),
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Total Amount (non-editable)
-              Text(
-                tr("total_amount"),
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                enabled: false,
-                decoration: const InputDecoration(
-                  disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.black, width: 1)),
-                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  hintText: 'Total amount will appear here',
-                  hintStyle: TextStyle(fontSize: 24),
-                ),
-                initialValue: '₱${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(color: Colors.black, fontSize: 24),
-              ),
-              const SizedBox(height: 16),
-              // Points to Redeem (non-editable)
-              Text(
-                tr("points_to_redeem"),
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _pointsController,
-                enabled: false,
-                decoration: const InputDecoration(
-                  disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.black, width: 1)),
-                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  hintText: 'Points to redeem will appear here',
-                  hintStyle: TextStyle(fontSize: 24),
-                ),
-                style: const TextStyle(color: Colors.black, fontSize: 24),
-              ),
-              const SizedBox(height: 16),
-              // Button to add 20 points.
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: _incrementPointsUsed,
-                  child: Text(
-                    tr("add_points"),
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Cancel and Proceed buttons (larger and wider)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Cancel Button
-                  SizedBox(
-                    width: 300,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: Colors.red,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MedicineMenu(
-                              rfidData: widget.rfidData,
-                              existingOrders: widget.orders,
+                          child: Scrollbar(
+                            child: ListView.builder(
+                              itemCount: widget.orders.length,
+                              itemBuilder: (context, index) {
+                                final orderName = widget.orders[index]['name'] ?? 'Unknown';
+                                final orderQuantity = widget.orders[index]['quantity'] ?? '1';
+                                final orderPrice = widget.orders[index]['price'] ?? '0.00';
+                                return Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    '$orderName (Qty: $orderQuantity) - ₱$orderPrice',
+                                    style: const TextStyle(fontSize: 20, color: Colors.black),
+                                    softWrap: true,
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                        );
-                      },
-                      child: Text(
-                        tr("cancel"),
-                        style: const TextStyle(fontSize: 30),
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 100),
-                  // Proceed Button
-                  SizedBox(
-                    width: 300,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: const Color(0xFF0D2A5E),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _onProceedButtonPressed,
-                      child: Text(
-                        tr("proceed"),
-                        style: const TextStyle(fontSize: 30),
-                      ),
+                ),
+                const SizedBox(height: 16),
+                // TOTAL AMOUNT label changed to white
+                Text(
+                  tr("total_amount"),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // changed from black to white
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // The text in the field remains black
+                TextFormField(
+                  enabled: false,
+                  decoration: const InputDecoration(
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white, width: 1),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    hintText: 'Total amount will appear here',
+                    hintStyle: TextStyle(fontSize: 24),
+                  ),
+                  initialValue: '₱${totalAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 24),
+                ),
+                const SizedBox(height: 16),
+                // POINTS TO REDEEM label changed to white
+                Text(
+                  tr("points_to_redeem"),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // changed from black to white
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // The text in the field remains black
+                TextFormField(
+                  controller: _pointsController,
+                  enabled: false,
+                  decoration: const InputDecoration(
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white, width: 1),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    hintText: 'Points to redeem will appear here',
+                    hintStyle: TextStyle(fontSize: 24),
+                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 24),
+                ),
+                const SizedBox(height: 16),
+                // Button to add 20 points.
+                Center(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _incrementPointsUsed,
+                    child: Text(
+                      tr("add_points"),
+                      style: const TextStyle(fontSize: 20),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
+                ),
+                const SizedBox(height: 16),
+                // Navigation buttons: CANCEL and PROCEED.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 300,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: Colors.red,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MedicineMenu(
+                                rfidData: widget.rfidData,
+                                existingOrders: widget.orders,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          tr("cancel"),
+                          style: const TextStyle(fontSize: 30),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 100),
+                    SizedBox(
+                      width: 300,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: const Color(0xFF0D2A5E),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _onProceedButtonPressed,
+                        child: Text(
+                          tr("proceed"),
+                          style: const TextStyle(fontSize: 30),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
