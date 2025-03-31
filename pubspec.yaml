@@ -50,4 +50,5 @@ flutter:
     - assets/images/points.png
     - assets/animations/success.json
     - assets/animations/medicine.json
+    - assets/animations/rfida.json
   uses-material-design: true

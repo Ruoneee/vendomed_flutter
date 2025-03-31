@@ -120,7 +120,6 @@ class MedicineMenuState extends State<MedicineMenu> {
 
   /// Opens a centered dialog with detailed product info.
   void _openMedicineDetail(String productName, String amountStr, String imagePath, int stockCount) {
-    // (same code for detailsMap as before)
     final Map<String, Map<String, String>> detailsMap = {
       'Loperamide': {
         'dosage': 'Take 2 mg after each loose stool. ...',
@@ -128,7 +127,7 @@ class MedicineMenuState extends State<MedicineMenu> {
         'warnings': 'May cause constipation. ...',
         'additionalMedia': 'For detailed labeling, please refer to the official FDA document.',
       },
-      // ... (Other medicines omitted for brevity, same as your code)
+      // ... (Other medicines omitted for brevity)
     };
 
     final medicineDetail = detailsMap[productName] ?? {
@@ -179,7 +178,6 @@ class MedicineMenuState extends State<MedicineMenu> {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-        // We make the AppBar have a gradient using flexibleSpace.
         appBar: AppBar(
           elevation: 0,
           automaticallyImplyLeading: false,
@@ -198,7 +196,6 @@ class MedicineMenuState extends State<MedicineMenu> {
               },
             ),
           ],
-          // Use flexibleSpace for gradient in the AppBar.
           flexibleSpace: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -215,7 +212,7 @@ class MedicineMenuState extends State<MedicineMenu> {
         body: Container(
           width: double.infinity,
           height: double.infinity,
-          // The rest of the screen also has the same gradient.
+          // Same gradient background as other screens.
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -226,122 +223,170 @@ class MedicineMenuState extends State<MedicineMenu> {
               end: Alignment.bottomCenter,
             ),
           ),
-          child: ListView(
-            padding: const EdgeInsets.all(12.0),
-            children: [
-              if (_userName != widget.rfidData) ...[
-                // VendoPoints container (white card)
-                Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF0D2A5E), width: 2),
-                  ),
+          // Using a CustomScrollView with slivers.
+          child: CustomScrollView(
+            slivers: [
+              // VendoPoints container (if user is not a guest).
+              if (_userName != widget.rfidData)
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "VendoPoints: $_userPoints",
-                        style: titleLarge?.copyWith(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                    padding: const EdgeInsets.all(12.0),
+                    child: Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF0D2A5E), width: 2),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "VendoPoints: $_userPoints",
+                            style: titleLarge?.copyWith(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              Text(
-                "Your Orders:",
-                style: titleLarge?.copyWith(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // White text on gradient background
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Orders container (white card)
-              Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Scrollbar(
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      final orderName = orders[index]['name'] ?? 'Unknown';
-                      final orderQuantity = orders[index]['quantity'] ?? '1';
-                      final orderPrice = orders[index]['price'] ?? '0.00';
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
-                        child: Text(
-                          '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                          style: bodyMedium?.copyWith(
-                            fontSize: 16,
-                            color: Colors.black,
+              // Pinned "Your Orders" section (header + orders container).
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: OrdersHeaderDelegate(
+                  height: 170, // Adjust to ensure no overflow
+                  child: Container(
+                    // Give the entire pinned section a background color or gradient
+                    // so that when it pins, you see that color behind the white box.
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF0D2A5E),
+                          Color(0xFF0D2A5E),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0,
+                      vertical: 8.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Your Orders:",
+                          style: titleLarge?.copyWith(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                      );
-                    },
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Scrollbar(
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: orders.length,
+                              itemBuilder: (context, index) {
+                                final orderName = orders[index]['name'] ?? 'Unknown';
+                                final orderQuantity = orders[index]['quantity'] ?? '1';
+                                final orderPrice = orders[index]['price'] ?? '0.00';
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+                                  child: Text(
+                                    '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
+                                    style: bodyMedium?.copyWith(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              // Spacer after pinned orders.
+              SliverToBoxAdapter(child: const SizedBox(height: 16)),
+              // Medicines grid or loading indicator.
               if (medicines.isEmpty)
-                const Center(child: CircularProgressIndicator())
+                SliverToBoxAdapter(
+                  child: Center(child: CircularProgressIndicator()),
+                )
               else
-                GridView.count(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: medicines.map((medicine) {
-                    return _buildMedicineItem(
-                      medicine['product_name'] as String,
-                      medicine['amount'] as String,
-                      _getImagePath(medicine['product_name'] as String),
-                      medicine['count'] as int,
-                    );
-                  }).toList(),
+                SliverPadding(
+                  padding: const EdgeInsets.all(12.0),
+                  sliver: SliverGrid(
+                    delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                        final medicine = medicines[index];
+                        return _buildMedicineItem(
+                          medicine['product_name'] as String,
+                          medicine['amount'] as String,
+                          _getImagePath(medicine['product_name'] as String),
+                          medicine['count'] as int,
+                        );
+                      },
+                      childCount: medicines.length,
+                    ),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.75,
+                      mainAxisSpacing: 14,
+                      crossAxisSpacing: 14,
+                    ),
+                  ),
                 ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: _resetOrders,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2A4D6F),
-                      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+              // Spacer.
+              SliverToBoxAdapter(child: const SizedBox(height: 20)),
+              // Row with RESET and CHECKOUT buttons.
+              SliverToBoxAdapter(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _resetOrders,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2A4D6F),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      ),
+                      child: Text(
+                        "RESET",
+                        style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
+                      ),
                     ),
-                    child: Text(
-                      "RESET",
-                      style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
+                    ElevatedButton(
+                      onPressed: _proceedToCheckout,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2A5E),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      ),
+                      child: Text(
+                        "CHECKOUT",
+                        style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
+                      ),
                     ),
-                  ),
-                  ElevatedButton(
-                    onPressed: _proceedToCheckout,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E),
-                      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                    ),
-                    child: Text(
-                      "CHECKOUT",
-                      style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
+              // Spacer.
+              SliverToBoxAdapter(child: const SizedBox(height: 16)),
             ],
           ),
         ),
@@ -502,6 +547,29 @@ class MedicineMenuState extends State<MedicineMenu> {
         ),
       ).then((_) => setState(() => orders.clear()));
     }
+  }
+}
+
+class OrdersHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double height;
+  final Widget child;
+
+  OrdersHeaderDelegate({required this.height, required this.child});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  bool shouldRebuild(covariant OrdersHeaderDelegate oldDelegate) {
+    return oldDelegate.height != height || oldDelegate.child != child;
   }
 }
 

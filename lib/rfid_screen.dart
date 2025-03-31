@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart'; // Import Lottie package
 import 'medicine_menu.dart';
 import 'database_helper.dart';
 import 'dashboard.dart';
-import 'user_selection_screen.dart'; // Make sure this import is correct
+import 'user_selection_screen.dart';
 
 class RfidScreen extends StatefulWidget {
   const RfidScreen({super.key});
@@ -113,13 +114,13 @@ class _RfidScreenState extends State<RfidScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      // We allow the back button, but override its behavior to navigate to user_selection_screen.dart.
+      // Override the back button to navigate to UserSelectionScreen.
       onWillPop: () async {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
         );
-        return false; // Prevent default pop
+        return false; // Prevent default pop behavior
       },
       child: Scaffold(
         appBar: AppBar(
@@ -138,57 +139,71 @@ class _RfidScreenState extends State<RfidScreen> {
             },
           ),
         ),
-        backgroundColor: Colors.white,
-        body: GestureDetector(
-          onTap: () => _rfidFocusNode.requestFocus(),
-          child: Stack(
-            children: [
-              // Main content: RFID image and prompt text.
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      'assets/images/tap_rfid.png',
-                      width: 500,
-                      fit: BoxFit.contain,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "Tap your RFID Reward Card.",
-                      style: TextStyle(
-                        fontSize: 35,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0D2A5E),
+        // Use a container with a gradient background instead of a solid color.
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0D2A5E), // Start color
+                Color(0xFF1E5D6F), // End color
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: GestureDetector(
+            onTap: () => _rfidFocusNode.requestFocus(),
+            child: Stack(
+              children: [
+                // Main content: Lottie animation and prompt text.
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Replace static image with Lottie animation.
+                      Lottie.asset(
+                        'assets/animations/rfida.json',
+                        width: 500,
+                        fit: BoxFit.contain,
+                        repeat: true,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              // Hidden TextField for reading the RFID input.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Opacity(
-                  opacity: 0.0,
-                  child: TextField(
-                    controller: _rfidController,
-                    focusNode: _rfidFocusNode,
-                    keyboardType: TextInputType.number,
-                    maxLength: 10,
-                    obscureText: true,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: "Enter RFID",
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 24),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "Tap your RFID Reward Card.",
+                        style: TextStyle(
+                          fontSize: 35,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+                // Hidden TextField for reading the RFID input.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Opacity(
+                    opacity: 0.0,
+                    child: TextField(
+                      controller: _rfidController,
+                      focusNode: _rfidFocusNode,
+                      keyboardType: TextInputType.number,
+                      maxLength: 10,
+                      obscureText: true,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: "Enter RFID",
+                        border: OutlineInputBorder(),
+                      ),
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
