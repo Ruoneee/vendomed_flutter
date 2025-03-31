@@ -320,7 +320,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                   ElevatedButton(
                     onPressed: _resetOrders,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[700],
+                      backgroundColor: const Color(0xFF2A4D6F),
                       padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                     ),
                     child: Text(
