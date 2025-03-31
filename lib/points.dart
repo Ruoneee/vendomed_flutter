@@ -85,6 +85,7 @@ class PointsPageState extends State<PointsPage> {
     super.initState();
     _calculateTotalAmount();
     _loadUserData();
+    // Initially set points to 0; this value will be updated once user data is loaded.
     _pointsController.text = "0";
     _startTimeout();
   }
@@ -114,11 +115,20 @@ class PointsPageState extends State<PointsPage> {
         setState(() {
           _userName = result.first['NAME']?.toString() ?? widget.rfidData;
           userPoints = int.tryParse(result.first['POINTS']?.toString() ?? '0') ?? 0;
+          // Auto-update redeemed points based on the total amount.
+          if (userPoints >= totalAmount) {
+            pointsUsed = totalAmount.toInt();
+          } else {
+            pointsUsed = userPoints;
+          }
+          _pointsController.text = pointsUsed.toString();
         });
       } else {
         setState(() {
           _userName = widget.rfidData;
           userPoints = 0;
+          pointsUsed = 0;
+          _pointsController.text = "0";
         });
       }
     } catch (e) {
@@ -126,6 +136,8 @@ class PointsPageState extends State<PointsPage> {
       setState(() {
         _userName = widget.rfidData;
         userPoints = 0;
+        pointsUsed = 0;
+        _pointsController.text = "0";
       });
     }
   }
@@ -159,10 +171,16 @@ class PointsPageState extends State<PointsPage> {
 
   void _incrementPointsUsed() {
     _startTimeout(); // Reset the timeout on user interaction
+    // Prevent increasing redeemed points beyond the total amount.
+    if (pointsUsed >= totalAmount) return;
     setState(() {
       pointsUsed += 20;
       if (pointsUsed > userPoints) {
         pointsUsed = userPoints;
+      }
+      // Ensure pointsUsed does not exceed totalAmount if the user has enough.
+      if (userPoints >= totalAmount && pointsUsed > totalAmount) {
+        pointsUsed = totalAmount.toInt();
       }
       _pointsController.text = pointsUsed.toString();
     });
@@ -505,17 +523,17 @@ class PointsPageState extends State<PointsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // TOTAL AMOUNT label changed to white
+                // TOTAL AMOUNT label changed to white.
                 Text(
                   tr("total_amount"),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white, // changed from black to white
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
-                // The text in the field remains black
+                // The text in the field remains black.
                 TextFormField(
                   enabled: false,
                   decoration: const InputDecoration(
@@ -533,17 +551,17 @@ class PointsPageState extends State<PointsPage> {
                   style: const TextStyle(color: Colors.white, fontSize: 24),
                 ),
                 const SizedBox(height: 16),
-                // POINTS TO REDEEM label changed to white
+                // POINTS TO REDEEM label changed to white.
                 Text(
                   tr("points_to_redeem"),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white, // changed from black to white
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
-                // The text in the field remains black
+                // The text in the field remains black.
                 TextFormField(
                   controller: _pointsController,
                   enabled: false,
