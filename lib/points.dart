@@ -583,7 +583,7 @@ class PointsPageState extends State<PointsPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
-                      width: 300,
+                      width: 200,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -610,7 +610,7 @@ class PointsPageState extends State<PointsPage> {
                     ),
                     const SizedBox(width: 100),
                     SizedBox(
-                      width: 300,
+                      width: 200,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),

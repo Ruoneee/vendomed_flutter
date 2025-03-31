@@ -36,7 +36,7 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
 
   void _startAutoNavigateTimer() {
     _autoNavigateTimer?.cancel();
-    _autoNavigateTimer = Timer(const Duration(seconds: 5), () {
+    _autoNavigateTimer = Timer(const Duration(seconds: 10), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,

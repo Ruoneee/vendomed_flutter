@@ -68,17 +68,17 @@ class PaymentPageState extends State<PaymentPage> {
       "insert_coins":
       "Mangyaring ipasok ang salapi/pera.\nTinanggap na halaga: ₱20, ₱50, ₱100",
       "inactivity_note":
-      "Pagkatapos ng 60 segundong walang aktibidad,\nibabalik ang sesyon sa Home.",
+      "Pagkatapos ng 60 segundong walang aktibidad,\nibabalik ang sa HomeScreen.",
       "session_timeout": "Timeout ng Sesyon",
       "your_orders": "MGA INYONG ORDER:",
       "total": "KABUUAN:",
       "inserted": "IPINASOK:",
       "remaining": "Natitira:",
-      "cancel": "KANSelahin",
-      "proceed": "MAG‑PROCEED",
+      "cancel": "Kanselahin",
+      "proceed": "Mag-Proceed",
       "add_amount": "IDAGDAG ₱20",
-      "points_earned": "Mga Nakuhang Punto!",
-      "you_earned": "Nakakuha ka ng {points} karagdagang punto!"
+      "points_earned": "Mga Nakuhang Puntos!",
+      "you_earned": "Nakakuha ka ng {points} karagdagang puntos!"
     },
   };
 
@@ -647,7 +647,7 @@ class PaymentPageState extends State<PaymentPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
-                      width: 250,
+                      width: 200,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -674,7 +674,7 @@ class PaymentPageState extends State<PaymentPage> {
                     ),
                     const SizedBox(width: 120),
                     SizedBox(
-                      width: 250,
+                      width: 200,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
