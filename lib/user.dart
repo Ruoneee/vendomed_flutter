@@ -93,18 +93,23 @@ class _UserScreenState extends State<UserScreen> {
       );
       await _fetchUsersFromDB();
       // Clear the form fields after adding
-      setState(() {
-        _rfidController.clear();
-        _nameController.clear();
-        _emailController.clear();
-        _expirationController.clear();
-      });
+      _clearFields();
     } catch (e) {
       debugPrint("Error adding user: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error adding user: $e")),
       );
     }
+  }
+
+  // Clear form fields
+  void _clearFields() {
+    setState(() {
+      _rfidController.clear();
+      _nameController.clear();
+      _emailController.clear();
+      _expirationController.clear();
+    });
   }
 
   // Update the selected user using RFID
@@ -122,7 +127,6 @@ class _UserScreenState extends State<UserScreen> {
       'NAME': _nameController.text,
       'EMAIL': _emailController.text,
       'EXPIRATION': _expirationController.text,
-      // Optionally update ROLE if needed
     };
 
     try {
@@ -161,10 +165,7 @@ class _UserScreenState extends State<UserScreen> {
       // Clear the form after deletion
       setState(() {
         _selectedRfid = null;
-        _rfidController.clear();
-        _nameController.clear();
-        _emailController.clear();
-        _expirationController.clear();
+        _clearFields();
       });
     } catch (e) {
       debugPrint("Error deleting user: $e");
@@ -228,7 +229,10 @@ class _UserScreenState extends State<UserScreen> {
         title: const Text(
           "User Dashboard",
           style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         backgroundColor: const Color(0xFF0D2A5E),
       ),
@@ -243,11 +247,9 @@ class _UserScreenState extends State<UserScreen> {
         unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
       body: SafeArea(
@@ -264,9 +266,8 @@ class _UserScreenState extends State<UserScreen> {
                   color: _isDarkMode ? Colors.grey[900] : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: _isDarkMode
-                          ? Colors.white54
-                          : Colors.grey.shade300),
+                    color: _isDarkMode ? Colors.white54 : Colors.grey.shade300,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,41 +277,59 @@ class _UserScreenState extends State<UserScreen> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color:
-                        _isDarkMode ? Colors.white : Colors.black,
+                        color: _isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
                     const SizedBox(height: 10),
                     _buildTextField(
-                        controller: _rfidController,
-                        label: "Enter RFID Number"),
+                      controller: _rfidController,
+                      label: "Enter RFID Number",
+                    ),
                     const SizedBox(height: 10),
                     _buildTextField(
-                        controller: _nameController,
-                        label: "User's Name"),
+                      controller: _nameController,
+                      label: "User's Name",
+                    ),
                     const SizedBox(height: 10),
                     _buildTextField(
-                        controller: _emailController,
-                        label: "Email Address"),
+                      controller: _emailController,
+                      label: "Email Address",
+                    ),
                     const SizedBox(height: 10),
                     _buildTextField(
-                        controller: _expirationController,
-                        label: "Expiration"),
+                      controller: _expirationController,
+                      label: "Expiration",
+                    ),
                     const SizedBox(height: 10),
-                    // Add User Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _onAddUser,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D2A5E),
-                          foregroundColor: Colors.white,
-                          padding:
-                          const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(fontSize: 16),
+                    // Row with Add User and Clear buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _onAddUser,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0D2A5E),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              textStyle: const TextStyle(fontSize: 16),
+                            ),
+                            child: const Text("Add User"),
+                          ),
                         ),
-                        child: const Text("Add User"),
-                      ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _clearFields,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              textStyle: const TextStyle(fontSize: 16),
+                            ),
+                            child: const Text("Clear"),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -327,15 +346,15 @@ class _UserScreenState extends State<UserScreen> {
                   border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       "User Information",
                       style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     SizedBox(
                       width: 200,
@@ -344,8 +363,7 @@ class _UserScreenState extends State<UserScreen> {
                         style: const TextStyle(color: Colors.black),
                         decoration: InputDecoration(
                           labelText: "Search User",
-                          labelStyle: const TextStyle(
-                              color: Colors.black54),
+                          labelStyle: const TextStyle(color: Colors.black54),
                           fillColor: Colors.white,
                           filled: true,
                           border: const OutlineInputBorder(),
@@ -381,10 +399,8 @@ class _UserScreenState extends State<UserScreen> {
                           setState(() {
                             _selectedRfid = rfid;
                             _rfidController.text = rfid;
-                            _nameController.text =
-                                user["NAME"]?.toString() ?? "";
-                            _emailController.text =
-                                user["EMAIL"]?.toString() ?? "";
+                            _nameController.text = user["NAME"]?.toString() ?? "";
+                            _emailController.text = user["EMAIL"]?.toString() ?? "";
                             _expirationController.text =
                                 user["EXPIRATION"]?.toString() ?? "";
                           });
@@ -397,37 +413,42 @@ class _UserScreenState extends State<UserScreen> {
                         }
                       },
                       cells: [
-                        DataCell(Text(rfid ?? "",
-                            style: TextStyle(
-                                color: _isDarkMode
-                                    ? Colors.white
-                                    : Colors.black))),
-                        DataCell(Text(user["NAME"]?.toString() ?? "",
-                            style: TextStyle(
-                                color: _isDarkMode
-                                    ? Colors.white
-                                    : Colors.black))),
-                        DataCell(Text(user["POINTS"]?.toString() ?? "",
-                            style: TextStyle(
-                                color: _isDarkMode
-                                    ? Colors.white
-                                    : Colors.black))),
                         DataCell(Text(
-                            user["EXPIRATION"]?.toString() ?? "",
-                            style: TextStyle(
-                                color: _isDarkMode
-                                    ? Colors.white
-                                    : Colors.black))),
-                        DataCell(Text(user["EMAIL"]?.toString() ?? "",
-                            style: TextStyle(
-                                color: _isDarkMode
-                                    ? Colors.white
-                                    : Colors.black))),
-                        DataCell(Text(user["ROLE"]?.toString() ?? "",
-                            style: TextStyle(
-                                color: _isDarkMode
-                                    ? Colors.white
-                                    : Colors.black))),
+                          rfid ?? "",
+                          style: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        )),
+                        DataCell(Text(
+                          user["NAME"]?.toString() ?? "",
+                          style: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        )),
+                        DataCell(Text(
+                          user["POINTS"]?.toString() ?? "",
+                          style: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        )),
+                        DataCell(Text(
+                          user["EXPIRATION"]?.toString() ?? "",
+                          style: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        )),
+                        DataCell(Text(
+                          user["EMAIL"]?.toString() ?? "",
+                          style: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        )),
+                        DataCell(Text(
+                          user["ROLE"]?.toString() ?? "",
+                          style: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        )),
                       ],
                     );
                   }).toList(),
@@ -447,10 +468,8 @@ class _UserScreenState extends State<UserScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2A5E),
                         foregroundColor: Colors.white,
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 16),
-                        textStyle:
-                        const TextStyle(fontSize: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16),
                       ),
                       child: const Text("Edit User"),
                     ),
@@ -467,10 +486,8 @@ class _UserScreenState extends State<UserScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2A5E),
                         foregroundColor: Colors.white,
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 16),
-                        textStyle:
-                        const TextStyle(fontSize: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16),
                       ),
                       child: const Text("Refresh"),
                     ),
@@ -484,10 +501,8 @@ class _UserScreenState extends State<UserScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2A5E),
                         foregroundColor: Colors.white,
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 16),
-                        textStyle:
-                        const TextStyle(fontSize: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        textStyle: const TextStyle(fontSize: 16),
                       ),
                       child: const Text("Delete User"),
                     ),
@@ -508,12 +523,10 @@ class _UserScreenState extends State<UserScreen> {
   }) {
     return TextField(
       controller: controller,
-      style:
-      TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-            color: _isDarkMode ? Colors.white70 : Colors.black54),
+        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
         border: const OutlineInputBorder(),
       ),
     );
