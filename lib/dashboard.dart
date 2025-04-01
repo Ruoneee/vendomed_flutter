@@ -1072,65 +1072,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Printing.sharePdf(bytes: await pdf.save(), filename: 'transactions_backup.pdf');
   }
 
+  // ----------------------------------------------------------------------
+  // REPLACED _showSettingsDialog() TO ENLARGE THE DIALOG
+  // ----------------------------------------------------------------------
   void _showSettingsDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Settings"),
+          // Make corners rounded if you like
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          // Increase insetPadding to allow a larger dialog in the center of the screen
+          insetPadding: const EdgeInsets.symmetric(horizontal: 100, vertical: 100),
+          title: const Text(
+            "Settings",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setStateDialog) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Dark Mode"),
-                      Switch(
-                        value: _isDarkMode,
-                        onChanged: (bool value) {
-                          setState(() {
-                            _isDarkMode = value;
-                          });
-                          setStateDialog(() {});
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
+              return Container(
+                // Give the dialog a fixed width/height to enlarge it
+                width: 500,
+                height: 350,
+                // Wrap everything in a Column or SingleChildScrollView if needed
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Row for Dark Mode
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Dark Mode", style: TextStyle(fontSize: 18)),
+                        Switch(
+                          value: _isDarkMode,
+                          onChanged: (bool value) {
+                            setState(() {
+                              _isDarkMode = value;
+                            });
+                            // Also update inside the dialog state
+                            setStateDialog(() {});
+                          },
+                        ),
+                      ],
                     ),
-                    onPressed: () {
-                      _exportDataAsPDF();
-                    },
-                    child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
-                  ),
-                  const SizedBox(height: 10),
-                  // About Us button with asset icon in the dialog
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                    const SizedBox(height: 20),
+                    // Export PDF
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                      onPressed: () => _exportDataAsPDF(),
+                      child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
                     ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const AboutUsDialog(),
-                      );
-                    },
-                    child: const Text("About Us", style: TextStyle(color: Colors.white)),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: brandColor,
+                    const SizedBox(height: 10),
+                    // About Us
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => const AboutUsDialog(),
+                        );
+                      },
+                      child: const Text("About Us", style: TextStyle(color: Colors.white)),
                     ),
-                    onPressed: _logOut,
-                    child: const Text("Log Out", style: TextStyle(color: Colors.white)),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    // Log Out
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: brandColor),
+                      onPressed: _logOut,
+                      child: const Text("Log Out", style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -1144,6 +1156,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     );
   }
+  // ----------------------------------------------------------------------
 
   void _logOut() {
     Navigator.pop(context);
@@ -1478,7 +1491,7 @@ class _AboutUsDialogState extends State<AboutUsDialog>
       "image": "assets/images/angelo.png",
     },
     {
-      "name": "Rustan  Chavez \n [Developer",
+      "name": "Rustan  Chavez \n [Developer]",
       "image": "assets/images/rustan.png",
     },
     {
@@ -1551,10 +1564,8 @@ class _AboutUsDialogState extends State<AboutUsDialog>
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Container(
-          // Remove or reduce the minHeight to avoid forcing overflow on smaller devices.
           constraints: const BoxConstraints(
             maxWidth: 1000,
-            // minHeight: 700, // <- Removed to prevent overflow
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -1567,15 +1578,11 @@ class _AboutUsDialogState extends State<AboutUsDialog>
               end: Alignment.bottomCenter,
             ),
           ),
-          // Wrap content in SingleChildScrollView to allow scrolling if needed.
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: ConstrainedBox(
-                // Constrain the overall content width so it doesn't shrink too much.
-                constraints: const BoxConstraints(
-                  maxWidth: 1000,
-                ),
+                constraints: const BoxConstraints(maxWidth: 1000),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1623,7 +1630,7 @@ class _AboutUsDialogState extends State<AboutUsDialog>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(
-                          width: 400, // Make the last card wide if desired
+                          width: 400,
                           child: _buildMemberCard(teamMembers[4]),
                         ),
                       ],
@@ -1632,7 +1639,7 @@ class _AboutUsDialogState extends State<AboutUsDialog>
                     const SizedBox(height: 20),
                     Align(
                       alignment: Alignment.centerRight,
-                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1643,11 +1650,15 @@ class _AboutUsDialogState extends State<AboutUsDialog>
     );
   }
 }
-
 // --------------------- END ABOUT US DIALOG ---------------------
 
-void _showSettingsDialogStatic(BuildContext context, bool isDarkMode,
-    Function(bool) onDarkModeChanged, VoidCallback onExportPDF, VoidCallback onLogOut) {
+void _showSettingsDialogStatic(
+    BuildContext context,
+    bool isDarkMode,
+    Function(bool) onDarkModeChanged,
+    VoidCallback onExportPDF,
+    VoidCallback onLogOut,
+    ) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -1671,7 +1682,7 @@ void _showSettingsDialogStatic(BuildContext context, bool isDarkMode,
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 50),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
@@ -1679,8 +1690,7 @@ void _showSettingsDialogStatic(BuildContext context, bool isDarkMode,
                   onPressed: onExportPDF,
                   child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
                 ),
-                const SizedBox(height: 10),
-                // About Us button added here
+                const SizedBox(height: 50),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
@@ -1693,7 +1703,7 @@ void _showSettingsDialogStatic(BuildContext context, bool isDarkMode,
                   },
                   child: const Text("About Us", style: TextStyle(color: Colors.white)),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 50),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2A5E),
@@ -1717,7 +1727,9 @@ void _showSettingsDialogStatic(BuildContext context, bool isDarkMode,
 }
 
 extension SettingsExtension on _DashboardScreenState {
-  void _showSettingsDialog() {
+  // No changes here; replaced by the custom method above
+  // so you can remove or leave it as a reference.
+  void _showSettingsDialogOld() {
     _showSettingsDialogStatic(context, _isDarkMode, (bool value) {
       setState(() {
         _isDarkMode = value;
