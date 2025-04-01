@@ -9,7 +9,6 @@ import 'splash_screen.dart';
 import 'database_helper.dart';
 import 'user.dart';
 import 'inventory.dart';
-import 'package:flutter/material.dart';
 
 class ChartData {
   final String label;
@@ -49,16 +48,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-
     _loadClearedSales().then((_) {
       _fetchDashboardData();
     });
-
     _selectedYear = DateTime.now().year;
     _selectedMonth = null;
     _selectedWeek = null;
     _selectedDay = null;
-
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       _fetchDashboardData();
     });
@@ -88,14 +84,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _transactions = await DatabaseHelper().getTransactions();
     double totalSalesSum = 0.0;
     double totalInsertedSum = 0.0;
-
     for (var tx in _transactions) {
       totalSalesSum += (tx['total_amount'] as num).toDouble();
       if (tx.containsKey('amount_inserted')) {
         totalInsertedSum += (tx['amount_inserted'] as num).toDouble();
       }
     }
-
     setState(() {
       totalTransactions = _transactions.length;
       _totalSales = totalSalesSum;
@@ -104,7 +98,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _activeBalance = 0.0;
       }
     });
-
     _updateChartData();
   }
 
@@ -124,7 +117,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
       return;
     }
-
     List<Map<String, dynamic>> filtered = _transactions.where((tx) {
       final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
       if (dt.year != _selectedYear) return false;
@@ -145,7 +137,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else {
       groupingMode = "day";
     }
-
     final Map<String, double> salesMap = {};
     for (var tx in filtered) {
       final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
@@ -161,7 +152,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       salesMap[key] =
           (salesMap[key] ?? 0) + (tx['total_amount'] as num).toDouble();
     }
-
     final sortedKeys = salesMap.keys.toList();
     if (groupingMode == "month") {
       final monthOrder = [
@@ -189,11 +179,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else {
       sortedKeys.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
     }
-
     final List<ChartData> salesData = sortedKeys
         .map((key) => ChartData(label: key, value: salesMap[key]!))
         .toList();
-
     final Map<String, int> freqMap = {};
     for (var tx in filtered) {
       final med = tx['medicine'] ?? 'Unknown';
@@ -202,7 +190,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<ChartData> freqData = freqMap.entries
         .map((e) => ChartData(label: e.key, value: e.value))
         .toList();
-
     setState(() {
       _salesData = salesData;
       _frequencyData = freqData;
@@ -230,7 +217,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double _forecastNextMonthSales() {
     int year = DateTime.now().year;
     Map<int, double> monthlySales = {};
-
     for (var tx in _transactions) {
       DateTime dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
       if (dt.year == year) {
@@ -238,19 +224,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             (monthlySales[dt.month] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     }
-
     List<double> salesList = [];
     for (int m = 1; m <= DateTime.now().month; m++) {
       salesList.add(monthlySales[m] ?? 0.0);
     }
-
     if (salesList.isEmpty) return 0.0;
     return naiveForecast(salesList);
   }
 
   Widget _buildForecastChart() {
     double forecastVal = _forecastNextMonthSales();
-
     int currentYear = DateTime.now().year;
     int currentMonth = DateTime.now().month;
     Map<int, double> monthlySales = {};
@@ -261,7 +244,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             (monthlySales[dt.month] ?? 0) + (tx['total_amount'] as num).toDouble();
       }
     }
-
     List<ChartData> chartData = [];
     for (int m = 1; m <= currentMonth; m++) {
       double val = monthlySales[m] ?? 0;
@@ -269,7 +251,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       chartData.add(ChartData(label: shortLabel, value: val));
     }
     chartData.add(ChartData(label: "Fcast", value: forecastVal));
-
     return Card(
       elevation: 4,
       color: _isDarkMode ? Colors.grey[800] : Colors.white,
@@ -461,7 +442,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (sortedItems.length > 3) {
       sortedItems = sortedItems.sublist(0, 3);
     }
-
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 4,
@@ -789,32 +769,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final currentYear = now.year;
     final previousMonth = (currentMonth == 1) ? 12 : currentMonth - 1;
     final previousYear = (currentMonth == 1) ? currentYear - 1 : currentYear;
-
     double currentMonthSales = 0.0;
     double previousMonthSales = 0.0;
-
     for (var tx in _transactions) {
       final dt = DateTime.tryParse(tx['date'] ?? '') ?? DateTime.now();
       double saleValue = (tx['total_amount'] as num).toDouble();
-
       if (dt.year == currentYear && dt.month == currentMonth) {
         currentMonthSales += saleValue;
       } else if (dt.year == previousYear && dt.month == previousMonth) {
         previousMonthSales += saleValue;
       }
     }
-
     final double difference = currentMonthSales - previousMonthSales;
     double percentChange = 0.0;
     if (previousMonthSales != 0) {
       percentChange = (difference / previousMonthSales) * 100;
     }
-
     List<ChartData> comparisonData = [
       ChartData(label: 'Previous Month', value: previousMonthSales),
       ChartData(label: 'Current Month', value: currentMonthSales),
     ];
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1073,85 +1047,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------------------------
-  // REPLACED _showSettingsDialog() TO ENLARGE THE DIALOG
+  // ENLARGED SETTINGS DIALOG WITH ENLARGED BUTTONS
   // ----------------------------------------------------------------------
   void _showSettingsDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          // Make corners rounded if you like
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          // Increase insetPadding to allow a larger dialog in the center of the screen
           insetPadding: const EdgeInsets.symmetric(horizontal: 100, vertical: 100),
           title: const Text(
-            "Settings",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            "SETTINGS",
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
           ),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setStateDialog) {
               return Container(
-                // Give the dialog a fixed width/height to enlarge it
                 width: 500,
-                height: 350,
-                // Wrap everything in a Column or SingleChildScrollView if needed
+                height: 300,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Row for Dark Mode
+                    // Dark Mode Row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Dark Mode", style: TextStyle(fontSize: 18)),
+                        const Text("Dark Mode", style: TextStyle(fontSize: 25)),
                         Switch(
                           value: _isDarkMode,
                           onChanged: (bool value) {
                             setState(() {
                               _isDarkMode = value;
                             });
-                            // Also update inside the dialog state
                             setStateDialog(() {});
                           },
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Export PDF
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-                      onPressed: () => _exportDataAsPDF(),
-                      child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
+                    // Export PDF Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: _exportDataAsPDF,
+                        child: const Text(
+                          "Export Data as PDF",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    // About Us
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const AboutUsDialog(),
-                        );
-                      },
-                      child: const Text("About Us", style: TextStyle(color: Colors.white)),
+                    const SizedBox(height: 20),
+                    // About Us Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => const AboutUsDialog(),
+                          );
+                        },
+                        child: const Text(
+                          "About Us",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    // Log Out
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: brandColor),
-                      onPressed: _logOut,
-                      child: const Text("Log Out", style: TextStyle(color: Colors.white)),
+                    const SizedBox(height: 20),
+                    // Log Out Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandColor,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: _logOut,
+                        child: const Text(
+                          "Log Out",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               );
             },
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Close"),
-            ),
-          ],
         );
       },
     );
@@ -1170,7 +1163,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _selectedTabIndex = index;
     });
-
     if (index == 0) {
       Navigator.pushReplacement(
         context,
@@ -1525,7 +1517,7 @@ class _AboutUsDialogState extends State<AboutUsDialog>
     super.dispose();
   }
 
-  /// A helper method to build a bigger card that expands within its parent.
+  /// Builds a card for each team member.
   Widget _buildMemberCard(Map<String, String> member) {
     return Card(
       elevation: 6,
@@ -1533,20 +1525,19 @@ class _AboutUsDialogState extends State<AboutUsDialog>
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        // Let it expand to fill available space.
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
-              radius: 60, // Bigger avatar
+              radius: 60,
               backgroundImage: AssetImage(member["image"]!),
             ),
             const SizedBox(height: 20),
             Text(
               member["name"]!,
               style: const TextStyle(
-                fontSize: 19, // Larger font for better readability
+                fontSize: 19,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
@@ -1587,7 +1578,6 @@ class _AboutUsDialogState extends State<AboutUsDialog>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
                     const Text(
                       "About Us",
                       style: TextStyle(
@@ -1607,8 +1597,6 @@ class _AboutUsDialogState extends State<AboutUsDialog>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 25),
-
-                    // Two rows of two columns each, then one centered row for the last member
                     Row(
                       children: [
                         Expanded(child: _buildMemberCard(teamMembers[0])),
@@ -1625,7 +1613,6 @@ class _AboutUsDialogState extends State<AboutUsDialog>
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Final member, centered
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -1635,10 +1622,10 @@ class _AboutUsDialogState extends State<AboutUsDialog>
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 20),
                     Align(
                       alignment: Alignment.centerRight,
+                      child: Container(),
                     ),
                   ],
                 ),
@@ -1650,95 +1637,8 @@ class _AboutUsDialogState extends State<AboutUsDialog>
     );
   }
 }
-// --------------------- END ABOUT US DIALOG ---------------------
 
-void _showSettingsDialogStatic(
-    BuildContext context,
-    bool isDarkMode,
-    Function(bool) onDarkModeChanged,
-    VoidCallback onExportPDF,
-    VoidCallback onLogOut,
-    ) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Settings"),
-        content: StatefulBuilder(
-          builder: (BuildContext context, StateSetter setStateDialog) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Dark Mode"),
-                    Switch(
-                      value: isDarkMode,
-                      onChanged: (bool value) {
-                        onDarkModeChanged(value);
-                        setStateDialog(() {});
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 50),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                  ),
-                  onPressed: onExportPDF,
-                  child: const Text("Export Data as PDF", style: TextStyle(color: Colors.white)),
-                ),
-                const SizedBox(height: 50),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                  ),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const AboutUsDialog(),
-                    );
-                  },
-                  child: const Text("About Us", style: TextStyle(color: Colors.white)),
-                ),
-                const SizedBox(height: 50),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2A5E),
-                  ),
-                  onPressed: onLogOut,
-                  child: const Text("Log Out", style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-extension SettingsExtension on _DashboardScreenState {
-  // No changes here; replaced by the custom method above
-  // so you can remove or leave it as a reference.
-  void _showSettingsDialogOld() {
-    _showSettingsDialogStatic(context, _isDarkMode, (bool value) {
-      setState(() {
-        _isDarkMode = value;
-      });
-    }, _exportDataAsPDF, _logOut);
-  }
-}
-
-Future<void> main() async {
+void main() async {
   runApp(MaterialApp(
     home: DashboardScreen(),
     debugShowCheckedModeBanner: false,
