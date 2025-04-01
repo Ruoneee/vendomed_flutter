@@ -40,6 +40,7 @@ class TransactionScreen extends StatefulWidget {
 class _TransactionScreenState extends State<TransactionScreen> {
   late bool _isDarkMode;
   Timer? _timer;
+  Timer? _debounce;
   late Future<List<TransactionItem>> _futureTransactions;
 
   // Filtering state
@@ -71,6 +72,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _debounce?.cancel();
     _minAmountController.dispose();
     _maxAmountController.dispose();
     _searchController.dispose();
@@ -103,7 +105,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
     if (_selectedDateRange != null) {
       list = list.where((tx) {
         DateTime dt = DateTime.tryParse(tx.date) ?? DateTime.now();
-        return dt.isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
+        return dt.isAfter(
+            _selectedDateRange!.start.subtract(const Duration(days: 1))) &&
             dt.isBefore(_selectedDateRange!.end.add(const Duration(days: 1)));
       }).toList();
     }
@@ -116,7 +119,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
     // Search query filter
     if (_searchQuery.isNotEmpty) {
       list = list
-          .where((tx) => tx.medicine.toLowerCase().contains(_searchQuery.toLowerCase()))
+          .where((tx) =>
+          tx.medicine.toLowerCase().contains(_searchQuery.toLowerCase()))
           .toList();
     }
 
@@ -561,7 +565,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   Widget _buildSearchAndFilterRow() {
     return Row(
       children: [
-        // Search TextField
+        // Search TextField with debounce mechanism
         Expanded(
           child: TextField(
             controller: _searchController,
@@ -577,16 +581,20 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 Icons.search,
                 color: _isDarkMode ? Colors.white : Colors.black54,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+              contentPadding:
+              const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
             ),
             onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-                _futureTransactions = _fetchAndFilterTransactions();
+              if (_debounce?.isActive ?? false) _debounce?.cancel();
+              _debounce = Timer(const Duration(milliseconds: 500), () {
+                setState(() {
+                  _searchQuery = value;
+                  _futureTransactions = _fetchAndFilterTransactions();
+                });
               });
             },
           ),
@@ -640,7 +648,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
             );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 children: [
                   _buildSearchAndFilterRow(),
@@ -688,7 +697,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
               bool isWideScreen = constraints.maxWidth > 600;
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Column(
                   children: [
                     _buildSearchAndFilterRow(),
@@ -704,7 +714,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              color: _isDarkMode ? Colors.grey[900] : Colors.white,
+                              color: _isDarkMode
+                                  ? Colors.grey[900]
+                                  : Colors.white,
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: _buildPieChart(
@@ -736,7 +748,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            color: _isDarkMode ? Colors.grey[900] : Colors.white,
+                            color: _isDarkMode
+                                ? Colors.grey[900]
+                                : Colors.white,
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: _buildPieChart(
@@ -763,7 +777,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: _isDarkMode ? Colors.white : Colors.black,
+                          color:
+                          _isDarkMode ? Colors.white : Colors.black,
                         ),
                       ),
                     ),
@@ -798,14 +813,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) => UserScreen(isDarkMode: _isDarkMode),
+                builder: (context) =>
+                    UserScreen(isDarkMode: _isDarkMode),
               ),
             );
           } else if (index == 3) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) => InventoryScreen(isDarkMode: _isDarkMode),
+                builder: (context) =>
+                    InventoryScreen(isDarkMode: _isDarkMode),
               ),
             );
           }
@@ -816,10 +833,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
         selectedFontSize: 14,
         unselectedFontSize: 12,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart), label: "Sales"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.people), label: "Users"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
     );
