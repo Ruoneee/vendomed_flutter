@@ -524,8 +524,19 @@ class MedicineMenuState extends State<MedicineMenu> {
     });
   }
 
-  // Updated checkout method: pass a copy of the orders list
+  // Updated checkout method: only proceeds if there are orders
   void _proceedToCheckout() {
+    // Check if there are any orders before proceeding.
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No orders placed. Please add items to cart."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     List<Map<String, String>> ordersCopy = List.from(orders);
     if (_userName == widget.rfidData) {
       Navigator.push(
