@@ -27,95 +27,113 @@ class PaymentMethodPage extends StatelessWidget {
           style: TextStyle(color: Colors.white),
         ),
       ),
-      backgroundColor: const Color(0xFFF7EAF0),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        // Use Center to keep content in the middle horizontally
-        child: Center(
-          // Use a Column so we can place the text above the row of buttons
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // "Please Choose your Payment Option" in black, placed above the images
-              const Text(
-                'Please Choose your Payment Option',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Row of Coins/Cash & Reward Points options
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // 1) Coins/Cash Option
-                  InkWell(
-                    onTap: () {
-                      // Navigate to the PaymentPage for Cash using the alias
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => cash_payment.PaymentPage(
-                            orders: orders,
-                            rfidData: rfidData,
-                            medicinesToBeDisabled: const [],
-                          ),
-                        ),
-                      );
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/cashcoins.png',
-                          width: 300,
-                          height: 300,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Coins/Cash',
-                          style: TextStyle(fontSize: 30),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  // 2) Reward Points Option
-                  InkWell(
-                    onTap: () {
-                      // Navigate to the PointsPage for Reward Points using the alias
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => reward_points.PointsPage(
-                            orders: orders,
-                            rfidData: rfidData,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/points.png',
-                          width: 300,
-                          height: 300,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Reward Points',
-                          style: TextStyle(fontSize: 30),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+      // Remove backgroundColor from Scaffold and use a Container with gradient instead
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0D2A5E), // Start color
+              Color(0xFF1E5D6F), // End color
             ],
+            begin: Alignment.topCenter, // Optional: Adjust gradient direction
+            end: Alignment.bottomCenter, // Optional: Adjust gradient direction
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          // Use Center to keep content in the middle horizontally
+          child: Center(
+            // Use a Column so we can place the text above the row of buttons
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // "Please Choose your Payment Option" in white for better contrast
+                const Text(
+                  'Please Choose your Payment Option',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // Changed to white for visibility on gradient
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Row of Coins/Cash & Reward Points options
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // 1) Coins/Cash Option
+                    InkWell(
+                      onTap: () {
+                        // Navigate to the PaymentPage for Cash using the alias
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => cash_payment.PaymentPage(
+                              orders: orders,
+                              rfidData: rfidData,
+                              medicinesToBeDisabled: const [],
+                            ),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/images/cashcoins.png',
+                            width: 300,
+                            height: 300,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Coins/Cash',
+                            style: TextStyle(
+                              fontSize: 30,
+                              color: Colors.white, // Changed to white for visibility
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 2) Reward Points Option
+                    InkWell(
+                      onTap: () {
+                        // Navigate to the PointsPage for Reward Points using the alias
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => reward_points.PointsPage(
+                              orders: orders,
+                              rfidData: rfidData,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/images/points.png',
+                            width: 300,
+                            height: 300,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Reward Points',
+                            style: TextStyle(
+                              fontSize: 30,
+                              color: Colors.white, // Changed to white for visibility
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
