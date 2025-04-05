@@ -113,7 +113,6 @@ class MedicineMenuState extends State<MedicineMenu> {
       'Loperamide': 'assets/images/loperamide.png',
       'Antacid': 'assets/images/antacid.png',
       'Buscopan': 'assets/images/buscopan.png',
-      'Gaviscon': 'assets/images/gaviscon.png',
     };
     return imagePaths[productName] ?? '';
   }
