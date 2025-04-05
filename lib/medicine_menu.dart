@@ -157,12 +157,6 @@ class MedicineMenuState extends State<MedicineMenu> {
         'warnings': 'May cause dry mouth or blurred vision. Avoid if you have glaucoma or bowel obstruction.',
         'additionalMedia': 'See Patient.info or consult a pharmacist for full prescribing details.',
       },
-      'Gaviscon': {
-        'dosage': 'Adults: 2-4 tablets or 10-20 mL liquid after meals and at bedtime, max 4 times/day.',
-        'ingredients': 'Active: Sodium Alginate 250 mg, Sodium Bicarbonate 133.5 mg, Calcium Carbonate 80 mg (per tablet). Inactive: Mannitol, etc.',
-        'warnings': 'May cause mild bloating. Avoid if on a low-sodium diet or with kidney problems.',
-        'additionalMedia': 'Refer to product packaging or Drugs.com for complete guidance.',
-      },
     };
 
     final medicineDetail = detailsMap[productName] ?? {
