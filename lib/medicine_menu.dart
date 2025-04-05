@@ -121,13 +121,48 @@ class MedicineMenuState extends State<MedicineMenu> {
   /// Opens a centered dialog with detailed product info.
   void _openMedicineDetail(String productName, String amountStr, String imagePath, int stockCount) {
     final Map<String, Map<String, String>> detailsMap = {
-      'Loperamide': {
-        'dosage': 'Take 2 mg after each loose stool. ...',
-        'ingredients': 'Active: Loperamide Hydrochloride 2 mg. ...',
-        'warnings': 'May cause constipation. ...',
-        'additionalMedia': 'For detailed labeling, please refer to the official FDA document.',
+      'Ibuprofen': {
+        'dosage': 'Adults: 200-400 mg every 4-6 hours as needed, max 3200 mg/day. Take with food.',
+        'ingredients': 'Active: Ibuprofen 200 mg or 400 mg. Inactive: Colloidal silicon dioxide, croscarmellose sodium, magnesium stearate, etc.',
+        'warnings': 'May cause stomach upset or bleeding. Avoid if allergic to NSAIDs, have ulcers, or severe kidney/liver disease.',
+        'additionalMedia': 'Consult the FDA-approved label or a healthcare provider for full details.',
       },
-      // ... (Other medicines omitted for brevity)
+      'Cetirizine': {
+        'dosage': 'Adults and children over 6: 5-10 mg once daily. Adjust for kidney impairment.',
+        'ingredients': 'Active: Cetirizine Hydrochloride 10 mg. Inactive: Lactose monohydrate, microcrystalline cellulose, etc.',
+        'warnings': 'May cause drowsiness. Avoid alcohol. Not recommended if allergic to hydroxyzine.',
+        'additionalMedia': 'Refer to product packaging or pharmacist for complete information.',
+      },
+      'Paracetamol': {
+        'dosage': 'Adults: 500-1000 mg every 4-6 hours, max 4000 mg/day. Do not exceed recommended dose.',
+        'ingredients': 'Active: Paracetamol (Acetaminophen) 500 mg. Inactive: Starch, povidone, etc.',
+        'warnings': 'Overdose can cause liver damage. Avoid alcohol. Consult doctor if fever persists over 3 days.',
+        'additionalMedia': 'See FDA guidelines or consult a healthcare professional.',
+      },
+      'Loperamide': {
+        'dosage': 'Adults: 4 mg initially, then 2 mg after each loose stool, max 16 mg/day. Stop after 48 hours if no improvement.',
+        'ingredients': 'Active: Loperamide Hydrochloride 2 mg. Inactive: Lactose, cornstarch, magnesium stearate, etc.',
+        'warnings': 'May cause constipation or drowsiness. Do not use if diarrhea is bloody or with fever.',
+        'additionalMedia': 'Refer to FDA label or Drugs.com for detailed usage instructions.',
+      },
+      'Antacid': {
+        'dosage': 'Adults: 1-2 tablets as needed after meals or at bedtime, max 8 tablets/day (varies by brand).',
+        'ingredients': 'Active: Calcium Carbonate 500 mg or Aluminum Hydroxide/Magnesium Hydroxide. Inactive: Sucrose, etc.',
+        'warnings': 'May cause constipation or diarrhea. Avoid if on a low-sodium diet or with kidney issues.',
+        'additionalMedia': 'Check specific product labeling for exact formulation and instructions.',
+      },
+      'Buscopan': {
+        'dosage': 'Adults: 1-2 tablets (10 mg each) 3-4 times daily. Max 6 tablets/day. Swallow whole.',
+        'ingredients': 'Active: Hyoscine Butylbromide 10 mg. Inactive: Sucrose, calcium hydrogen phosphate, etc.',
+        'warnings': 'May cause dry mouth or blurred vision. Avoid if you have glaucoma or bowel obstruction.',
+        'additionalMedia': 'See Patient.info or consult a pharmacist for full prescribing details.',
+      },
+      'Gaviscon': {
+        'dosage': 'Adults: 2-4 tablets or 10-20 mL liquid after meals and at bedtime, max 4 times/day.',
+        'ingredients': 'Active: Sodium Alginate 250 mg, Sodium Bicarbonate 133.5 mg, Calcium Carbonate 80 mg (per tablet). Inactive: Mannitol, etc.',
+        'warnings': 'May cause mild bloating. Avoid if on a low-sodium diet or with kidney problems.',
+        'additionalMedia': 'Refer to product packaging or Drugs.com for complete guidance.',
+      },
     };
 
     final medicineDetail = detailsMap[productName] ?? {
@@ -212,7 +247,6 @@ class MedicineMenuState extends State<MedicineMenu> {
         body: Container(
           width: double.infinity,
           height: double.infinity,
-          // Same gradient background as other screens.
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -223,7 +257,6 @@ class MedicineMenuState extends State<MedicineMenu> {
               end: Alignment.bottomCenter,
             ),
           ),
-          // Using a CustomScrollView with slivers.
           child: CustomScrollView(
             slivers: [
               // VendoPoints container (if user is not a guest).
@@ -261,8 +294,6 @@ class MedicineMenuState extends State<MedicineMenu> {
                 delegate: OrdersHeaderDelegate(
                   height: 170, // Adjust to ensure no overflow
                   child: Container(
-                    // Give the entire pinned section a background color or gradient
-                    // so that when it pins, you see that color behind the white box.
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -303,14 +334,43 @@ class MedicineMenuState extends State<MedicineMenu> {
                                 final orderName = orders[index]['name'] ?? 'Unknown';
                                 final orderQuantity = orders[index]['quantity'] ?? '1';
                                 final orderPrice = orders[index]['price'] ?? '0.00';
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
-                                  child: Text(
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(
                                     '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                                    style: bodyMedium?.copyWith(
-                                      fontSize: 16,
-                                      color: Colors.black,
-                                    ),
+                                    style: bodyMedium?.copyWith(fontSize: 16, color: Colors.black),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Remove Item'),
+                                          content: Text('Remove $orderName from your order?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  orders.removeAt(index);
+                                                });
+                                                Navigator.pop(context);
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('$orderName removed from your order.'),
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text('Remove'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                                 );
                               },
@@ -524,9 +584,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     });
   }
 
-  // Updated checkout method: only proceeds if there are orders
   void _proceedToCheckout() {
-    // Check if there are any orders before proceeding.
     if (orders.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -653,7 +711,6 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Price with favorite icon beside it.
                 Row(
                   children: [
                     Text(
@@ -675,7 +732,6 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                     ),
                   ],
                 ),
-                // Stock.
                 Text(
                   'In Stock: ${widget.stockCount}',
                   style: textTheme.bodyMedium?.copyWith(fontSize: 20),
@@ -804,7 +860,7 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                   child: ElevatedButton(
                     onPressed: () => widget.onAddToCart(_quantity),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E), // Navy blue
+                      backgroundColor: const Color(0xFF0D2A5E),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -817,7 +873,7 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[800], // Dark grey
+                      backgroundColor: Colors.grey[800],
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
