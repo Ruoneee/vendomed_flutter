@@ -60,7 +60,7 @@ class _RfidScreenState extends State<RfidScreen> {
     } else {
       // RFID is invalid -> Show error message.
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid RFID. Please try again.")),
+        const SnackBar(content: Text("Invalid VendoCard. Please try again.")),
       );
     }
   }
@@ -126,7 +126,7 @@ class _RfidScreenState extends State<RfidScreen> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D2A5E),
           title: const Text(
-            'RFID Screen',
+            'VendoCard Screen',
             style: TextStyle(color: Colors.white),
           ),
           leading: IconButton(
@@ -169,7 +169,7 @@ class _RfidScreenState extends State<RfidScreen> {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        "Tap your RFID Reward Card.",
+                        "Tap your VendoCard Reward.",
                         style: TextStyle(
                           fontSize: 35,
                           fontWeight: FontWeight.bold,

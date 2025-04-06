@@ -104,7 +104,6 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
-  /// Maps product names to corresponding image paths.
   String _getImagePath(String productName) {
     final Map<String, String> imagePaths = {
       'Ibuprofen': 'assets/images/ibuprofen.png',

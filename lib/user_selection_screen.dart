@@ -33,7 +33,7 @@ class UserSelectionScreen extends StatelessWidget {
                 children: [
                   // Title
                   Text(
-                    "Are you an RFID user?",
+                    "Are you an VendoCard user?",
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -44,7 +44,7 @@ class UserSelectionScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   // Subtitle
                   Text(
-                    "Scan your RFID card to access your account and earn points.\nOr continue as guest to skip login.",
+                    "Scan your VendoCard to access your account and earn points.\nOr continue as guest to skip login.",
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.white.withOpacity(0.8),
@@ -80,7 +80,7 @@ class UserSelectionScreen extends StatelessWidget {
                         size: 36, // Increased icon size
                       ),
                       label: const Text(
-                        "I Have RFID",
+                        "I Have VendoCard",
                         style: TextStyle(
                           fontSize: 26, // Increased font size for button text
                           color: Color(0xFF0D2A5E),
