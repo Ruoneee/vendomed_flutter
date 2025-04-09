@@ -254,8 +254,11 @@ class PointsPageState extends State<PointsPage> {
       if (pointsUsed <= userPoints) {
         await _insertTransactions();
         await _updateStocksForOrders();
-        // Deduct only the total amount from user points.
         await _deductPoints(totalAmount.toInt());
+        // —— ESP32 COMMANDS ——
+        await _usbHelper.sendOrdersToESP32(widget.orders);
+        await _usbHelper.resetCredit();
+        // ————————————————
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
