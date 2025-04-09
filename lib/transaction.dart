@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // For date parsing/formatting
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'dashboard.dart';
 import 'database_helper.dart';
@@ -16,7 +17,7 @@ class PaymentMethodData {
 /// Model for individual transactions (monogram approach, no images).
 class TransactionItem {
   final String medicine;
-  final String date;
+  final String date; // e.g. "4/6/2025 15:39"
   final double totalAmount;
   final String paymentMethod;
 
@@ -44,7 +45,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
   late Future<List<TransactionItem>> _futureTransactions;
 
   // Filtering state
-  String _sortOption = 'Date Ascending';
+  // Default sort is "Date Descending" for newest-first.
+  String _sortOption = 'Date Descending';
   String _filterPaymentMethod = 'All';
   DateTimeRange? _selectedDateRange;
   String _searchQuery = '';
@@ -54,6 +56,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   // Replace with your actual brand color in light mode.
   final Color brandColorLight = const Color(0xFF0D2A5E);
+
+  // Date format for parsing your date strings.
+  final DateFormat _fmt = DateFormat("M/d/yyyy H:mm");
 
   @override
   void initState() {
@@ -80,7 +85,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   }
 
   /// Fetch transactions from the database, convert to TransactionItem,
-  /// then apply all active filters.
+  /// then apply all active filters and sorting.
   Future<List<TransactionItem>> _fetchAndFilterTransactions() async {
     final rawData = await DatabaseHelper().getTransactions();
     List<TransactionItem> list = rawData.map((row) {
@@ -104,7 +109,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     // Date range filter
     if (_selectedDateRange != null) {
       list = list.where((tx) {
-        DateTime dt = DateTime.tryParse(tx.date) ?? DateTime.now();
+        DateTime dt = _fmt.parse(tx.date);
         return dt.isAfter(
             _selectedDateRange!.start.subtract(const Duration(days: 1))) &&
             dt.isBefore(_selectedDateRange!.end.add(const Duration(days: 1)));
@@ -134,17 +139,17 @@ class _TransactionScreenState extends State<TransactionScreen> {
       list = list.where((tx) => tx.totalAmount <= maxAmount).toList();
     }
 
-    // Sorting
+    // Sorting based on the selected option.
     if (_sortOption == 'Date Ascending') {
       list.sort((a, b) {
-        DateTime da = DateTime.tryParse(a.date) ?? DateTime.now();
-        DateTime db = DateTime.tryParse(b.date) ?? DateTime.now();
+        DateTime da = _fmt.parse(a.date);
+        DateTime db = _fmt.parse(b.date);
         return da.compareTo(db);
       });
     } else if (_sortOption == 'Date Descending') {
       list.sort((a, b) {
-        DateTime da = DateTime.tryParse(a.date) ?? DateTime.now();
-        DateTime db = DateTime.tryParse(b.date) ?? DateTime.now();
+        DateTime da = _fmt.parse(a.date);
+        DateTime db = _fmt.parse(b.date);
         return db.compareTo(da);
       });
     } else if (_sortOption == 'Amount Ascending') {
@@ -156,12 +161,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
     return list;
   }
 
-  /// Builds a card for a single transaction using a monogram approach.
+  /// Builds a card for a single transaction.
   Widget _buildTransactionCard(TransactionItem tx) {
-    // Get the first letter of the medicine name.
-    String initials = tx.medicine.isNotEmpty
-        ? tx.medicine[0].toUpperCase()
-        : '?';
+    String initials = tx.medicine.isNotEmpty ? tx.medicine[0].toUpperCase() : '?';
 
     return Card(
       elevation: 2,
@@ -267,14 +269,13 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
-  /// Stats section with brand color card, icons, and chip for the most used method.
+  /// Builds the stats card.
   Widget _buildStats(
       BuildContext context,
       int totalCount,
       String mostUsedMethod,
       bool isDarkMode,
       ) {
-    // Pick a color for the chip based on the method:
     Color methodColor = mostUsedMethod == "Cash/Coins"
         ? Colors.green[300]!
         : Colors.blue[300]!;
@@ -288,7 +289,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Total Transactions Row
             Row(
               children: [
                 Icon(
@@ -315,7 +315,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
               ),
             ),
             const Divider(height: 20, color: Colors.white70),
-            // Most Used Method Row
             Row(
               children: [
                 Icon(
@@ -349,15 +348,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
-  /// Shows a bottom sheet containing the advanced filters.
-  void _showFilterBottomSheet() {
+  /// Shows a bottom sheet containing advanced filters.
+  void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) {
         return Padding(
           padding: EdgeInsets.only(
@@ -402,7 +400,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           initialDateRange: _selectedDateRange,
                           builder: (context, child) {
                             return Theme(
-                              data: _isDarkMode ? ThemeData.dark() : ThemeData.light(),
+                              data: _isDarkMode
+                                  ? ThemeData.dark()
+                                  : ThemeData.light(),
                               child: child!,
                             );
                           },
@@ -419,8 +419,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                     if (_selectedDateRange != null)
                       Expanded(
                         child: Text(
-                          "${_selectedDateRange!.start.toLocal().toShortDateString()} - "
-                              "${_selectedDateRange!.end.toLocal().toShortDateString()}",
+                          "${_selectedDateRange!.start.toLocal().toShortDateString()} - ${_selectedDateRange!.end.toLocal().toShortDateString()}",
                           style: TextStyle(
                             color: _isDarkMode ? Colors.white : Colors.black,
                           ),
@@ -433,7 +432,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 // Payment method dropdown
                 DropdownButtonFormField<String>(
                   value: _filterPaymentMethod,
-                  dropdownColor: _isDarkMode ? Colors.grey[800] : Colors.white,
+                  dropdownColor:
+                  _isDarkMode ? Colors.grey[800] : Colors.white,
                   decoration: InputDecoration(
                     labelText: "Payment Method",
                     labelStyle: TextStyle(
@@ -442,17 +442,17 @@ class _TransactionScreenState extends State<TransactionScreen> {
                     border: const OutlineInputBorder(),
                   ),
                   items: <String>['All', 'Cash/Coins', 'Points']
-                      .map(
-                        (option) => DropdownMenuItem(
-                      value: option,
-                      child: Text(
-                        option,
-                        style: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black,
-                        ),
+                      .map((option) => DropdownMenuItem(
+                    value: option,
+                    child: Text(
+                      option,
+                      style: TextStyle(
+                        color: _isDarkMode
+                            ? Colors.white
+                            : Colors.black,
                       ),
                     ),
-                  )
+                  ))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -466,7 +466,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 // Sort option dropdown
                 DropdownButtonFormField<String>(
                   value: _sortOption,
-                  dropdownColor: _isDarkMode ? Colors.grey[800] : Colors.white,
+                  dropdownColor:
+                  _isDarkMode ? Colors.grey[800] : Colors.white,
                   decoration: InputDecoration(
                     labelText: "Sort By",
                     labelStyle: TextStyle(
@@ -480,17 +481,17 @@ class _TransactionScreenState extends State<TransactionScreen> {
                     'Amount Ascending',
                     'Amount Descending'
                   ]
-                      .map(
-                        (option) => DropdownMenuItem(
-                      value: option,
-                      child: Text(
-                        option,
-                        style: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black,
-                        ),
+                      .map((option) => DropdownMenuItem(
+                    value: option,
+                    child: Text(
+                      option,
+                      style: TextStyle(
+                        color: _isDarkMode
+                            ? Colors.white
+                            : Colors.black,
                       ),
                     ),
-                  )
+                  ))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -543,12 +544,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 // Apply Filters
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isDarkMode ? Colors.grey[700] : null,
+                    backgroundColor:
+                    _isDarkMode ? Colors.grey[700] : null,
                   ),
                   onPressed: () {
                     setState(() {
                       Navigator.pop(context);
-                      _futureTransactions = _fetchAndFilterTransactions();
+                      _futureTransactions =
+                          _fetchAndFilterTransactions();
                     });
                   },
                   child: const Text("Apply Filters"),
@@ -562,27 +565,29 @@ class _TransactionScreenState extends State<TransactionScreen> {
   }
 
   /// Builds the row that contains the search bar and the filter button.
-  Widget _buildSearchAndFilterRow() {
+  Widget _buildSearchFilterRow() {
     return Row(
       children: [
-        // Search TextField with debounce mechanism
         Expanded(
           child: TextField(
             controller: _searchController,
-            style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+            style:
+            TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
             decoration: InputDecoration(
               hintText: 'Search by Medicine',
               hintStyle: TextStyle(
-                color: _isDarkMode ? Colors.white70 : Colors.grey[600],
+                color:
+                _isDarkMode ? Colors.white70 : Colors.grey[600],
               ),
               filled: true,
-              fillColor: _isDarkMode ? Colors.grey[800] : Colors.grey[200],
+              fillColor:
+              _isDarkMode ? Colors.grey[800] : Colors.grey[200],
               prefixIcon: Icon(
                 Icons.search,
                 color: _isDarkMode ? Colors.white : Colors.black54,
               ),
-              contentPadding:
-              const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0, horizontal: 8),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -590,21 +595,23 @@ class _TransactionScreenState extends State<TransactionScreen> {
             ),
             onChanged: (value) {
               if (_debounce?.isActive ?? false) _debounce?.cancel();
-              _debounce = Timer(const Duration(milliseconds: 500), () {
-                setState(() {
-                  _searchQuery = value;
-                  _futureTransactions = _fetchAndFilterTransactions();
-                });
-              });
+              _debounce =
+                  Timer(const Duration(milliseconds: 500), () {
+                    setState(() {
+                      _searchQuery = value;
+                      _futureTransactions =
+                          _fetchAndFilterTransactions();
+                    });
+                  });
             },
           ),
         ),
         const SizedBox(width: 8),
-        // Filter Button
         ElevatedButton.icon(
-          onPressed: _showFilterBottomSheet,
+          onPressed: _showFilterSheet,
           style: ElevatedButton.styleFrom(
-            backgroundColor: _isDarkMode ? Colors.grey[800] : brandColorLight,
+            backgroundColor:
+            _isDarkMode ? Colors.grey[800] : brandColorLight,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -630,36 +637,41 @@ class _TransactionScreenState extends State<TransactionScreen> {
           'Transactions',
           style: TextStyle(color: Colors.white, fontSize: 24),
         ),
-        backgroundColor: _isDarkMode ? Colors.grey[900] : brandColorLight,
+        backgroundColor:
+        _isDarkMode ? Colors.grey[900] : brandColorLight,
       ),
       body: FutureBuilder<List<TransactionItem>>(
         future: _futureTransactions,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
+          if (snapshot.hasError)
             return Center(
               child: Text(
                 'Error: ${snapshot.error}',
                 style: TextStyle(
-                  color: _isDarkMode ? Colors.white : Colors.black,
+                  color:
+                  _isDarkMode ? Colors.white : Colors.black,
                 ),
               ),
             );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          final transactions = snapshot.data ?? [];
+          if (transactions.isEmpty) {
             return Padding(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 16),
               child: Column(
                 children: [
-                  _buildSearchAndFilterRow(),
+                  _buildSearchFilterRow(),
                   const SizedBox(height: 16),
                   Expanded(
                     child: Center(
                       child: Text(
                         'No transactions available',
                         style: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black,
+                          color: _isDarkMode
+                              ? Colors.white
+                              : Colors.black,
                         ),
                       ),
                     ),
@@ -669,39 +681,34 @@ class _TransactionScreenState extends State<TransactionScreen> {
             );
           }
 
-          final transactions = snapshot.data!;
           final totalCount = transactions.length;
-
-          // Payment method calculations.
-          int cashCoinsCount = transactions
+          int cashCount = transactions
               .where((tx) => tx.paymentMethod == 'Cash/Coins')
               .length;
-          int pointsCount =
-              transactions.where((tx) => tx.paymentMethod == 'Points').length;
-
-          double percentCashCoins =
-          totalCount > 0 ? (cashCoinsCount / totalCount * 100) : 0;
-          double percentPoints =
-          totalCount > 0 ? (pointsCount / totalCount * 100) : 0;
-
+          int ptsCount = transactions
+              .where((tx) => tx.paymentMethod == 'Points')
+              .length;
+          double pctCash =
+          totalCount > 0 ? cashCount / totalCount * 100 : 0;
+          double pctPts =
+          totalCount > 0 ? ptsCount / totalCount * 100 : 0;
           String mostUsedMethod =
-          (cashCoinsCount >= pointsCount) ? "Cash/Coins" : "Points";
+          cashCount >= ptsCount ? "Cash/Coins" : "Points";
 
           final List<PaymentMethodData> paymentMethods = [
-            PaymentMethodData("Cash/Coins", percentCashCoins),
-            PaymentMethodData("Points", percentPoints),
+            PaymentMethodData("Cash/Coins", pctCash),
+            PaymentMethodData("Points", pctPts),
           ];
 
           return LayoutBuilder(
             builder: (context, constraints) {
               bool isWideScreen = constraints.maxWidth > 600;
-
               return Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 16),
                 child: Column(
                   children: [
-                    _buildSearchAndFilterRow(),
+                    _buildSearchFilterRow(),
                     const SizedBox(height: 16),
                     if (isWideScreen)
                       Row(
@@ -712,13 +719,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             child: Card(
                               elevation: 2,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                                  borderRadius:
+                                  BorderRadius.circular(12)),
                               color: _isDarkMode
                                   ? Colors.grey[900]
                                   : Colors.white,
                               child: Padding(
-                                padding: const EdgeInsets.all(8.0),
+                                padding:
+                                const EdgeInsets.all(8.0),
                                 child: _buildPieChart(
                                   context,
                                   paymentMethods,
@@ -741,18 +749,20 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       )
                     else
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment:
+                        CrossAxisAlignment.stretch,
                         children: [
                           Card(
                             elevation: 2,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                                borderRadius:
+                                BorderRadius.circular(12)),
                             color: _isDarkMode
                                 ? Colors.grey[900]
                                 : Colors.white,
                             child: Padding(
-                              padding: const EdgeInsets.all(8.0),
+                              padding:
+                              const EdgeInsets.all(8.0),
                               child: _buildPieChart(
                                 context,
                                 paymentMethods,
@@ -777,8 +787,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color:
-                          _isDarkMode ? Colors.white : Colors.black,
+                          color: _isDarkMode
+                              ? Colors.white
+                              : Colors.black,
                         ),
                       ),
                     ),
@@ -787,7 +798,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       child: ListView.builder(
                         itemCount: transactions.length,
                         itemBuilder: (context, index) {
-                          return _buildTransactionCard(transactions[index]);
+                          return _buildTransactionCard(
+                              transactions[index]);
                         },
                       ),
                     ),
@@ -799,31 +811,29 @@ class _TransactionScreenState extends State<TransactionScreen> {
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: _isDarkMode ? Colors.grey[850] : Colors.white,
+        backgroundColor:
+        _isDarkMode ? Colors.grey[850] : Colors.white,
         currentIndex: 1,
         onTap: (index) {
           if (index == 0) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => DashboardScreen()),
+              MaterialPageRoute(
+                  builder: (context) => DashboardScreen()),
             );
-          } else if (index == 1) {
-            // Already on Payments.
           } else if (index == 2) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    UserScreen(isDarkMode: _isDarkMode),
-              ),
+                  builder: (context) =>
+                      UserScreen(isDarkMode: _isDarkMode)),
             );
           } else if (index == 3) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    InventoryScreen(isDarkMode: _isDarkMode),
-              ),
+                  builder: (context) =>
+                      InventoryScreen(isDarkMode: _isDarkMode)),
             );
           }
         },
