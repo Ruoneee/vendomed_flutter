@@ -17,7 +17,7 @@ class PaymentMethodData {
 /// Model for individual transactions (monogram approach, no images).
 class TransactionItem {
   final String medicine;
-  final String date; // e.g. "4/6/2025 15:39"
+  final String date; // e.g. "2025-04-04 12:05:00"
   final double totalAmount;
   final String paymentMethod;
 
@@ -57,8 +57,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
   // Replace with your actual brand color in light mode.
   final Color brandColorLight = const Color(0xFF0D2A5E);
 
-  // Date format for parsing your date strings.
-  final DateFormat _fmt = DateFormat("M/d/yyyy H:mm");
+  // Updated Date format to parse dates from the database.
+  final DateFormat _fmt = DateFormat("yyyy-MM-dd HH:mm:ss");
 
   @override
   void initState() {
@@ -390,7 +390,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   children: [
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isDarkMode ? Colors.grey[800] : null,
+                        backgroundColor:
+                        _isDarkMode ? Colors.grey[800] : null,
                       ),
                       onPressed: () async {
                         DateTimeRange? picked = await showDateRangePicker(
@@ -550,8 +551,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   onPressed: () {
                     setState(() {
                       Navigator.pop(context);
-                      _futureTransactions =
-                          _fetchAndFilterTransactions();
+                      _futureTransactions = _fetchAndFilterTransactions();
                     });
                   },
                   child: const Text("Apply Filters"),
