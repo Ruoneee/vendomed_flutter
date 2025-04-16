@@ -4,6 +4,7 @@ import 'payment_method.dart';
 import 'payment.dart'; // <-- Import your PaymentPage here
 import 'database_helper.dart';
 import 'dart:async';
+import 'package:intl/intl.dart';  // Needed for date formatting
 
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
@@ -20,6 +21,9 @@ class MedicineMenu extends StatefulWidget {
 }
 
 class MedicineMenuState extends State<MedicineMenu> {
+  // In-memory tracking of each RFID user's last purchase date.
+  static final Map<String, DateTime> _rfidLastPurchaseDate = {};
+
   List<Map<String, String>> orders = [];
   String _userName = "";
   String _userPoints = "0";
@@ -29,9 +33,22 @@ class MedicineMenuState extends State<MedicineMenu> {
   // Tracks tap animation states.
   Map<String, bool> _isTapped = {};
 
+  final Map<String, Map<String, int>> dailyLimits = {
+    'Ibuprofen':    {'maxPacks': 1, 'packSize': 1},
+    'Cetirizine':   {'maxPacks': 1, 'packSize': 1},
+    'Paracetamol':  {'maxPacks': 1, 'packSize': 1},
+    'Loperamide':   {'maxPacks': 1, 'packSize': 1},
+    'Antacid':      {'maxPacks': 1, 'packSize': 1},
+    'Buscopan':     {'maxPacks': 1, 'packSize': 1},
+  };
+
+  Map<String, int> dailyOrderCounts = {};
+  DateTime? lastOrderDate;
+
   @override
   void initState() {
     super.initState();
+    _resetDailyIfNeeded(); // Reset daily counters if day changes.
     if (widget.existingOrders != null) {
       orders = List.from(widget.existingOrders!);
     }
@@ -47,7 +64,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _startStockListener() {
-    // Refresh the medicines every 2 seconds.
+    // Refresh the list of medicines every 2 seconds.
     _stockUpdateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _fetchMedicines();
     });
@@ -68,7 +85,7 @@ class MedicineMenuState extends State<MedicineMenu> {
           _userName = result.first['NAME']?.toString() ?? widget.rfidData;
           _userPoints = result.first['POINTS']?.toString() ?? '0';
         } else {
-          // If no user found, treat them as Guest.
+          // If no user is found, treat them as Guest.
           _userName = widget.rfidData;
           _userPoints = '0';
         }
@@ -116,7 +133,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     return imagePaths[productName] ?? '';
   }
 
-  /// Opens a centered dialog with detailed product info.
+  /// Opens a dialog with detailed product info.
   void _openMedicineDetail(String productName, String amountStr, String imagePath, int stockCount) {
     final Map<String, Map<String, String>> detailsMap = {
       'Ibuprofen': {
@@ -185,15 +202,231 @@ class MedicineMenuState extends State<MedicineMenu> {
               ingredients: medicineDetail['ingredients']!,
               warnings: medicineDetail['warnings']!,
               additionalMedia: medicineDetail['additionalMedia']!,
-              onAddToCart: (int quantity) {
+              onAddToCart: (int quantity) async {
                 Navigator.pop(context);
-                _addToOrder(productName, amountStr, quantity);
+                await _addToOrder(productName, amountStr, quantity);
               },
             ),
           ),
         );
       },
     );
+  }
+
+  // *******************************************************
+  // Reset the daily order counts if a new day has begun.
+  void _resetDailyIfNeeded() {
+    DateTime today = DateTime.now();
+    if (lastOrderDate == null ||
+        lastOrderDate!.year != today.year ||
+        lastOrderDate!.month != today.month ||
+        lastOrderDate!.day != today.day) {
+      dailyOrderCounts.clear();
+      lastOrderDate = today;
+    }
+  }
+  // *******************************************************
+
+  /// Checks if the current RFID user has already purchased any medicine today.
+  /// This method queries the transactions table using the new 'user_rfid' column.
+  Future<bool> _hasPurchasedMedicineToday() async {
+    final String today = DateFormat("yyyy-MM-dd").format(DateTime.now());
+    final db = await DatabaseHelper().db;
+    final List<Map<String, dynamic>> results = await db.query(
+      'transactions',
+      where: 'user_rfid = ? AND date LIKE ?',
+      whereArgs: [widget.rfidData, '$today%'],
+    );
+    return results.isNotEmpty;
+  }
+
+  // *******************************************************
+  // _addToOrder: Limits RFID users to one medicine purchase per day.
+  Future<void> _addToOrder(String productName, String unitPriceStr, int quantity) async {
+    // Determine if the user is an RFID user.
+    if (_userName != widget.rfidData) { // RFID user branch.
+      DateTime today = DateTime.now();
+
+      // Check the in-memory flag.
+      if (_rfidLastPurchaseDate.containsKey(widget.rfidData)) {
+        DateTime lastPurchase = _rfidLastPurchaseDate[widget.rfidData]!;
+        if (lastPurchase.year == today.year &&
+            lastPurchase.month == today.month &&
+            lastPurchase.day == today.day) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Daily limit reached. You have already purchased a medicine today."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      // Also check the transactions table in case a completed order exists.
+      bool purchasedToday = await _hasPurchasedMedicineToday();
+      if (purchasedToday) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Daily limit reached. You have already purchased a medicine today."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Additionally, if there is already an item in the local cart, block further additions.
+      if (orders.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("RFID Users are limited to 1 medicine purchase per day."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Check that the medicine is available.
+      final int medicineIndex = medicines.indexWhere((m) => m['product_name'] == productName);
+      if (medicineIndex == -1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("$productName not found in stock list."), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      final int availableStock = medicines[medicineIndex]['count'] ?? 0;
+      if (availableStock < 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Out of stock!"), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
+      // Record this purchase in-memory for the RFID.
+      _rfidLastPurchaseDate[widget.rfidData] = today;
+      // Add the order to the local orders list.
+      orders.add({
+        'name': productName,
+        'quantity': quantity.toString(),
+        'price': (unitPrice * quantity).toStringAsFixed(2),
+      });
+    } else {
+      // Guest user logic with per-product limits.
+      if (dailyLimits.containsKey(productName)) {
+        int maxPacks = dailyLimits[productName]!['maxPacks']!;
+        int packSize = dailyLimits[productName]!['packSize']!;
+        int packsToAdd = (quantity / packSize).ceil();
+        int currentPacks = dailyOrderCounts[productName] ?? 0;
+        if ((currentPacks + packsToAdd) > maxPacks) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Daily limit for $productName reached. You can only order $maxPacks pack per day."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      final int medicineIndex = medicines.indexWhere((m) => m['product_name'] == productName);
+      if (medicineIndex == -1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("$productName not found in stock list."), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      final int availableStock = medicines[medicineIndex]['count'] ?? 0;
+      final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
+      final int existingIndex = orders.indexWhere((item) => item['name'] == productName);
+      if (existingIndex != -1) {
+        final int currentQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
+        final int newQuantity = currentQuantity + quantity;
+        if (dailyLimits.containsKey(productName)) {
+          int packSize = dailyLimits[productName]!['packSize']!;
+          int maxPacks = dailyLimits[productName]!['maxPacks']!;
+          int currentPacks = (currentQuantity / packSize).ceil();
+          int newPacks = (newQuantity / packSize).ceil();
+          if (newPacks > maxPacks) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Daily limit for $productName reached. You can only order $maxPacks pack per day."),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+        } else if (newQuantity > availableStock) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Only $availableStock pieces available for $productName."), backgroundColor: Colors.red),
+          );
+          return;
+        }
+        final double newTotalPrice = unitPrice * newQuantity;
+        orders[existingIndex]['quantity'] = newQuantity.toString();
+        orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
+      } else {
+        if (availableStock < 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Out of stock!"), backgroundColor: Colors.red),
+          );
+          return;
+        }
+        orders.add({
+          'name': productName,
+          'quantity': quantity.toString(),
+          'price': (unitPrice * quantity).toStringAsFixed(2),
+        });
+      }
+
+      if (dailyLimits.containsKey(productName)) {
+        int packSize = dailyLimits[productName]!['packSize']!;
+        int packsOrdered = (quantity / packSize).ceil();
+        dailyOrderCounts[productName] = (dailyOrderCounts[productName] ?? 0) + packsOrdered;
+      }
+    }
+  }
+  // *******************************************************
+
+  void _resetOrders() {
+    setState(() {
+      orders.clear();
+    });
+  }
+
+  void _proceedToCheckout() {
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No orders placed. Please add items to cart."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    List<Map<String, String>> ordersCopy = List.from(orders);
+    if (_userName == widget.rfidData) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentPage(
+            orders: ordersCopy,
+            rfidData: widget.rfidData,
+            medicinesToBeDisabled: const [],
+          ),
+        ),
+      ).then((_) => setState(() => orders.clear()));
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentMethodPage(
+            orders: ordersCopy,
+            rfidData: widget.rfidData,
+          ),
+        ),
+      ).then((_) => setState(() => orders.clear()));
+    }
   }
 
   @override
@@ -251,7 +484,6 @@ class MedicineMenuState extends State<MedicineMenu> {
           ),
           child: CustomScrollView(
             slivers: [
-              // VendoPoints container (if user is not a guest).
               if (_userName != widget.rfidData)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -280,11 +512,10 @@ class MedicineMenuState extends State<MedicineMenu> {
                     ),
                   ),
                 ),
-              // Pinned "Your Orders" section (header + orders container).
               SliverPersistentHeader(
                 pinned: true,
                 delegate: OrdersHeaderDelegate(
-                  height: 170, // Adjust to ensure no overflow
+                  height: 170,
                   child: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -296,10 +527,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                         end: Alignment.bottomCenter,
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 8.0,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -374,11 +602,9 @@ class MedicineMenuState extends State<MedicineMenu> {
                   ),
                 ),
               ),
-              // Spacer after pinned orders.
               SliverToBoxAdapter(child: const SizedBox(height: 16)),
-              // Medicines grid or loading indicator.
               if (medicines.isEmpty)
-                SliverToBoxAdapter(
+                const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator()),
                 )
               else
@@ -405,9 +631,7 @@ class MedicineMenuState extends State<MedicineMenu> {
                     ),
                   ),
                 ),
-              // Spacer.
               SliverToBoxAdapter(child: const SizedBox(height: 20)),
-              // Row with RESET and CHECKOUT buttons.
               SliverToBoxAdapter(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -437,7 +661,6 @@ class MedicineMenuState extends State<MedicineMenu> {
                   ],
                 ),
               ),
-              // Spacer.
               SliverToBoxAdapter(child: const SizedBox(height: 16)),
             ],
           ),
@@ -522,95 +745,6 @@ class MedicineMenuState extends State<MedicineMenu> {
       ),
     );
   }
-
-  // Accepts the selected quantity from the detail modal.
-  void _addToOrder(String productName, String unitPriceStr, int quantity) {
-    final medicineIndex = medicines.indexWhere((m) => m['product_name'] == productName);
-    if (medicineIndex == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("$productName not found in stock list."), backgroundColor: Colors.red),
-      );
-      return;
-    }
-    final int availableStock = medicines[medicineIndex]['count'] ?? 0;
-    setState(() {
-      final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-      final existingIndex = orders.indexWhere((item) => item['name'] == productName);
-      if (existingIndex != -1) {
-        final int currentQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
-        final int newQuantity = currentQuantity + quantity;
-        if (newQuantity > 13) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Maximum of 13 pieces allowed for $productName."), backgroundColor: Colors.red),
-          );
-          return;
-        }
-        if (newQuantity > availableStock) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Only $availableStock pieces available for $productName."), backgroundColor: Colors.red),
-          );
-          return;
-        }
-        final double newTotalPrice = unitPrice * newQuantity;
-        orders[existingIndex]['quantity'] = newQuantity.toString();
-        orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
-      } else {
-        if (availableStock < 1) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Out of stock!"), backgroundColor: Colors.red),
-          );
-          return;
-        }
-        orders.add({
-          'name': productName,
-          'quantity': quantity.toString(),
-          'price': (unitPrice * quantity).toStringAsFixed(2),
-        });
-      }
-    });
-  }
-
-  void _resetOrders() {
-    setState(() {
-      orders.clear();
-    });
-  }
-
-  void _proceedToCheckout() {
-    if (orders.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("No orders placed. Please add items to cart."),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    List<Map<String, String>> ordersCopy = List.from(orders);
-    if (_userName == widget.rfidData) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaymentPage(
-            orders: ordersCopy,
-            rfidData: widget.rfidData,
-            medicinesToBeDisabled: const [],
-          ),
-        ),
-      ).then((_) => setState(() => orders.clear()));
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaymentMethodPage(
-            orders: ordersCopy,
-            rfidData: widget.rfidData,
-          ),
-        ),
-      ).then((_) => setState(() => orders.clear()));
-    }
-  }
 }
 
 class OrdersHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -645,7 +779,7 @@ class MedicineDetailModal extends StatefulWidget {
   final String ingredients;
   final String warnings;
   final String additionalMedia;
-  final Function(int) onAddToCart;
+  final Future<void> Function(int) onAddToCart;
 
   const MedicineDetailModal({
     Key? key,
