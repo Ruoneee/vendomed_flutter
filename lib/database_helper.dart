@@ -43,7 +43,7 @@ class DatabaseHelper {
     }
 
     try {
-      // Bump version to 2 so that _onUpgrade is triggered if needed.
+      // Bump version to 2 so that _onUpgrade is triggered if needed
       final database = await openDatabase(
         path,
         version: 2,
@@ -61,14 +61,13 @@ class DatabaseHelper {
   // Copy vendomed.db from the assets folder to the specified local path.
   Future<void> _copyDatabaseFromAssets(String path) async {
     ByteData data = await rootBundle.load("assets/vendomed.db");
-    List<int> bytes =
-    data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     await File(path).writeAsBytes(bytes, flush: true);
   }
 
   // Called when the database is created for the first time.
   Future _onCreate(Database db, int version) async {
-    // Create the transactions table with the new user_rfid column.
+    // Create the transactions table if needed.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
         transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,16 +75,14 @@ class DatabaseHelper {
         quantity INTEGER NOT NULL,
         unit_price NUMERIC NOT NULL,
         total_amount NUMERIC NOT NULL,
-        amount_inserted NUMERIC NOT NULL,
         date TEXT NOT NULL,
         payment_method TEXT NOT NULL CHECK (payment_method IN ('GCash', 'Cash/Coins')),
-        user_rfid TEXT,
         user_type TEXT NOT NULL CHECK (user_type IN ('RFID User', 'Guest'))
       )
     ''');
-    print("Transactions table created in onCreate with user_rfid column");
+    print("Transactions table created in onCreate");
 
-    // Create the users table.
+    // Create the users table if it doesn't exist.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,7 +108,7 @@ class DatabaseHelper {
     ''');
     print("Stocks table created in onCreate");
 
-    // Create the batch_expiry table.
+    // Create the batch_expiry table if it doesn't exist.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS batch_expiry (
         batch_expiry_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,15 +125,7 @@ class DatabaseHelper {
   // Called when the database version is upgraded (e.g., from 1 to 2).
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Alter the transactions table to add the user_rfid column if it doesn't exist.
-      try {
-        await db.execute('ALTER TABLE transactions ADD COLUMN user_rfid TEXT');
-        print("user_rfid column added to transactions in onUpgrade");
-      } catch (e) {
-        print("Error while adding user_rfid column: $e");
-      }
-
-      // Create the batch_expiry table if it doesn't exist (for completeness).
+      // Create batch_expiry table if it doesn't exist
       await db.execute('''
         CREATE TABLE IF NOT EXISTS batch_expiry (
           batch_expiry_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -273,19 +262,19 @@ class DatabaseHelper {
 
   // ========== BATCH_EXPIRY TABLE METHODS ==========
 
-  // Insert a new record into batch_expiry.
+  // Insert a new record into batch_expiry
   Future<int> insertBatchExpiry(Map<String, dynamic> data) async {
     final database = await db;
     return await database.insert('batch_expiry', data);
   }
 
-  // Get all expiry records.
+  // Get all expiry records
   Future<List<Map<String, dynamic>>> getAllBatchExpiry() async {
     final database = await db;
     return await database.query('batch_expiry');
   }
 
-  // Get expiry records by batch_id.
+  // Get expiry records by batch_id
   Future<List<Map<String, dynamic>>> getBatchExpiryByBatchId(int batchId) async {
     final database = await db;
     return await database.query(
@@ -295,7 +284,7 @@ class DatabaseHelper {
     );
   }
 
-  // Update a record by batch_expiry_id.
+  // Update a record by batch_expiry_id
   Future<int> updateBatchExpiry(int batchExpiryId, Map<String, dynamic> data) async {
     final database = await db;
     return await database.update(
@@ -306,7 +295,7 @@ class DatabaseHelper {
     );
   }
 
-  // Delete a record by batch_expiry_id.
+  // Delete a record by batch_expiry_id
   Future<int> deleteBatchExpiry(int batchExpiryId) async {
     final database = await db;
     return await database.delete(
@@ -322,6 +311,7 @@ class DatabaseHelper {
   Future<int> getRowCount(String tableName) async {
     final database = await db;
     final result = await database.rawQuery('SELECT COUNT(*) as count FROM $tableName');
+    // result.first['count'] is expected to be an int or can be converted to int.
     return result.first['count'] is int
         ? result.first['count'] as int
         : int.tryParse(result.first['count'].toString()) ?? 0;
