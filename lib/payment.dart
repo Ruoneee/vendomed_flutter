@@ -336,15 +336,17 @@ class PaymentPageState extends State<PaymentPage> {
               if (Navigator.canPop(context)) {
                 Navigator.of(context).pop();
               }
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ConfirmationScreen(
-                    orders: widget.orders,
-                    totalPrice: totalAmount,
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ConfirmationScreen(
+                      orders:           widget.orders,
+                      totalPrice:       totalAmount,
+                      isRegisteredUser: _userName != widget.rfidData,
+                      paymentMethod:    'Cash/Coins',
+                    ),
                   ),
-                ),
-              );
+                );
             });
             return AlertDialog(
               shape: RoundedRectangleBorder(
@@ -376,16 +378,18 @@ class PaymentPageState extends State<PaymentPage> {
           },
         );
       } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ConfirmationScreen(
-              orders: widget.orders,
-              totalPrice: totalAmount,
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ConfirmationScreen(
+                orders:           widget.orders,
+                totalPrice:       totalAmount,
+                isRegisteredUser: _userName != widget.rfidData,
+                paymentMethod:    'Cash/Coins',
+              ),
             ),
-          ),
-        );
-      }
+          );
+        };
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr("insufficient"))),

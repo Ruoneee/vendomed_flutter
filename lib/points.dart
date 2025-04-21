@@ -271,6 +271,9 @@ class PointsPageState extends State<PointsPage> {
             builder: (context) => ConfirmationScreen(
               orders: widget.orders,
               totalPrice: totalAmount,
+              // ← add these:
+              isRegisteredUser: true,
+              paymentMethod:    'Points',
             ),
           ),
         );
@@ -344,9 +347,11 @@ class PointsPageState extends State<PointsPage> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MedicineMenu(
-                    rfidData: widget.rfidData,
-                    existingOrders: widget.orders,
+                  builder: (_) => ConfirmationScreen(
+                    orders:           widget.orders,
+                    totalPrice:       totalAmount,
+                    isRegisteredUser: _userName != widget.rfidData,
+                    paymentMethod:    'Points',
                   ),
                 ),
               );

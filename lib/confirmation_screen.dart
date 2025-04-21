@@ -7,11 +7,15 @@ import 'splash_screen.dart';
 class ConfirmationScreen extends StatefulWidget {
   final List<Map<String, String>> orders;
   final double totalPrice;
+  final bool isRegisteredUser;
+  final String paymentMethod;
 
   const ConfirmationScreen({
     Key? key,
     required this.orders,
     required this.totalPrice,
+    required this.isRegisteredUser,
+    required this.paymentMethod,
   }) : super(key: key);
 
   @override
@@ -168,7 +172,9 @@ class ConfirmationScreenState extends State<ConfirmationScreen> {
           const SizedBox(height: 20),
           _receiptLine("Date & Time:", formattedDateTime),
           _receiptLine("Type of Transaction:", "Purchased Order"),
-          _receiptLine("Biller:", "Cash/Coins"),
+          _receiptLine("User Type:",
+              widget.isRegisteredUser ? "RFID User" : "Guest User"),
+          _receiptLine("Biller:", widget.paymentMethod),
           const Divider(thickness: 1.5),
           // Items purchased (ordered medicine).
           const Text(

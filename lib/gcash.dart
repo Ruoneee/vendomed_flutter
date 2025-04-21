@@ -87,8 +87,10 @@ class GCashPaymentPage extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => ConfirmationScreen(
-          orders: orders,
-          totalPrice: _calculateTotalAmount(),
+          orders:           orders,
+          totalPrice:       _calculateTotalAmount(),
+          isRegisteredUser: true,       // GCash users must be registered
+          paymentMethod:    'GCash',    // or however you want to label it
         ),
       ),
     );
