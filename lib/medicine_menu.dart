@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'user_selection_screen.dart';
 import 'payment_method.dart';
-import 'payment.dart'; // <-- Import your PaymentPage here
+import 'payment.dart';
 import 'database_helper.dart';
 import 'dart:async';
 
@@ -29,6 +29,19 @@ class MedicineMenuState extends State<MedicineMenu> {
   // Tracks tap animation states.
   Map<String, bool> _isTapped = {};
 
+  // *** NEW: per‑day purchase caps ***
+  final Map<String, int> _dailyLimits = {
+    'Paracetamol': 4,
+    'Ibuprofen': 2,
+    'Cetirizine': 1,
+    'Loperamide': 3,
+    'Antacid': 3,
+    'Buscopan': 2,
+  };
+
+  // How many pcs of each medicine this user already bought today.
+  Map<String, int> _dailyPurchased = {};
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +50,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
     _loadUserNameAndPoints();
     _fetchMedicines();
+    _fetchDailyPurchasedCounts();
     _startStockListener();
   }
 
@@ -68,7 +82,6 @@ class MedicineMenuState extends State<MedicineMenu> {
           _userName = result.first['NAME']?.toString() ?? widget.rfidData;
           _userPoints = result.first['POINTS']?.toString() ?? '0';
         } else {
-          // If no user found, treat them as Guest.
           _userName = widget.rfidData;
           _userPoints = '0';
         }
@@ -104,6 +117,34 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
+  /// *** NEW: Sum up today's purchases per medicine ***
+  Future<void> _fetchDailyPurchasedCounts() async {
+    try {
+      final db = await DatabaseHelper().db;
+      // Adjust the table/column names as needed:
+      final today = DateTime.now();
+      final todayStr =
+          "${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+      final List<Map<String, dynamic>> rows = await db.rawQuery(
+        '''
+        SELECT product_name, SUM(quantity) AS totalQty
+        FROM orders
+        WHERE rfid = ?
+          AND date(order_timestamp) = ?
+        GROUP BY product_name
+        ''',
+        [widget.rfidData, todayStr],
+      );
+      setState(() {
+        _dailyPurchased = {
+          for (var r in rows) r['product_name'] as String: (r['totalQty'] as int)
+        };
+      });
+    } catch (e) {
+      debugPrint("Error fetching daily purchased counts: $e");
+    }
+  }
+
   String _getImagePath(String productName) {
     final Map<String, String> imagePaths = {
       'Ibuprofen': 'assets/images/ibuprofen.png',
@@ -116,8 +157,19 @@ class MedicineMenuState extends State<MedicineMenu> {
     return imagePaths[productName] ?? '';
   }
 
-  /// Opens a centered dialog with detailed product info.
-  void _openMedicineDetail(String productName, String amountStr, String imagePath, int stockCount) {
+  /// Opens a centered dialog with detailed product info and per‑day limits.
+  void _openMedicineDetail(
+      String productName,
+      String amountStr,
+      String imagePath,
+      int displayStock,    // real‑time stock (DB stock − in‑cart qty)
+      ) {
+    // Calculate how many this user has bought today and what's left
+    final int purchasedToday = _dailyPurchased[productName] ?? 0;
+    final int limit = _dailyLimits[productName] ?? 0;
+    final int dailyRemaining = (limit - purchasedToday).clamp(0, limit);
+
+    // Full details map
     final Map<String, Map<String, String>> detailsMap = {
       'Ibuprofen': {
         'dosage': 'Adults: 200-400 mg every 4-6 hours as needed, max 3200 mg/day. Take with food.',
@@ -157,6 +209,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       },
     };
 
+    // Fallback if we don't have details for this product
     final medicineDetail = detailsMap[productName] ?? {
       'dosage': 'No dosage information available.',
       'ingredients': 'No ingredients information available.',
@@ -164,29 +217,30 @@ class MedicineMenuState extends State<MedicineMenu> {
       'additionalMedia': '',
     };
 
+    // Show the dialog, passing both stocks and per‑day remaining
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (BuildContext context) {
-        double dialogWidth = MediaQuery.of(context).size.width * 0.9;
+      builder: (ctx) {
+        final dialogWidth = MediaQuery.of(ctx).size.width * 0.9;
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Container(
             width: dialogWidth,
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
-            ),
+            constraints:
+            BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.9),
             child: MedicineDetailModal(
               productName: productName,
               amountStr: amountStr,
               imagePath: imagePath,
-              stockCount: stockCount,
+              stockCount: displayStock,          // real‑time stock
               dosage: medicineDetail['dosage']!,
               ingredients: medicineDetail['ingredients']!,
               warnings: medicineDetail['warnings']!,
               additionalMedia: medicineDetail['additionalMedia']!,
-              onAddToCart: (int quantity) {
-                Navigator.pop(context);
+              dailyRemaining: dailyRemaining,    // per‑day allowance
+              onAddToCart: (quantity) {
+                Navigator.pop(ctx);
                 _addToOrder(productName, amountStr, quantity);
               },
             ),
@@ -446,44 +500,60 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
-  Widget _buildMedicineItem(String productName, String amountStr, String imagePath, int stockCount) {
-    final double imageHeight = MediaQuery.of(context).size.height * 0.18;
+  Widget _buildMedicineItem(
+      String productName,
+      String amountStr,
+      String imagePath,
+      int stockCount,
+      ) {
+    // How many of this medicine are already in the cart?
+    final cartIndex = orders.indexWhere((o) => o['name'] == productName);
+    final int inCart = cartIndex != -1
+        ? int.tryParse(orders[cartIndex]['quantity']!) ?? 0
+        : 0;
+    // New “real‑time” remaining stock
+    final int displayStock = (stockCount - inCart).clamp(0, stockCount);
+
+    // Your existing tap‑animation and theming:
     bool isTapped = _isTapped[productName] ?? false;
     final titleLarge = Theme.of(context).textTheme.titleLarge;
     final titleMedium = Theme.of(context).textTheme.titleMedium;
     final bodyMedium = Theme.of(context).textTheme.bodyMedium;
+    final int purchasedToday = _dailyPurchased[productName] ?? 0;
+    final int limit = _dailyLimits[productName] ?? 0;
+    final int dailyRemaining = (limit - purchasedToday).clamp(0, limit);
 
     return GestureDetector(
-      onTapDown: (_) {
-        setState(() {
-          _isTapped[productName] = true;
-        });
-      },
+      onTapDown: (_) => setState(() => _isTapped[productName] = true),
       onTapUp: (_) {
         Future.delayed(const Duration(milliseconds: 150), () {
-          setState(() {
-            _isTapped[productName] = false;
-          });
+          setState(() => _isTapped[productName] = false);
         });
-        if (stockCount > 0) {
-          _openMedicineDetail(productName, amountStr, imagePath, stockCount);
-        } else {
+
+        if (displayStock == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Out of stock!"), backgroundColor: Colors.red),
           );
+        } else if (_userName != widget.rfidData && dailyRemaining == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Daily limit reached for $productName ($limit pcs)."),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          _openMedicineDetail(productName, amountStr, imagePath, displayStock);
         }
       },
-      onTapCancel: () {
-        setState(() {
-          _isTapped[productName] = false;
-        });
-      },
+      onTapCancel: () => setState(() => _isTapped[productName] = false),
       child: AnimatedScale(
         scale: isTapped ? 0.95 : 1.0,
         duration: const Duration(milliseconds: 150),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: (_userName != widget.rfidData && dailyRemaining == 0)
+                ? Colors.grey[300]
+                : Colors.white,
             borderRadius: BorderRadius.circular(8),
           ),
           padding: const EdgeInsets.all(10.0),
@@ -491,30 +561,32 @@ class MedicineMenuState extends State<MedicineMenu> {
             children: [
               const Spacer(),
               if (imagePath.isNotEmpty)
-                Image.asset(imagePath, height: imageHeight, fit: BoxFit.contain)
+                Image.asset(imagePath, height: MediaQuery.of(context).size.height * 0.18, fit: BoxFit.contain)
               else
                 Container(
-                  height: imageHeight,
+                  height: MediaQuery.of(context).size.height * 0.18,
                   alignment: Alignment.center,
                   child: Text("No image", style: bodyMedium?.copyWith(fontSize: 16, color: Colors.grey)),
                 ),
               const SizedBox(height: 10),
-              Text(
-                productName,
-                style: titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                '₱$amountStr',
-                style: titleMedium?.copyWith(fontSize: 18, color: Colors.black54),
-                textAlign: TextAlign.center,
-              ),
+              Text(productName,
+                  style: titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
+              Text('₱$amountStr',
+                  style: titleMedium?.copyWith(fontSize: 18, color: Colors.black54),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 6),
-              Text(
-                'Remaining: $stockCount pc/s',
-                style: titleMedium?.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF0D2A5E)),
-                textAlign: TextAlign.center,
-              ),
+              Text('Remaining: $displayStock pc/s',
+                  style: titleMedium
+                      ?.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF0D2A5E))),
+              const SizedBox(height: 6),
+              if (_userName != widget.rfidData)
+                Text('Today Remaining: $dailyRemaining',
+                    style: bodyMedium?.copyWith(
+                      fontSize: 16,
+                      color: dailyRemaining == 0 ? Colors.red : Colors.green,
+                      fontWeight: FontWeight.w600,
+                    )),
               const Spacer(),
             ],
           ),
@@ -524,51 +596,74 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   // Accepts the selected quantity from the detail modal.
-  void _addToOrder(String productName, String unitPriceStr, int quantity) {
-    final medicineIndex = medicines.indexWhere((m) => m['product_name'] == productName);
+  void _addToOrder(
+      String productName, String unitPriceStr, int quantity) {
+    final medicineIndex =
+    medicines.indexWhere((m) => m['product_name'] == productName);
     if (medicineIndex == -1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("$productName not found in stock list."), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text("$productName not found in stock list."),
+            backgroundColor: Colors.red),
       );
       return;
     }
+
     final int availableStock = medicines[medicineIndex]['count'] ?? 0;
+    final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
+    final existingIndex =
+    orders.indexWhere((item) => item['name'] == productName);
+    final int cartQty = existingIndex != -1
+        ? int.parse(orders[existingIndex]['quantity']!)
+        : 0;
+    final int boughtToday = _dailyPurchased[productName] ?? 0;
+    final int perDayLimit = _dailyLimits[productName] ?? 0;
+
+    // stock check
+    if (quantity + cartQty > availableStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                "Only $availableStock pieces available for $productName."),
+            backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    // daily cap check (only for RFID users)
+    if (_userName != widget.rfidData &&
+        boughtToday + cartQty + quantity > perDayLimit) {
+      final canBuy =
+      (perDayLimit - boughtToday - cartQty).clamp(0, perDayLimit);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                "You can only buy $canBuy more of $productName today."),
+            backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
     setState(() {
-      final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-      final existingIndex = orders.indexWhere((item) => item['name'] == productName);
+      // update dailyPurchased
+      if (_userName != widget.rfidData) {
+        _dailyPurchased[productName] = boughtToday + cartQty + quantity;
+      }
+      final newQty = cartQty + quantity;
+      final newTotal = unitPrice * newQty;
       if (existingIndex != -1) {
-        final int currentQuantity = int.tryParse(orders[existingIndex]['quantity'] ?? '1') ?? 1;
-        final int newQuantity = currentQuantity + quantity;
-        if (newQuantity > 13) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Maximum of 13 pieces allowed for $productName."), backgroundColor: Colors.red),
-          );
-          return;
-        }
-        if (newQuantity > availableStock) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Only $availableStock pieces available for $productName."), backgroundColor: Colors.red),
-          );
-          return;
-        }
-        final double newTotalPrice = unitPrice * newQuantity;
-        orders[existingIndex]['quantity'] = newQuantity.toString();
-        orders[existingIndex]['price'] = newTotalPrice.toStringAsFixed(2);
+        orders[existingIndex]['quantity'] = newQty.toString();
+        orders[existingIndex]['price'] = newTotal.toStringAsFixed(2);
       } else {
-        if (availableStock < 1) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Out of stock!"), backgroundColor: Colors.red),
-          );
-          return;
-        }
         orders.add({
           'name': productName,
           'quantity': quantity.toString(),
-          'price': (unitPrice * quantity).toStringAsFixed(2),
+          'price': newTotal.toStringAsFixed(2),
         });
       }
     });
   }
+
 
   void _resetOrders() {
     setState(() {
@@ -587,12 +682,12 @@ class MedicineMenuState extends State<MedicineMenu> {
       return;
     }
 
-    List<Map<String, String>> ordersCopy = List.from(orders);
+    final ordersCopy = List<Map<String, String>>.from(orders);
     if (_userName == widget.rfidData) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PaymentPage(
+          builder: (_) => PaymentPage(
             orders: ordersCopy,
             rfidData: widget.rfidData,
             medicinesToBeDisabled: const [],
@@ -603,7 +698,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PaymentMethodPage(
+          builder: (_) => PaymentMethodPage(
             orders: ordersCopy,
             rfidData: widget.rfidData,
           ),
@@ -616,24 +711,17 @@ class MedicineMenuState extends State<MedicineMenu> {
 class OrdersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final Widget child;
-
   OrdersHeaderDelegate({required this.height, required this.child});
-
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
-  }
-
+  Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
+      child;
   @override
   double get maxExtent => height;
-
   @override
   double get minExtent => height;
-
   @override
-  bool shouldRebuild(covariant OrdersHeaderDelegate oldDelegate) {
-    return oldDelegate.height != height || oldDelegate.child != child;
-  }
+  bool shouldRebuild(covariant OrdersHeaderDelegate old) =>
+      old.height != height || old.child != child;
 }
 
 class MedicineDetailModal extends StatefulWidget {
@@ -645,7 +733,8 @@ class MedicineDetailModal extends StatefulWidget {
   final String ingredients;
   final String warnings;
   final String additionalMedia;
-  final Function(int) onAddToCart;
+  final int dailyRemaining;
+  final void Function(int) onAddToCart;
 
   const MedicineDetailModal({
     Key? key,
@@ -657,6 +746,7 @@ class MedicineDetailModal extends StatefulWidget {
     required this.ingredients,
     required this.warnings,
     required this.additionalMedia,
+    required this.dailyRemaining,
     required this.onAddToCart,
   }) : super(key: key);
 
@@ -671,25 +761,23 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
+    final bodyMedium = theme.textTheme.bodyMedium;
 
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title row and close icon.
+            // header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(
                   child: Text(
                     widget.productName,
-                    style: textTheme.titleLarge?.copyWith(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
                 ),
                 IconButton(
@@ -699,163 +787,109 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
               ],
             ),
             const SizedBox(height: 12),
-            // Price, Favorite Icon and Stock.
+            // price & stock
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      'Price: ₱${widget.amountStr}',
-                      style: textTheme.bodyMedium?.copyWith(fontSize: 20),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: Icon(
-                        _isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: _isFavorite ? Colors.red : Colors.grey,
-                      ),
-                      iconSize: 30,
-                      onPressed: () {
-                        setState(() {
-                          _isFavorite = !_isFavorite;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                Text(
-                  'In Stock: ${widget.stockCount}',
-                  style: textTheme.bodyMedium?.copyWith(fontSize: 20),
-                ),
+                Text('Price: ₱${widget.amountStr}',
+                    style: bodyMedium?.copyWith(fontSize: 20)),
+                Text('In Stock: ${widget.stockCount}',
+                    style: bodyMedium?.copyWith(fontSize: 20)),
               ],
             ),
             const SizedBox(height: 12),
-            // Enlarged Product Image.
+            // image
             Center(
               child: widget.imagePath.isNotEmpty
-                  ? Image.asset(widget.imagePath, height: 350, fit: BoxFit.contain)
-                  : Text("No image", style: textTheme.bodyMedium?.copyWith(fontSize: 20)),
+                  ? Image.asset(widget.imagePath,
+                  height: 350, fit: BoxFit.contain)
+                  : Text("No image",
+                  style: bodyMedium?.copyWith(fontSize: 20)),
             ),
             const SizedBox(height: 12),
-            // Enlarged Quantity Selector.
+            // daily cap info
+            if (widget.dailyRemaining < widget.stockCount)
+              Text(
+                "You can add up to ${widget.dailyRemaining} pcs today.",
+                style: bodyMedium?.copyWith(
+                    fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+            const SizedBox(height: 12),
+            // qty selector
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
                   iconSize: 36,
                   icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: () {
-                    if (_quantity > 1) {
-                      setState(() {
-                        _quantity--;
-                      });
-                    }
-                  },
+                  onPressed: _quantity > 1
+                      ? () => setState(() => _quantity--)
+                      : null,
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  _quantity.toString(),
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
+                Text('$_quantity',
+                    style: bodyMedium?.copyWith(
+                        fontSize: 28, fontWeight: FontWeight.bold)),
                 IconButton(
                   iconSize: 36,
                   icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () {
-                    if (_quantity < widget.stockCount) {
-                      setState(() {
-                        _quantity++;
-                      });
-                    }
-                  },
+                  onPressed: _quantity < widget.stockCount &&
+                      (_quantity < widget.dailyRemaining)
+                      ? () => setState(() => _quantity++)
+                      : null,
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            // Dosage Information.
-            Text(
-              "Dosage Information:",
-              style: textTheme.titleMedium?.copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            // dosage, ingredients, warnings...
+            Text("Dosage Information:",
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text(
-              widget.dosage,
-              style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
-            ),
+            Text(widget.dosage,
+                style: bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
             const SizedBox(height: 16),
-            // Ingredients.
-            Text(
-              "Ingredients:",
-              style: textTheme.titleMedium?.copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text("Ingredients:",
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text(
-              widget.ingredients,
-              style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
-            ),
+            Text(widget.ingredients,
+                style: bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
             const SizedBox(height: 16),
-            // Warnings & Side Effects.
-            Text(
-              "Warnings & Side Effects:",
-              style: textTheme.titleMedium?.copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text("Warnings & Side Effects:",
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text(
-              widget.warnings,
-              style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
-            ),
+            Text(widget.warnings,
+                style: bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
             const SizedBox(height: 16),
-            // Additional Information.
             if (widget.additionalMedia.isNotEmpty) ...[
-              Text(
-                "Additional Information:",
-                style: textTheme.titleMedium?.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text("Additional Information:",
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(
-                widget.additionalMedia,
-                style: textTheme.bodyMedium?.copyWith(fontSize: 20, height: 1.4),
-              ),
+              Text(widget.additionalMedia,
+                  style:
+                  bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
               const SizedBox(height: 16),
             ],
-            // Disclaimer.
             Text(
               "Information provided here is for reference only. Always consult a healthcare professional for medical advice.",
-              style: textTheme.bodyMedium?.copyWith(
-                fontSize: 16,
-                color: Colors.grey[700],
-                height: 1.3,
-              ),
+              style: bodyMedium?.copyWith(
+                  fontSize: 16, color: Colors.grey[700], height: 1.3),
             ),
             const SizedBox(height: 24),
-            // Action Buttons.
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => widget.onAddToCart(_quantity),
+                    onPressed: () =>
+                        widget.onAddToCart(_quantity),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 20),
-                      textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      textStyle:
+                      const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     child: const Text("Add to Cart"),
                   ),
@@ -868,7 +902,8 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                       backgroundColor: Colors.grey[800],
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 20),
-                      textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      textStyle:
+                      const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     child: const Text("Close"),
                   ),
