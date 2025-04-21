@@ -223,28 +223,44 @@ class MedicineMenuState extends State<MedicineMenu> {
     final medicineDetail = _medicineDetails[productName] ?? _defaultDetail;
 
     showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) =>
-          Dialog(
-            insetPadding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 16),
-            child: MedicineDetailModal(
-              productName: productName,
-              amountStr: amountStr,
-              imagePath: imagePath,
-              stockCount: displayStock,
-              dosage: medicineDetail['dosage']!,
-              ingredients: medicineDetail['ingredients']!,
-              warnings: medicineDetail['warnings']!,
-              additionalMedia: medicineDetail['additionalMedia']!,
-              dailyRemaining: dailyRemaining,
-              onAddToCart: (qty) {
-                Navigator.pop(_);
-                _addToOrder(productName, amountStr, qty);
-              },
+        context: context,
+        builder: (_) => Dialog(
+      backgroundColor: const Color(0xFFF5F8FF), // a VERY light blue from your gradient
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFFEAF4FA), // lightest
+                Color(0xFFF5F8FF), // slightly darker
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+                ),
+              ),
+              child: MedicineDetailModal(
+                productName: productName,
+                amountStr: amountStr,
+                imagePath: imagePath,
+                stockCount: displayStock,
+                dosage: medicineDetail['dosage']!,
+                ingredients: medicineDetail['ingredients']!,
+                warnings: medicineDetail['warnings']!,
+                additionalMedia: medicineDetail['additionalMedia']!,
+                dailyRemaining: dailyRemaining,
+                onAddToCart: (qty) {
+                  Navigator.pop(_);
+                  _addToOrder(productName, amountStr, qty);
+                },
+              ),
             ),
           ),
+        ),
     );
   }
 

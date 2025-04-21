@@ -106,8 +106,8 @@ class _MedicineItemState extends State<MedicineItem> {
                 Text(
                   'Today Remaining: $dailyRemaining',
                   style: bodyMedium?.copyWith(
-                    fontSize: 16,
-                    color: dailyRemaining == 0 ? Colors.red : Colors.green,
+                    fontSize: 20,
+                    color: dailyRemaining == 0 ? Colors.red : Colors.green.shade700,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

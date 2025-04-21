@@ -74,10 +74,19 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
             const SizedBox(height:12),
             // daily cap
             if (widget.dailyRemaining < widget.stockCount)
-              Text("You can add up to ${widget.dailyRemaining} pcs today.",
-                  style: bodyMedium?.copyWith(fontSize:18, fontWeight:FontWeight.w500)),
-            const SizedBox(height:12),
-            // quantity selector
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Center(
+                  child: Text(
+                    "You can add up to ${widget.dailyRemaining} pcs today.",
+                    style: bodyMedium?.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
