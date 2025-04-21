@@ -169,22 +169,6 @@ class PointsPageState extends State<PointsPage> {
     });
   }
 
-  void _incrementPointsUsed() {
-    _startTimeout(); // Reset the timeout on user interaction
-    // Prevent increasing redeemed points beyond the total amount.
-    if (pointsUsed >= totalAmount) return;
-    setState(() {
-      pointsUsed += 20;
-      if (pointsUsed > userPoints) {
-        pointsUsed = userPoints;
-      }
-      // Ensure pointsUsed does not exceed totalAmount if the user has enough.
-      if (userPoints >= totalAmount && pointsUsed > totalAmount) {
-        pointsUsed = totalAmount.toInt();
-      }
-      _pointsController.text = pointsUsed.toString();
-    });
-  }
 
   /// Insert each order as a transaction into the database.
   Future<void> _insertTransactions() async {
@@ -591,23 +575,6 @@ class PointsPageState extends State<PointsPage> {
                     hintStyle: TextStyle(fontSize: 24),
                   ),
                   style: const TextStyle(color: Colors.white, fontSize: 24),
-                ),
-                const SizedBox(height: 16),
-                // Button to add 20 points.
-                Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: _incrementPointsUsed,
-                    child: Text(
-                      tr("add_points"),
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 16),
                 // Navigation buttons: CANCEL and PROCEED.
