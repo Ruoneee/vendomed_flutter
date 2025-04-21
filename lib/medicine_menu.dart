@@ -5,6 +5,10 @@ import 'payment.dart';
 import 'database_helper.dart';
 import 'dart:async';
 
+// your two extracted widgets
+import 'widgets/medicine_item.dart';
+import 'widgets/medicine_detail_modal.dart';
+
 class MedicineMenu extends StatefulWidget {
   final String rfidData;
   final List<Map<String, String>>? existingOrders;
@@ -23,13 +27,11 @@ class MedicineMenuState extends State<MedicineMenu> {
   List<Map<String, String>> orders = [];
   String _userName = "";
   String _userPoints = "0";
+  bool _isRegisteredUser = false;   // ← NEW FLAG
   List<Map<String, dynamic>> medicines = [];
   Timer? _stockUpdateTimer;
 
-  // Tracks tap animation states.
-  Map<String, bool> _isTapped = {};
-
-  // *** NEW: per‑day purchase caps ***
+  // *** per‑day purchase caps ***
   final Map<String, int> _dailyLimits = {
     'Paracetamol': 4,
     'Ibuprofen': 2,
@@ -39,8 +41,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     'Buscopan': 2,
   };
 
-  // How many pcs of each medicine this user already bought today.
-  Map<String, int> _dailyPurchased = {};
+  Map<String, int> _dailyPurchased = {}; // bought so far today
 
   // --- Extracted details maps ---
   static const Map<String, Map<String, String>> _medicineDetails = {
@@ -95,10 +96,12 @@ class MedicineMenuState extends State<MedicineMenu> {
     if (widget.existingOrders != null) {
       orders = List.from(widget.existingOrders!);
     }
-    _loadUserNameAndPoints();
-    _fetchMedicines();
-    _fetchDailyPurchasedCounts();
-    _startStockListener();
+    // first figure out if registered, then fetch everything else
+    _loadUserNameAndPoints().then((_) {
+      _fetchMedicines();
+      _fetchDailyPurchasedCounts();
+      _startStockListener();
+    });
   }
 
   @override
@@ -126,9 +129,11 @@ class MedicineMenuState extends State<MedicineMenu> {
       if (!mounted) return;
       setState(() {
         if (result.isNotEmpty) {
+          _isRegisteredUser = true;
           _userName = result.first['NAME']?.toString() ?? widget.rfidData;
           _userPoints = result.first['POINTS']?.toString() ?? '0';
         } else {
+          _isRegisteredUser = false;
           _userName = widget.rfidData;
           _userPoints = '0';
         }
@@ -137,6 +142,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       debugPrint("Error loading user name/points: $e");
       if (!mounted) return;
       setState(() {
+        _isRegisteredUser = false;
         _userName = widget.rfidData;
         _userPoints = '0';
       });
@@ -146,18 +152,19 @@ class MedicineMenuState extends State<MedicineMenu> {
   Future<void> _fetchMedicines() async {
     try {
       final db = await DatabaseHelper().db;
-      final List<Map<String, dynamic>> results = await db.query('stocks');
+      final results = await db.query('stocks');
       if (!mounted) return;
       setState(() {
         medicines = results.map((row) {
-          final String productName = row['product_name'] ?? 'Unknown';
-          _isTapped.putIfAbsent(productName, () => false);
-          final String amountStr = row['amount']?.toString() ?? '0';
-          final int stockCount = int.tryParse(row['count']?.toString() ?? '0') ?? 0;
+          // 1) safely convert to String
+          final String name = row['product_name']?.toString() ?? 'Unknown';
+
+          // 2) only if you still track tap state here:
+          // _isTapped.putIfAbsent(name, () => false);
           return {
-            'product_name': productName,
-            'amount': amountStr,
-            'count': stockCount,
+            'product_name': name,
+            'amount':        row['amount']?.toString() ?? '0',
+            'count':         int.tryParse(row['count']?.toString() ?? '0') ?? 0,
           };
         }).toList();
       });
@@ -166,21 +173,27 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
+
   Future<void> _fetchDailyPurchasedCounts() async {
-    final String todayStr = DateTime.now().toIso8601String().split('T').first;
+    final today = DateTime.now().toIso8601String().split('T').first;
+    if (!_isRegisteredUser) {
+      // guests have no cap
+      if (!mounted) return;
+      setState(() => _dailyPurchased = {});
+      return;
+    }
     try {
       final counts = await DatabaseHelper.instance.getDailyPurchaseCounts(
         rfid: widget.rfidData,
-        date: todayStr,
+        date: today,
       );
       if (!mounted) return;
-      setState(() {
-        _dailyPurchased = counts;
-      });
+      setState(() => _dailyPurchased = counts);
     } catch (e) {
       debugPrint("Error fetching daily counts: $e");
     }
   }
+
 
   String _getImagePath(String productName) {
     final Map<String, String> imagePaths = {
@@ -201,69 +214,63 @@ class MedicineMenuState extends State<MedicineMenu> {
       String imagePath,
       int displayStock,
       ) {
-    final int purchasedToday = _dailyPurchased[productName] ?? 0;
-    final int limit = _dailyLimits[productName] ?? 0;
-    final int dailyRemaining = (limit - purchasedToday).clamp(0, limit);
+    final bought = _dailyPurchased[productName] ?? 0;
+    final limit = _dailyLimits[productName] ?? 0;
+    final dailyRemaining = _isRegisteredUser
+        ? (limit - bought).clamp(0, limit)
+        : displayStock;
 
     final medicineDetail = _medicineDetails[productName] ?? _defaultDetail;
 
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) {
-        final dialogWidth = MediaQuery.of(ctx).size.width * 0.9;
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Container(
-            width: dialogWidth,
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
-            ),
+      builder: (_) =>
+          Dialog(
+            insetPadding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 16),
             child: MedicineDetailModal(
-              productName:    productName,
-              amountStr:      amountStr,
-              imagePath:      imagePath,
-              stockCount:     displayStock,
-              dosage:         medicineDetail['dosage']!,
-              ingredients:    medicineDetail['ingredients']!,
-              warnings:       medicineDetail['warnings']!,
-              additionalMedia:medicineDetail['additionalMedia']!,
+              productName: productName,
+              amountStr: amountStr,
+              imagePath: imagePath,
+              stockCount: displayStock,
+              dosage: medicineDetail['dosage']!,
+              ingredients: medicineDetail['ingredients']!,
+              warnings: medicineDetail['warnings']!,
+              additionalMedia: medicineDetail['additionalMedia']!,
               dailyRemaining: dailyRemaining,
-              onAddToCart:    (quantity) {
-                Navigator.pop(ctx);
-                _addToOrder(productName, amountStr, quantity);
+              onAddToCart: (qty) {
+                Navigator.pop(_);
+                _addToOrder(productName, amountStr, qty);
               },
             ),
           ),
-        );
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final titleLarge = Theme
-        .of(context)
-        .textTheme
-        .titleLarge;
-    final titleMedium = Theme
-        .of(context)
-        .textTheme
-        .titleMedium;
-    final bodyMedium = Theme
-        .of(context)
-        .textTheme
-        .bodyMedium;
+    final titleLarge  = Theme.of(context).textTheme.titleLarge;
+    final titleMedium = Theme.of(context).textTheme.titleMedium;
+    final bodyMedium  = Theme.of(context).textTheme.bodyMedium;
 
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
-          elevation: 0,
-          automaticallyImplyLeading: false,
           title: Text(
             "Welcome, ${_userName.isNotEmpty ? _userName : widget.rfidData}!",
-            style: titleLarge?.copyWith(fontSize: 20, color: Colors.white),
+            style: titleLarge?.copyWith(color: Colors.white, fontSize: 20),
+          ),
+          automaticallyImplyLeading: false,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0D2A5E), Color(0xFF0D2A5E)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
           ),
           actions: [
             IconButton(
@@ -271,100 +278,66 @@ class MedicineMenuState extends State<MedicineMenu> {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const UserSelectionScreen()),
+                  MaterialPageRoute(builder: (_) => const UserSelectionScreen()),
                 );
               },
             ),
           ],
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0D2A5E),
-                  Color(0xFF0D2A5E),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
         ),
         body: Container(
-          width: double.infinity,
-          height: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0D2A5E),
-                Color(0xFF1E5D6F),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+              colors: [Color(0xFF0D2A5E), Color(0xFF1E5D6F)],
             ),
           ),
           child: CustomScrollView(
             slivers: [
-              // VendoPoints container (if user is not a guest).
-              if (_userName != widget.rfidData)
+              if (_isRegisteredUser)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(12),
                     child: Container(
                       height: 100,
                       decoration: BoxDecoration(
                         color: Colors.white,
+                        border: Border.all(color: Color(0xFF0D2A5E), width: 2),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF0D2A5E),
-                            width: 2),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "VendoPoints: $_userPoints",
-                            style: titleLarge?.copyWith(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
+                      padding: const EdgeInsets.all(8),
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "VendoPoints: $_userPoints",
+                        style: titleLarge?.copyWith(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
                     ),
                   ),
                 ),
-              // Pinned "Your Orders" section (header + orders container).
+
+              // Your Orders header
               SliverPersistentHeader(
                 pinned: true,
                 delegate: OrdersHeaderDelegate(
-                  height: 170, // Adjust to ensure no overflow
+                  height: 170,
                   child: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF0D2A5E),
-                          Color(0xFF0D2A5E),
-                        ],
+                        colors: [Color(0xFF0D2A5E), Color(0xFF0D2A5E)],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 8.0,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           "Your Orders:",
-                          style: titleLarge?.copyWith(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                          style: titleLarge
+                              ?.copyWith(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         const SizedBox(height: 8),
                         Container(
@@ -377,56 +350,36 @@ class MedicineMenuState extends State<MedicineMenu> {
                             child: ListView.builder(
                               padding: EdgeInsets.zero,
                               itemCount: orders.length,
-                              itemBuilder: (context, index) {
-                                final orderName = orders[index]['name'] ??
-                                    'Unknown';
-                                final orderQuantity = orders[index]['quantity'] ??
-                                    '1';
-                                final orderPrice = orders[index]['price'] ??
-                                    '0.00';
+                              itemBuilder: (ctx, i) {
+                                final o = orders[i];
                                 return ListTile(
                                   dense: true,
                                   title: Text(
-                                    '${index +
-                                        1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                                    style: bodyMedium?.copyWith(
-                                        fontSize: 16, color: Colors.black),
+                                    "${i + 1}. ${o['name']} (Qty: ${o['quantity']}) – ₱${o['price']}",
+                                    style: bodyMedium?.copyWith(fontSize: 16, color: Colors.black),
                                   ),
                                   trailing: IconButton(
-                                    icon: const Icon(
-                                        Icons.delete, color: Colors.red),
+                                    icon: const Icon(Icons.delete, color: Colors.red),
                                     onPressed: () {
                                       showDialog(
                                         context: context,
-                                        builder: (context) =>
-                                            AlertDialog(
-                                              title: const Text('Remove Item'),
-                                              content: Text(
-                                                  'Remove $orderName from your order?'),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: const Text('Cancel'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      orders.removeAt(index);
-                                                    });
-                                                    Navigator.pop(context);
-                                                    ScaffoldMessenger.of(
-                                                        context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                            '$orderName removed from your order.'),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: const Text('Remove'),
-                                                ),
-                                              ],
+                                        builder: (_) => AlertDialog(
+                                          title: const Text('Remove Item'),
+                                          content: Text('Remove ${o['name']} from your order?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                                            TextButton(
+                                              onPressed: () {
+                                                setState(() => orders.removeAt(i));
+                                                Navigator.pop(context);
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text('${o['name']} removed from your order.')),
+                                                );
+                                              },
+                                              child: const Text('Remove'),
                                             ),
+                                          ],
+                                        ),
                                       );
                                     },
                                   ),
@@ -440,25 +393,42 @@ class MedicineMenuState extends State<MedicineMenu> {
                   ),
                 ),
               ),
-              // Spacer after pinned orders.
+
+
+                // Spacer after pinned orders.
               SliverToBoxAdapter(child: const SizedBox(height: 16)),
-              // Medicines grid or loading indicator.
+
+              // Medicines grid or loader
               if (medicines.isEmpty)
-                SliverToBoxAdapter(
-                  child: Center(child: CircularProgressIndicator()),
-                )
+                SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()))
               else
                 SliverPadding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(12),
                   sliver: SliverGrid(
                     delegate: SliverChildBuilderDelegate(
                           (context, index) {
-                        final medicine = medicines[index];
-                        return _buildMedicineItem(
-                          medicine['product_name'] as String,
-                          medicine['amount'] as String,
-                          _getImagePath(medicine['product_name'] as String),
-                          medicine['count'] as int,
+                        final m = medicines[index];
+                        final name = m['product_name'] as String;
+                        final stock = m['count'] as int;
+                        final inCart = int.tryParse(
+                          orders.firstWhere((o) => o['name'] == name, orElse: () => {'quantity': '0'})['quantity']!,
+                        ) ?? 0;
+                        final displayStock = (stock - inCart).clamp(0, stock);
+
+                        return MedicineItem(
+                          productName:      name,
+                          amountStr:        m['amount'] as String,
+                          imagePath:        _getImagePath(name),
+                          stockCount:       displayStock,
+                          isRegisteredUser: _isRegisteredUser,
+                          purchasedToday:   _dailyPurchased[name] ?? 0,
+                          dailyLimit:       _dailyLimits[name] ?? 0,
+                          onTap: () => _openMedicineDetail(
+                            name,
+                            m['amount'] as String,
+                            _getImagePath(name),
+                            displayStock,
+                          ), // <-- comma closes the onTap argument
                         );
                       },
                       childCount: medicines.length,
@@ -471,9 +441,11 @@ class MedicineMenuState extends State<MedicineMenu> {
                     ),
                   ),
                 ),
-              // Spacer.
-              SliverToBoxAdapter(child: const SizedBox(height: 20)),
-              // Row with RESET and CHECKOUT buttons.
+
+                SliverToBoxAdapter(child: const SizedBox(height: 20)),
+
+                // Row with RESET and CHECKOUT buttons.
+              // Reset / Checkout buttons
               SliverToBoxAdapter(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -482,32 +454,29 @@ class MedicineMenuState extends State<MedicineMenu> {
                       onPressed: _resetOrders,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2A4D6F),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 15),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                       ),
                       child: Text(
                         "RESET",
-                        style: titleMedium?.copyWith(
-                            fontSize: 22, color: Colors.white),
+                        style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
                       ),
                     ),
                     ElevatedButton(
                       onPressed: _proceedToCheckout,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2A5E),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 15),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                       ),
                       child: Text(
                         "CHECKOUT",
-                        style: titleMedium?.copyWith(
-                            fontSize: 22, color: Colors.white),
+                        style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
                       ),
                     ),
                   ],
                 ),
               ),
-              // Spacer.
+
+              // final spacer
               SliverToBoxAdapter(child: const SizedBox(height: 16)),
             ],
           ),
@@ -516,250 +485,125 @@ class MedicineMenuState extends State<MedicineMenu> {
     );
   }
 
-  Widget _buildMedicineItem(
-      String productName,
-      String amountStr,
-      String imagePath,
-      int stockCount,
-      ) {
-    // 1. How many of this medicine are already in the cart?
-    final cartIndex = orders.indexWhere((o) => o['name'] == productName);
-    final int inCart = cartIndex != -1
-        ? int.tryParse(orders[cartIndex]['quantity']!) ?? 0
-        : 0;
+    // Accepts the selected quantity from the detail modal.
+    void _addToOrder(String productName, String unitPriceStr, int quantity) {
+      final medicineIndex =
+      medicines.indexWhere((m) => m['product_name'] == productName);
+      if (medicineIndex == -1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("$productName not found in stock list."),
+              backgroundColor: Colors.red),
+        );
+        return;
+      }
 
-    // 2. Subtract from DB stock to get “real‑time” remaining
-    final int displayStock = (stockCount - inCart).clamp(0, stockCount);
+      final int availableStock = medicines[medicineIndex]['count'] ?? 0;
+      final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
+      final existingIndex =
+      orders.indexWhere((item) => item['name'] == productName);
+      final int cartQty = existingIndex != -1
+          ? int.parse(orders[existingIndex]['quantity']!)
+          : 0;
+      final int boughtToday = _dailyPurchased[productName] ?? 0;
+      final int perDayLimit = _dailyLimits[productName] ?? 0;
 
-    // Tap animation and theming
-    bool isTapped = _isTapped[productName] ?? false;
-    final titleLarge = Theme.of(context).textTheme.titleLarge;
-    final titleMedium = Theme.of(context).textTheme.titleMedium;
-    final bodyMedium = Theme.of(context).textTheme.bodyMedium;
-
-    // Daily‑limit calculation
-    final int purchasedToday = _dailyPurchased[productName] ?? 0;
-    final int limit = _dailyLimits[productName] ?? 0;
-    final int dailyRemaining = (limit - purchasedToday).clamp(0, limit);
-
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isTapped[productName] = true),
-      onTapUp: (_) {
-        Future.delayed(const Duration(milliseconds: 150), () {
-          setState(() => _isTapped[productName] = false);
-        });
-
-        if (displayStock == 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Out of stock!"),
-              backgroundColor: Colors.red,
-            ),
-          );
-        } else if (_userName != widget.rfidData && dailyRemaining == 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+      // stock check
+      if (quantity + cartQty > availableStock) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
               content: Text(
-                  "Daily limit reached for $productName ($limit pcs)."
-              ),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        } else {
-          _openMedicineDetail(
-            productName,
-            amountStr,
-            imagePath,
-            displayStock,  // pass real‑time stock
-          );
+                  "Only $availableStock pieces available for $productName."),
+              backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      // daily cap check (only for RFID users)
+      if (_userName != widget.rfidData &&
+          boughtToday + cartQty + quantity > perDayLimit) {
+        final canBuy =
+        (perDayLimit - boughtToday - cartQty).clamp(0, perDayLimit);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  "You can only buy $canBuy more of $productName today."),
+              backgroundColor: Colors.orange),
+        );
+        return;
+      }
+
+      setState(() {
+        // update dailyPurchased
+        if (_userName != widget.rfidData) {
+          _dailyPurchased[productName] = boughtToday + cartQty + quantity;
         }
-      },
-      onTapCancel: () => setState(() => _isTapped[productName] = false),
-      child: AnimatedScale(
-        scale: isTapped ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        child: Container(
-          decoration: BoxDecoration(
-            color: (_userName != widget.rfidData && dailyRemaining == 0)
-                ? Colors.grey[300]
-                : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              const Spacer(),
-              if (imagePath.isNotEmpty)
-                Image.asset(
-                  imagePath,
-                  height: MediaQuery.of(context).size.height * 0.18,
-                  fit: BoxFit.contain,
-                )
-              else
-                Container(
-                  height: MediaQuery.of(context).size.height * 0.18,
-                  alignment: Alignment.center,
-                  child: Text(
-                    "No image",
-                    style: bodyMedium?.copyWith(fontSize: 16, color: Colors.grey),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              Text(
-                productName,
-                style: titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                '₱$amountStr',
-                style: titleMedium?.copyWith(fontSize: 18, color: Colors.black54),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Remaining: $displayStock pc/s',
-                style: titleMedium?.copyWith(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF0D2A5E),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              if (_userName != widget.rfidData)
-                Text(
-                  'Today Remaining: $dailyRemaining',
-                  style: bodyMedium?.copyWith(
-                    fontSize: 16,
-                    color: dailyRemaining == 0 ? Colors.red : Colors.green,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              const Spacer(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Accepts the selected quantity from the detail modal.
-  void _addToOrder(String productName, String unitPriceStr, int quantity) {
-    final medicineIndex =
-    medicines.indexWhere((m) => m['product_name'] == productName);
-    if (medicineIndex == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("$productName not found in stock list."),
-            backgroundColor: Colors.red),
-      );
-      return;
+        final newQty = cartQty + quantity;
+        final newTotal = unitPrice * newQty;
+        if (existingIndex != -1) {
+          orders[existingIndex]['quantity'] = newQty.toString();
+          orders[existingIndex]['price'] = newTotal.toStringAsFixed(2);
+        } else {
+          orders.add({
+            'name': productName,
+            'quantity': quantity.toString(),
+            'price': newTotal.toStringAsFixed(2),
+          });
+        }
+      });
     }
 
-    final int availableStock = medicines[medicineIndex]['count'] ?? 0;
-    final double unitPrice = double.tryParse(unitPriceStr) ?? 0.0;
-    final existingIndex =
-    orders.indexWhere((item) => item['name'] == productName);
-    final int cartQty = existingIndex != -1
-        ? int.parse(orders[existingIndex]['quantity']!)
-        : 0;
-    final int boughtToday = _dailyPurchased[productName] ?? 0;
-    final int perDayLimit = _dailyLimits[productName] ?? 0;
 
-    // stock check
-    if (quantity + cartQty > availableStock) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                "Only $availableStock pieces available for $productName."),
-            backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    // daily cap check (only for RFID users)
-    if (_userName != widget.rfidData &&
-        boughtToday + cartQty + quantity > perDayLimit) {
-      final canBuy =
-      (perDayLimit - boughtToday - cartQty).clamp(0, perDayLimit);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                "You can only buy $canBuy more of $productName today."),
-            backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    setState(() {
-      // update dailyPurchased
-      if (_userName != widget.rfidData) {
-        _dailyPurchased[productName] = boughtToday + cartQty + quantity;
-      }
-      final newQty = cartQty + quantity;
-      final newTotal = unitPrice * newQty;
-      if (existingIndex != -1) {
-        orders[existingIndex]['quantity'] = newQty.toString();
-        orders[existingIndex]['price'] = newTotal.toStringAsFixed(2);
-      } else {
-        orders.add({
-          'name': productName,
-          'quantity': quantity.toString(),
-          'price': newTotal.toStringAsFixed(2),
-        });
-      }
-    });
-  }
-
-
-  void _resetOrders() {
-    setState(() {
-      orders.clear();
-    });
-  }
-
-  void _proceedToCheckout() {
-    if (orders.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("No orders placed. Please add items to cart."),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Copy so the payment screen can't mutate our original list
-    final List<Map<String, String>> ordersCopy =
-    List<Map<String, String>>.from(orders);
-
-    // Decide which page to push
-    final MaterialPageRoute nextRoute = (_userName == widget.rfidData)
-        ? MaterialPageRoute(
-      builder: (_) =>
-          PaymentPage(
-            orders: ordersCopy,
-            rfidData: widget.rfidData,
-            medicinesToBeDisabled: const [],
-          ),
-    )
-        : MaterialPageRoute(
-      builder: (_) =>
-          PaymentMethodPage(
-            orders: ordersCopy,
-            rfidData: widget.rfidData,
-          ),
-    );
-
-    // Push and then, when returning, clear cart & reload today's counts
-    Navigator.push(context, nextRoute).then((_) {
+    void _resetOrders() {
       setState(() {
         orders.clear();
       });
-      _fetchDailyPurchasedCounts();
-    });
+    }
+
+    void _proceedToCheckout() {
+      if (orders.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No orders placed. Please add items to cart."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Copy so the payment screen can't mutate our original list
+      final List<Map<String, String>> ordersCopy =
+      List<Map<String, String>>.from(orders);
+
+// Decide which page to push
+      final MaterialPageRoute nextRoute = _isRegisteredUser
+      // Registered (RFID) users pick their payment method
+          ? MaterialPageRoute(
+        builder: (_) =>
+            PaymentMethodPage(
+              orders: ordersCopy,
+              rfidData: widget.rfidData,
+            ),
+      )
+      // Guests go straight to the cash‐only page
+          : MaterialPageRoute(
+        builder: (_) =>
+            PaymentPage(
+              orders: ordersCopy,
+              rfidData: widget.rfidData,
+              medicinesToBeDisabled: const [],
+            ),
+      );
+
+      // Push and then, when returning, clear cart & reload today's counts
+      Navigator.push(context, nextRoute).then((_) {
+        setState(() {
+          orders.clear();
+        });
+        _fetchDailyPurchasedCounts();
+      });
+    }
   }
-}
 
   class OrdersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
@@ -767,205 +611,12 @@ class MedicineMenuState extends State<MedicineMenu> {
   OrdersHeaderDelegate({required this.height, required this.child});
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
-      child;
+  child;
   @override
   double get maxExtent => height;
   @override
   double get minExtent => height;
   @override
   bool shouldRebuild(covariant OrdersHeaderDelegate old) =>
-      old.height != height || old.child != child;
-}
-
-class MedicineDetailModal extends StatefulWidget {
-  final String productName;
-  final String amountStr;
-  final String imagePath;
-  final int stockCount;
-  final String dosage;
-  final String ingredients;
-  final String warnings;
-  final String additionalMedia;
-  final int dailyRemaining;
-  final void Function(int) onAddToCart;
-
-  const MedicineDetailModal({
-    Key? key,
-    required this.productName,
-    required this.amountStr,
-    required this.imagePath,
-    required this.stockCount,
-    required this.dosage,
-    required this.ingredients,
-    required this.warnings,
-    required this.additionalMedia,
-    required this.dailyRemaining,
-    required this.onAddToCart,
-  }) : super(key: key);
-
-  @override
-  _MedicineDetailModalState createState() => _MedicineDetailModalState();
-}
-
-class _MedicineDetailModalState extends State<MedicineDetailModal> {
-  int _quantity = 1;
-  bool _isFavorite = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final bodyMedium = theme.textTheme.bodyMedium;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    widget.productName,
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontSize: 26, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // price & stock
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Price: ₱${widget.amountStr}',
-                    style: bodyMedium?.copyWith(fontSize: 20)),
-                Text('In Stock: ${widget.stockCount}',
-                    style: bodyMedium?.copyWith(fontSize: 20)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // image
-            Center(
-              child: widget.imagePath.isNotEmpty
-                  ? Image.asset(widget.imagePath,
-                  height: 350, fit: BoxFit.contain)
-                  : Text("No image",
-                  style: bodyMedium?.copyWith(fontSize: 20)),
-            ),
-            const SizedBox(height: 12),
-            // daily cap info
-            if (widget.dailyRemaining < widget.stockCount)
-              Text(
-                "You can add up to ${widget.dailyRemaining} pcs today.",
-                style: bodyMedium?.copyWith(
-                    fontSize: 18, fontWeight: FontWeight.w500),
-              ),
-            const SizedBox(height: 12),
-            // qty selector
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  iconSize: 36,
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: _quantity > 1
-                      ? () => setState(() => _quantity--)
-                      : null,
-                ),
-                Text('$_quantity',
-                    style: bodyMedium?.copyWith(
-                        fontSize: 28, fontWeight: FontWeight.bold)),
-                IconButton(
-                  iconSize: 36,
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: _quantity < widget.stockCount &&
-                      (_quantity < widget.dailyRemaining)
-                      ? () => setState(() => _quantity++)
-                      : null,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // dosage, ingredients, warnings...
-            Text("Dosage Information:",
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(widget.dosage,
-                style: bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
-            const SizedBox(height: 16),
-            Text("Ingredients:",
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(widget.ingredients,
-                style: bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
-            const SizedBox(height: 16),
-            Text("Warnings & Side Effects:",
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(widget.warnings,
-                style: bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
-            const SizedBox(height: 16),
-            if (widget.additionalMedia.isNotEmpty) ...[
-              Text("Additional Information:",
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(widget.additionalMedia,
-                  style:
-                  bodyMedium?.copyWith(fontSize: 20, height: 1.4)),
-              const SizedBox(height: 16),
-            ],
-            Text(
-              "Information provided here is for reference only. Always consult a healthcare professional for medical advice.",
-              style: bodyMedium?.copyWith(
-                  fontSize: 16, color: Colors.grey[700], height: 1.3),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        widget.onAddToCart(_quantity),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2A5E),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      textStyle:
-                      const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    child: const Text("Add to Cart"),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[800],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      textStyle:
-                      const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    child: const Text("Close"),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  old.height != height || old.child != child;
   }
-}

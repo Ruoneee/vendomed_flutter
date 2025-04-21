@@ -112,6 +112,7 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                     onPressed: () => widget.onAddToCart(_quantity),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2A5E),
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical:20),
                       textStyle: const TextStyle(fontSize:20, fontWeight:FontWeight.bold),
                     ),
@@ -124,6 +125,7 @@ class _MedicineDetailModalState extends State<MedicineDetailModal> {
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[800],
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical:20),
                       textStyle: const TextStyle(fontSize:20, fontWeight:FontWeight.bold),
                     ),
