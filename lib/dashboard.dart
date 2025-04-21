@@ -946,6 +946,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
                         columns: const [
+                          DataColumn(label: Text('RFID')),
                           DataColumn(label: Text('Medicine')),
                           DataColumn(label: Text('Qty')),
                           DataColumn(label: Text('Unit Price')),
@@ -958,6 +959,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         rows: _transactions.map((tx) {
                           return DataRow(
                             cells: [
+                              DataCell(
+                                Text(tx['user_rfid'] ?? '–'),
+                                onTap: () => _showDrillDownDetails(tx),
+                              ),
                               DataCell(
                                 Text(tx['medicine'] ?? 'N/A'),
                                 onTap: () => _showDrillDownDetails(tx),

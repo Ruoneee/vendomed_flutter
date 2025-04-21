@@ -188,30 +188,36 @@ class PointsPageState extends State<PointsPage> {
 
   /// Insert each order as a transaction into the database.
   Future<void> _insertTransactions() async {
-    String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
+    final String userType =
+    (_userName == widget.rfidData) ? "Guest" : "RFID User";
 
     for (var order in widget.orders) {
-      String medicine = order['name'] ?? "Unknown";
-      int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
-      double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
-      double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
-      String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+      // 1) pull everything out of the order map so you can refer to them by name:
+      final String medicine    = order['name'] ?? "Unknown";
+      final int    quantity    = int.tryParse(order['quantity'] ?? "0") ?? 0;
+      final double totalCost   = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
+      final double unitPrice   = quantity > 0 ? totalCost / quantity : 0.0;
+      final String date        = DateFormat('yyyy-MM-dd HH:mm:ss')
+          .format(DateTime.now());
 
-      Map<String, dynamic> transaction = {
-        'medicine': medicine,
-        'quantity': quantity,
-        'unit_price': unitPrice,
-        'total_amount': totalCost,
-        // Payment is done via points so set amount_inserted to 0.
-        'amount_inserted': 0,
-        'date': date,
-        'payment_method': 'Points',
-        'user_type': userType,
+      // 2) build your transaction map, *including* the new user_rfid
+      final Map<String, dynamic> transaction = {
+        'user_rfid'      : widget.rfidData,  // ← NEW
+        'medicine'       : medicine,
+        'quantity'       : quantity,
+        'unit_price'     : unitPrice,
+        'total_amount'   : totalCost,
+        'amount_inserted': 0,                // points‐only payment
+        'date'           : date,
+        'payment_method' : 'Points',
+        'user_type'      : userType,
       };
 
-      await DatabaseHelper().insertTransaction(transaction);
+      // 3) use the singleton to insert
+      await DatabaseHelper.instance.insertTransaction(transaction);
     }
   }
+
 
   Future<void> _deductPoints(int pointsToDeduct) async {
     // Deduct points only if the user is not a guest.

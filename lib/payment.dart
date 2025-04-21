@@ -227,26 +227,34 @@ class PaymentPageState extends State<PaymentPage> {
 
   /// Insert each order as a transaction into the DB.
   Future<void> _insertTransactions() async {
+    // determine user type
     String userType = (_userName == widget.rfidData) ? "Guest" : "RFID User";
+
     for (var order in widget.orders) {
-      String medicine = order['name'] ?? "Unknown";
-      int quantity = int.tryParse(order['quantity'] ?? "1") ?? 1;
-      double totalCost = double.tryParse(order['price'] ?? "0.00") ?? 0.0;
-      double unitPrice = (quantity != 0) ? totalCost / quantity : 0.0;
-      String date = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-      Map<String, dynamic> transaction = {
-        'medicine': medicine,
-        'quantity': quantity,
-        'unit_price': unitPrice,
-        'total_amount': totalCost,
-        'date': date,
-        'payment_method': 'Cash/Coins',
-        'user_type': userType,
-        'amount_inserted': coinInserted,
+      // ←—— HERE: extract all your fields from the `order` map
+      final String medicine = order['name'] ?? 'Unknown';
+      final int quantity = int.tryParse(order['quantity'] ?? '0') ?? 0;
+      final double totalCost = double.tryParse(order['price'] ?? '0.00') ?? 0.0;
+      final double unitPrice = quantity > 0 ? totalCost / quantity : 0.0;
+      final String date =
+      DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+
+      final Map<String, dynamic> transaction = {
+        'user_rfid':       widget.rfidData,     // you already added this
+        'medicine':        medicine,            // now defined
+        'quantity':        quantity,            // now defined
+        'unit_price':      unitPrice,           // now defined
+        'total_amount':    totalCost,           // now defined
+        'amount_inserted': coinInserted,        // keeps your USB‐inserted value
+        'date':            date,                // now defined
+        'payment_method':  'Cash/Coins',
+        'user_type':       userType,
       };
-      await DatabaseHelper().insertTransaction(transaction);
+
+      await DatabaseHelper.instance.insertTransaction(transaction);
     }
   }
+
 
   /// Update the stock count for each ordered product.
   Future<void> _updateStocksForOrders() async {
