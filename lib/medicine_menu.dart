@@ -42,6 +42,53 @@ class MedicineMenuState extends State<MedicineMenu> {
   // How many pcs of each medicine this user already bought today.
   Map<String, int> _dailyPurchased = {};
 
+  // --- Extracted details maps ---
+  static const Map<String, Map<String, String>> _medicineDetails = {
+    'Ibuprofen': {
+      'dosage': 'Adults: 200-400 mg every 4-6 hours as needed, max 3200 mg/day. Take with food.',
+      'ingredients': 'Active: Ibuprofen 200 mg or 400 mg. Inactive: Colloidal silicon dioxide, croscarmellose sodium, magnesium stearate, etc.',
+      'warnings': 'May cause stomach upset or bleeding. Avoid if allergic to NSAIDs, have ulcers, or severe kidney/liver disease.',
+      'additionalMedia': 'Consult the FDA‑approved label or a healthcare provider for full details.',
+    },
+    'Cetirizine': {
+      'dosage': 'Adults and children over 6: 5-10 mg once daily. Adjust for kidney impairment.',
+      'ingredients': 'Active: Cetirizine Hydrochloride 10 mg. Inactive: Lactose monohydrate, microcrystalline cellulose, etc.',
+      'warnings': 'May cause drowsiness. Avoid alcohol. Not recommended if allergic to hydroxyzine.',
+      'additionalMedia': 'Refer to product packaging or pharmacist for complete information.',
+    },
+    'Paracetamol': {
+      'dosage': 'Adults: 500-1000 mg every 4-6 hours, max 4000 mg/day. Do not exceed recommended dose.',
+      'ingredients': 'Active: Paracetamol (Acetaminophen) 500 mg. Inactive: Starch, povidone, etc.',
+      'warnings': 'Overdose can cause liver damage. Avoid alcohol. Consult doctor if fever persists over 3 days.',
+      'additionalMedia': 'See FDA guidelines or consult a healthcare professional.',
+    },
+    'Loperamide': {
+      'dosage': 'Adults: 4 mg initially, then 2 mg after each loose stool, max 16 mg/day. Stop after 48 hours if no improvement.',
+      'ingredients': 'Active: Loperamide Hydrochloride 2 mg. Inactive: Lactose, cornstarch, magnesium stearate, etc.',
+      'warnings': 'May cause constipation or drowsiness. Do not use if diarrhea is bloody or with fever.',
+      'additionalMedia': 'Refer to FDA label or Drugs.com for detailed usage instructions.',
+    },
+    'Antacid': {
+      'dosage': 'Adults: 1-2 tablets as needed after meals or at bedtime, max 8 tablets/day (varies by brand).',
+      'ingredients': 'Active: Calcium Carbonate 500 mg or Aluminum Hydroxide/Magnesium Hydroxide. Inactive: Sucrose, etc.',
+      'warnings': 'May cause constipation or diarrhea. Avoid if on a low-sodium diet or with kidney issues.',
+      'additionalMedia': 'Check specific product labeling for exact formulation and instructions.',
+    },
+    'Buscopan': {
+      'dosage': 'Adults: 1-2 tablets (10 mg each) 3-4 times daily. Max 6 tablets/day. Swallow whole.',
+      'ingredients': 'Active: Hyoscine Butylbromide 10 mg. Inactive: Sucrose, calcium hydrogen phosphate, etc.',
+      'warnings': 'May cause dry mouth or blurred vision. Avoid if you have glaucoma or bowel obstruction.',
+      'additionalMedia': 'See Patient.info or consult a pharmacist for full prescribing details.',
+    },
+  };
+
+  static const Map<String, String> _defaultDetail = {
+    'dosage': 'No dosage information available.',
+    'ingredients': 'No ingredients information available.',
+    'warnings': 'No warnings information available.',
+    'additionalMedia': '',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -61,9 +108,9 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   void _startStockListener() {
-    // Refresh the medicines every 2 seconds.
     _stockUpdateTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _fetchMedicines();
+      _fetchDailyPurchasedCounts();
     });
   }
 
@@ -76,7 +123,7 @@ class MedicineMenuState extends State<MedicineMenu> {
         where: 'RFID = ?',
         whereArgs: [widget.rfidData],
       );
-
+      if (!mounted) return;
       setState(() {
         if (result.isNotEmpty) {
           _userName = result.first['NAME']?.toString() ?? widget.rfidData;
@@ -88,6 +135,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       });
     } catch (e) {
       debugPrint("Error loading user name/points: $e");
+      if (!mounted) return;
       setState(() {
         _userName = widget.rfidData;
         _userPoints = '0';
@@ -99,6 +147,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     try {
       final db = await DatabaseHelper().db;
       final List<Map<String, dynamic>> results = await db.query('stocks');
+      if (!mounted) return;
       setState(() {
         medicines = results.map((row) {
           final String productName = row['product_name'] ?? 'Unknown';
@@ -117,31 +166,19 @@ class MedicineMenuState extends State<MedicineMenu> {
     }
   }
 
-  /// *** NEW: Sum up today's purchases per medicine ***
   Future<void> _fetchDailyPurchasedCounts() async {
+    final String todayStr = DateTime.now().toIso8601String().split('T').first;
     try {
-      final db = await DatabaseHelper().db;
-      // Adjust the table/column names as needed:
-      final today = DateTime.now();
-      final todayStr =
-          "${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-      final List<Map<String, dynamic>> rows = await db.rawQuery(
-        '''
-        SELECT product_name, SUM(quantity) AS totalQty
-        FROM orders
-        WHERE rfid = ?
-          AND date(order_timestamp) = ?
-        GROUP BY product_name
-        ''',
-        [widget.rfidData, todayStr],
+      final counts = await DatabaseHelper.instance.getDailyPurchaseCounts(
+        rfid: widget.rfidData,
+        date: todayStr,
       );
+      if (!mounted) return;
       setState(() {
-        _dailyPurchased = {
-          for (var r in rows) r['product_name'] as String: (r['totalQty'] as int)
-        };
+        _dailyPurchased = counts;
       });
     } catch (e) {
-      debugPrint("Error fetching daily purchased counts: $e");
+      debugPrint("Error fetching daily counts: $e");
     }
   }
 
@@ -162,62 +199,14 @@ class MedicineMenuState extends State<MedicineMenu> {
       String productName,
       String amountStr,
       String imagePath,
-      int displayStock,    // real‑time stock (DB stock − in‑cart qty)
+      int displayStock,
       ) {
-    // Calculate how many this user has bought today and what's left
     final int purchasedToday = _dailyPurchased[productName] ?? 0;
     final int limit = _dailyLimits[productName] ?? 0;
     final int dailyRemaining = (limit - purchasedToday).clamp(0, limit);
 
-    // Full details map
-    final Map<String, Map<String, String>> detailsMap = {
-      'Ibuprofen': {
-        'dosage': 'Adults: 200-400 mg every 4-6 hours as needed, max 3200 mg/day. Take with food.',
-        'ingredients': 'Active: Ibuprofen 200 mg or 400 mg. Inactive: Colloidal silicon dioxide, croscarmellose sodium, magnesium stearate, etc.',
-        'warnings': 'May cause stomach upset or bleeding. Avoid if allergic to NSAIDs, have ulcers, or severe kidney/liver disease.',
-        'additionalMedia': 'Consult the FDA-approved label or a healthcare provider for full details.',
-      },
-      'Cetirizine': {
-        'dosage': 'Adults and children over 6: 5-10 mg once daily. Adjust for kidney impairment.',
-        'ingredients': 'Active: Cetirizine Hydrochloride 10 mg. Inactive: Lactose monohydrate, microcrystalline cellulose, etc.',
-        'warnings': 'May cause drowsiness. Avoid alcohol. Not recommended if allergic to hydroxyzine.',
-        'additionalMedia': 'Refer to product packaging or pharmacist for complete information.',
-      },
-      'Paracetamol': {
-        'dosage': 'Adults: 500-1000 mg every 4-6 hours, max 4000 mg/day. Do not exceed recommended dose.',
-        'ingredients': 'Active: Paracetamol (Acetaminophen) 500 mg. Inactive: Starch, povidone, etc.',
-        'warnings': 'Overdose can cause liver damage. Avoid alcohol. Consult doctor if fever persists over 3 days.',
-        'additionalMedia': 'See FDA guidelines or consult a healthcare professional.',
-      },
-      'Loperamide': {
-        'dosage': 'Adults: 4 mg initially, then 2 mg after each loose stool, max 16 mg/day. Stop after 48 hours if no improvement.',
-        'ingredients': 'Active: Loperamide Hydrochloride 2 mg. Inactive: Lactose, cornstarch, magnesium stearate, etc.',
-        'warnings': 'May cause constipation or drowsiness. Do not use if diarrhea is bloody or with fever.',
-        'additionalMedia': 'Refer to FDA label or Drugs.com for detailed usage instructions.',
-      },
-      'Antacid': {
-        'dosage': 'Adults: 1-2 tablets as needed after meals or at bedtime, max 8 tablets/day (varies by brand).',
-        'ingredients': 'Active: Calcium Carbonate 500 mg or Aluminum Hydroxide/Magnesium Hydroxide. Inactive: Sucrose, etc.',
-        'warnings': 'May cause constipation or diarrhea. Avoid if on a low-sodium diet or with kidney issues.',
-        'additionalMedia': 'Check specific product labeling for exact formulation and instructions.',
-      },
-      'Buscopan': {
-        'dosage': 'Adults: 1-2 tablets (10 mg each) 3-4 times daily. Max 6 tablets/day. Swallow whole.',
-        'ingredients': 'Active: Hyoscine Butylbromide 10 mg. Inactive: Sucrose, calcium hydrogen phosphate, etc.',
-        'warnings': 'May cause dry mouth or blurred vision. Avoid if you have glaucoma or bowel obstruction.',
-        'additionalMedia': 'See Patient.info or consult a pharmacist for full prescribing details.',
-      },
-    };
+    final medicineDetail = _medicineDetails[productName] ?? _defaultDetail;
 
-    // Fallback if we don't have details for this product
-    final medicineDetail = detailsMap[productName] ?? {
-      'dosage': 'No dosage information available.',
-      'ingredients': 'No ingredients information available.',
-      'warnings': 'No warnings information available.',
-      'additionalMedia': '',
-    };
-
-    // Show the dialog, passing both stocks and per‑day remaining
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -227,19 +216,20 @@ class MedicineMenuState extends State<MedicineMenu> {
           insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Container(
             width: dialogWidth,
-            constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.9),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+            ),
             child: MedicineDetailModal(
-              productName: productName,
-              amountStr: amountStr,
-              imagePath: imagePath,
-              stockCount: displayStock,          // real‑time stock
-              dosage: medicineDetail['dosage']!,
-              ingredients: medicineDetail['ingredients']!,
-              warnings: medicineDetail['warnings']!,
-              additionalMedia: medicineDetail['additionalMedia']!,
-              dailyRemaining: dailyRemaining,    // per‑day allowance
-              onAddToCart: (quantity) {
+              productName:    productName,
+              amountStr:      amountStr,
+              imagePath:      imagePath,
+              stockCount:     displayStock,
+              dosage:         medicineDetail['dosage']!,
+              ingredients:    medicineDetail['ingredients']!,
+              warnings:       medicineDetail['warnings']!,
+              additionalMedia:medicineDetail['additionalMedia']!,
+              dailyRemaining: dailyRemaining,
+              onAddToCart:    (quantity) {
                 Navigator.pop(ctx);
                 _addToOrder(productName, amountStr, quantity);
               },
@@ -252,9 +242,18 @@ class MedicineMenuState extends State<MedicineMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final titleLarge = Theme.of(context).textTheme.titleLarge;
-    final titleMedium = Theme.of(context).textTheme.titleMedium;
-    final bodyMedium = Theme.of(context).textTheme.bodyMedium;
+    final titleLarge = Theme
+        .of(context)
+        .textTheme
+        .titleLarge;
+    final titleMedium = Theme
+        .of(context)
+        .textTheme
+        .titleMedium;
+    final bodyMedium = Theme
+        .of(context)
+        .textTheme
+        .bodyMedium;
 
     return WillPopScope(
       onWillPop: () async => false,
@@ -272,7 +271,8 @@ class MedicineMenuState extends State<MedicineMenu> {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const UserSelectionScreen()),
                 );
               },
             ),
@@ -315,7 +315,8 @@ class MedicineMenuState extends State<MedicineMenu> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF0D2A5E), width: 2),
+                        border: Border.all(color: const Color(0xFF0D2A5E),
+                            width: 2),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
@@ -377,44 +378,55 @@ class MedicineMenuState extends State<MedicineMenu> {
                               padding: EdgeInsets.zero,
                               itemCount: orders.length,
                               itemBuilder: (context, index) {
-                                final orderName = orders[index]['name'] ?? 'Unknown';
-                                final orderQuantity = orders[index]['quantity'] ?? '1';
-                                final orderPrice = orders[index]['price'] ?? '0.00';
+                                final orderName = orders[index]['name'] ??
+                                    'Unknown';
+                                final orderQuantity = orders[index]['quantity'] ??
+                                    '1';
+                                final orderPrice = orders[index]['price'] ??
+                                    '0.00';
                                 return ListTile(
                                   dense: true,
                                   title: Text(
-                                    '${index + 1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
-                                    style: bodyMedium?.copyWith(fontSize: 16, color: Colors.black),
+                                    '${index +
+                                        1}. $orderName (Qty: $orderQuantity) - ₱$orderPrice',
+                                    style: bodyMedium?.copyWith(
+                                        fontSize: 16, color: Colors.black),
                                   ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    icon: const Icon(
+                                        Icons.delete, color: Colors.red),
                                     onPressed: () {
                                       showDialog(
                                         context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text('Remove Item'),
-                                          content: Text('Remove $orderName from your order?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              child: const Text('Cancel'),
+                                        builder: (context) =>
+                                            AlertDialog(
+                                              title: const Text('Remove Item'),
+                                              content: Text(
+                                                  'Remove $orderName from your order?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      orders.removeAt(index);
+                                                    });
+                                                    Navigator.pop(context);
+                                                    ScaffoldMessenger.of(
+                                                        context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                            '$orderName removed from your order.'),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: const Text('Remove'),
+                                                ),
+                                              ],
                                             ),
-                                            TextButton(
-                                              onPressed: () {
-                                                setState(() {
-                                                  orders.removeAt(index);
-                                                });
-                                                Navigator.pop(context);
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text('$orderName removed from your order.'),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('Remove'),
-                                            ),
-                                          ],
-                                        ),
                                       );
                                     },
                                   ),
@@ -470,22 +482,26 @@ class MedicineMenuState extends State<MedicineMenu> {
                       onPressed: _resetOrders,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2A4D6F),
-                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 50, vertical: 15),
                       ),
                       child: Text(
                         "RESET",
-                        style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
+                        style: titleMedium?.copyWith(
+                            fontSize: 22, color: Colors.white),
                       ),
                     ),
                     ElevatedButton(
                       onPressed: _proceedToCheckout,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2A5E),
-                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 50, vertical: 15),
                       ),
                       child: Text(
                         "CHECKOUT",
-                        style: titleMedium?.copyWith(fontSize: 22, color: Colors.white),
+                        style: titleMedium?.copyWith(
+                            fontSize: 22, color: Colors.white),
                       ),
                     ),
                   ],
@@ -506,19 +522,22 @@ class MedicineMenuState extends State<MedicineMenu> {
       String imagePath,
       int stockCount,
       ) {
-    // How many of this medicine are already in the cart?
+    // 1. How many of this medicine are already in the cart?
     final cartIndex = orders.indexWhere((o) => o['name'] == productName);
     final int inCart = cartIndex != -1
         ? int.tryParse(orders[cartIndex]['quantity']!) ?? 0
         : 0;
-    // New “real‑time” remaining stock
+
+    // 2. Subtract from DB stock to get “real‑time” remaining
     final int displayStock = (stockCount - inCart).clamp(0, stockCount);
 
-    // Your existing tap‑animation and theming:
+    // Tap animation and theming
     bool isTapped = _isTapped[productName] ?? false;
     final titleLarge = Theme.of(context).textTheme.titleLarge;
     final titleMedium = Theme.of(context).textTheme.titleMedium;
     final bodyMedium = Theme.of(context).textTheme.bodyMedium;
+
+    // Daily‑limit calculation
     final int purchasedToday = _dailyPurchased[productName] ?? 0;
     final int limit = _dailyLimits[productName] ?? 0;
     final int dailyRemaining = (limit - purchasedToday).clamp(0, limit);
@@ -532,17 +551,27 @@ class MedicineMenuState extends State<MedicineMenu> {
 
         if (displayStock == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Out of stock!"), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text("Out of stock!"),
+              backgroundColor: Colors.red,
+            ),
           );
         } else if (_userName != widget.rfidData && dailyRemaining == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Daily limit reached for $productName ($limit pcs)."),
+              content: Text(
+                  "Daily limit reached for $productName ($limit pcs)."
+              ),
               backgroundColor: Colors.orange,
             ),
           );
         } else {
-          _openMedicineDetail(productName, amountStr, imagePath, displayStock);
+          _openMedicineDetail(
+            productName,
+            amountStr,
+            imagePath,
+            displayStock,  // pass real‑time stock
+          );
         }
       },
       onTapCancel: () => setState(() => _isTapped[productName] = false),
@@ -561,32 +590,51 @@ class MedicineMenuState extends State<MedicineMenu> {
             children: [
               const Spacer(),
               if (imagePath.isNotEmpty)
-                Image.asset(imagePath, height: MediaQuery.of(context).size.height * 0.18, fit: BoxFit.contain)
+                Image.asset(
+                  imagePath,
+                  height: MediaQuery.of(context).size.height * 0.18,
+                  fit: BoxFit.contain,
+                )
               else
                 Container(
                   height: MediaQuery.of(context).size.height * 0.18,
                   alignment: Alignment.center,
-                  child: Text("No image", style: bodyMedium?.copyWith(fontSize: 16, color: Colors.grey)),
+                  child: Text(
+                    "No image",
+                    style: bodyMedium?.copyWith(fontSize: 16, color: Colors.grey),
+                  ),
                 ),
               const SizedBox(height: 10),
-              Text(productName,
-                  style: titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center),
-              Text('₱$amountStr',
-                  style: titleMedium?.copyWith(fontSize: 18, color: Colors.black54),
-                  textAlign: TextAlign.center),
+              Text(
+                productName,
+                style: titleLarge?.copyWith(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                '₱$amountStr',
+                style: titleMedium?.copyWith(fontSize: 18, color: Colors.black54),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 6),
-              Text('Remaining: $displayStock pc/s',
-                  style: titleMedium
-                      ?.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF0D2A5E))),
+              Text(
+                'Remaining: $displayStock pc/s',
+                style: titleMedium?.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF0D2A5E),
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 6),
               if (_userName != widget.rfidData)
-                Text('Today Remaining: $dailyRemaining',
-                    style: bodyMedium?.copyWith(
-                      fontSize: 16,
-                      color: dailyRemaining == 0 ? Colors.red : Colors.green,
-                      fontWeight: FontWeight.w600,
-                    )),
+                Text(
+                  'Today Remaining: $dailyRemaining',
+                  style: bodyMedium?.copyWith(
+                    fontSize: 16,
+                    color: dailyRemaining == 0 ? Colors.red : Colors.green,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               const Spacer(),
             ],
           ),
@@ -596,8 +644,7 @@ class MedicineMenuState extends State<MedicineMenu> {
   }
 
   // Accepts the selected quantity from the detail modal.
-  void _addToOrder(
-      String productName, String unitPriceStr, int quantity) {
+  void _addToOrder(String productName, String unitPriceStr, int quantity) {
     final medicineIndex =
     medicines.indexWhere((m) => m['product_name'] == productName);
     if (medicineIndex == -1) {
@@ -682,33 +729,39 @@ class MedicineMenuState extends State<MedicineMenu> {
       return;
     }
 
-    final ordersCopy = List<Map<String, String>>.from(orders);
-    if (_userName == widget.rfidData) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentPage(
+    // Copy so the payment screen can't mutate our original list
+    final List<Map<String, String>> ordersCopy =
+    List<Map<String, String>>.from(orders);
+
+    // Decide which page to push
+    final MaterialPageRoute nextRoute = (_userName == widget.rfidData)
+        ? MaterialPageRoute(
+      builder: (_) =>
+          PaymentPage(
             orders: ordersCopy,
             rfidData: widget.rfidData,
             medicinesToBeDisabled: const [],
           ),
-        ),
-      ).then((_) => setState(() => orders.clear()));
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentMethodPage(
+    )
+        : MaterialPageRoute(
+      builder: (_) =>
+          PaymentMethodPage(
             orders: ordersCopy,
             rfidData: widget.rfidData,
           ),
-        ),
-      ).then((_) => setState(() => orders.clear()));
-    }
+    );
+
+    // Push and then, when returning, clear cart & reload today's counts
+    Navigator.push(context, nextRoute).then((_) {
+      setState(() {
+        orders.clear();
+      });
+      _fetchDailyPurchasedCounts();
+    });
   }
 }
 
-class OrdersHeaderDelegate extends SliverPersistentHeaderDelegate {
+  class OrdersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final Widget child;
   OrdersHeaderDelegate({required this.height, required this.child});

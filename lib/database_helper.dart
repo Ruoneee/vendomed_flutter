@@ -15,7 +15,6 @@ class DatabaseHelper {
 
   DatabaseHelper._internal();
 
-  /// Returns the initialized [Database], bumping version to 3.
   Future<Database> get db async {
     if (_db != null) return _db!;
     _db = await _initDb();
@@ -29,16 +28,12 @@ class DatabaseHelper {
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, "vendomed.db");
 
-    // Ensure directory exists
     await Directory(dirname(path)).create(recursive: true);
-
-    // Copy from assets if first run
     if (!await File(path).exists()) {
       await _copyDatabaseFromAssets(path);
       print("Database copied from assets to: $path");
     }
 
-    // Open with version 3
     return await openDatabase(
       path,
       version: 3,
@@ -49,29 +44,28 @@ class DatabaseHelper {
 
   Future<void> _copyDatabaseFromAssets(String path) async {
     ByteData data = await rootBundle.load("assets/vendomed.db");
-    List<int> bytes = data.buffer
-        .asUint8List(data.offsetInBytes, data.lengthInBytes);
+    List<int> bytes =
+    data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     await File(path).writeAsBytes(bytes, flush: true);
   }
 
-  /// Create all tables at version 3 schema
   Future _onCreate(Database db, int version) async {
-    // ---- TRANSACTIONS ----
+    // TRANSACTIONS table with rfid and date
     await db.execute('''
       CREATE TABLE IF NOT EXISTS transactions (
-        transaction_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-        rfid             TEXT    NOT NULL,
-        medicine         TEXT    NOT NULL,
-        quantity         INTEGER NOT NULL,
-        unit_price       NUMERIC NOT NULL,
-        total_amount     NUMERIC NOT NULL,
-        date             TEXT    NOT NULL,
-        payment_method   TEXT    NOT NULL CHECK (payment_method IN ('GCash', 'Cash/Coins')),
-        user_type        TEXT    NOT NULL CHECK (user_type    IN ('RFID User', 'Guest'))
+        transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rfid           TEXT    NOT NULL,
+        medicine       TEXT    NOT NULL,
+        quantity       INTEGER NOT NULL,
+        unit_price     NUMERIC NOT NULL,
+        total_amount   NUMERIC NOT NULL,
+        date           TEXT    NOT NULL,
+        payment_method TEXT    NOT NULL CHECK (payment_method IN ('GCash', 'Cash/Coins')),
+        user_type      TEXT    NOT NULL CHECK (user_type    IN ('RFID User', 'Guest'))
       )
     ''');
 
-    // ---- USERS ----
+    // USERS table
     await db.execute('''
       CREATE TABLE IF NOT EXISTS users (
         user_id    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,19 +77,19 @@ class DatabaseHelper {
       )
     ''');
 
-    // ---- STOCKS ----
+    // STOCKS table
     await db.execute('''
       CREATE TABLE IF NOT EXISTS stocks (
-        BATCH_ID      INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_name  TEXT,
-        product_id    TEXT,
-        amount        TEXT,
-        status        TEXT,
-        count         TEXT
+        BATCH_ID     INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_name TEXT,
+        product_id   TEXT,
+        amount       TEXT,
+        status       TEXT,
+        count        TEXT
       )
     ''');
 
-    // ---- BATCH_EXPIRY ----
+    // BATCH_EXPIRY table
     await db.execute('''
       CREATE TABLE IF NOT EXISTS batch_expiry (
         batch_expiry_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,10 +104,9 @@ class DatabaseHelper {
     print("Database created with version $version");
   }
 
-  /// Migrate from older versions up to v3
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // create batch_expiry if missing (v2 upgrade)
+      // v2: ensure batch_expiry exists
       await db.execute('''
         CREATE TABLE IF NOT EXISTS batch_expiry (
           batch_expiry_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,7 +121,7 @@ class DatabaseHelper {
     }
 
     if (oldVersion < 3) {
-      // add rfid column to transactions (v3 upgrade)
+      // v3: add rfid column to transactions
       await db.execute('''
         ALTER TABLE transactions
         ADD COLUMN rfid TEXT DEFAULT ''
@@ -142,10 +135,8 @@ class DatabaseHelper {
     _transactionStreamController.add(transactions);
   }
 
-  // ========== TRANSACTIONS TABLE METHODS ==========
+  // ========== TRANSACTIONS METHODS ==========
 
-  /// Inserts a transaction record. Make sure your `transaction` map
-  /// includes keys: rfid, medicine, quantity, unit_price, total_amount, date, payment_method, user_type.
   Future<int> insertTransaction(Map<String, dynamic> transaction) async {
     final database = await db;
     final id = await database.insert("transactions", transaction);
@@ -154,28 +145,22 @@ class DatabaseHelper {
   }
 
   Future<List<Map<String, dynamic>>> getTransactions() async {
-    final database = await db;
-    return database.query("transactions");
+    return (await db).query("transactions");
   }
 
-  /// Returns a map of medicine → totalQty for a given RFID & date (YYYY‑MM‑DD).
+  /// Returns per‑medicine totals for a given RFID & date (YYYY‑MM‑DD).
   Future<Map<String, int>> getDailyPurchaseCounts({
     required String rfid,
-    required String date, // in 'YYYY-MM-DD' format
+    required String date,
   }) async {
     final database = await db;
-    final rows = await database.rawQuery(
-      '''
+    final rows = await database.rawQuery('''
       SELECT medicine, SUM(quantity) AS totalQty
       FROM transactions
-      WHERE rfid = ?
-        AND date(date) = ?
+      WHERE rfid = ? AND date(date) = ?
       GROUP BY medicine
-      ''',
-      [rfid, date],
-    );
+    ''', [rfid, date]);
 
-    // Convert to Map<String,int>
     final result = <String, int>{};
     for (var row in rows) {
       final name = row['medicine'] as String;
@@ -187,88 +172,48 @@ class DatabaseHelper {
     return result;
   }
 
-  // ========== USERS TABLE METHODS ==========
+  // ========== USERS METHODS ==========
 
-  Future<List<Map<String, dynamic>>> getAllUsers() async {
-    final database = await db;
-    return database.query('users');
-  }
+  Future<List<Map<String, dynamic>>> getAllUsers() async => (await db).query('users');
+  Future<int> insertUser(Map<String, dynamic> u) async => (await db).insert('users', u);
+  Future<int> updateUser(Map<String, dynamic> u, int id) async =>
+      (await db).update('users', u, where: 'user_id = ?', whereArgs: [id]);
+  Future<int> deleteUser(int id) async =>
+      (await db).delete('users', where: 'user_id = ?', whereArgs: [id]);
+  Future<int> updateUserByRFID(Map<String, dynamic> u, String r) async =>
+      (await db).update('users', u, where: 'rfid = ?', whereArgs: [r]);
+  Future<int> deleteUserByRFID(String r) async =>
+      (await db).delete('users', where: 'rfid = ?', whereArgs: [r]);
 
-  Future<int> insertUser(Map<String, dynamic> userData) async {
-    final database = await db;
-    return database.insert('users', userData);
-  }
+  // ========== STOCKS METHODS ==========
 
-  Future<int> updateUser(Map<String, dynamic> userData, int userId) async {
-    final database = await db;
-    return database.update('users', userData,
-        where: 'user_id = ?', whereArgs: [userId]);
-  }
+  Future<List<Map<String, dynamic>>> getAllStocks() async => (await db).query('stocks');
+  Future<int> insertStock(Map<String, dynamic> s) async => (await db).insert('stocks', s);
+  Future<int> updateStockByBatchId(Map<String, dynamic> s, int id) async =>
+      (await db).update('stocks', s, where: 'BATCH_ID = ?', whereArgs: [id]);
+  Future<int> updateStock(Map<String, dynamic> s, String name) async =>
+      (await db).update('stocks', s, where: 'product_name = ?', whereArgs: [name]);
+  Future<int> deleteStock(String name) async =>
+      (await db).delete('stocks', where: 'product_name = ?', whereArgs: [name]);
 
-  Future<int> deleteUser(int userId) async {
-    final database = await db;
-    return database
-        .delete('users', where: 'user_id = ?', whereArgs: [userId]);
-  }
+  // ========== BATCH_EXPIRY METHODS ==========
 
-  Future<int> updateUserByRFID(
-      Map<String, dynamic> userData, String rfid) async =>
-      (await db).update('users', userData,
-          where: 'rfid = ?', whereArgs: [rfid]);
-
-  Future<int> deleteUserByRFID(String rfid) async =>
-      (await db).delete('users', where: 'rfid = ?', whereArgs: [rfid]);
-
-  // ========== STOCKS TABLE METHODS ==========
-
-  Future<List<Map<String, dynamic>>> getAllStocks() async =>
-      (await db).query('stocks');
-
-  Future<int> insertStock(Map<String, dynamic> stockData) async =>
-      (await db).insert('stocks', stockData);
-
-  Future<int> updateStockByBatchId(
-      Map<String, dynamic> stockData, int batchId) async =>
-      (await db).update('stocks', stockData,
-          where: 'BATCH_ID = ?', whereArgs: [batchId]);
-
-  Future<int> updateStock(
-      Map<String, dynamic> stockData, String productName) async =>
-      (await db).update('stocks', stockData,
-          where: 'product_name = ?', whereArgs: [productName]);
-
-  Future<int> deleteStock(String productName) async =>
-      (await db).delete('stocks',
-          where: 'product_name = ?', whereArgs: [productName]);
-
-  // ========== BATCH_EXPIRY TABLE METHODS ==========
-
-  Future<int> insertBatchExpiry(Map<String, dynamic> data) async =>
-      (await db).insert('batch_expiry', data);
-
+  Future<int> insertBatchExpiry(Map<String, dynamic> d) async =>
+      (await db).insert('batch_expiry', d);
   Future<List<Map<String, dynamic>>> getAllBatchExpiry() async =>
       (await db).query('batch_expiry');
-
-  Future<List<Map<String, dynamic>>> getBatchExpiryByBatchId(
-      int batchId) async =>
-      (await db).query('batch_expiry',
-          where: 'batch_id = ?', whereArgs: [batchId]);
-
-  Future<int> updateBatchExpiry(
-      int batchExpiryId, Map<String, dynamic> data) async =>
-      (await db).update('batch_expiry', data,
-          where: 'batch_expiry_id = ?', whereArgs: [batchExpiryId]);
-
-  Future<int> deleteBatchExpiry(int batchExpiryId) async =>
-      (await db).delete('batch_expiry',
-          where: 'batch_expiry_id = ?', whereArgs: [batchExpiryId]);
+  Future<List<Map<String, dynamic>>> getBatchExpiryByBatchId(int id) async =>
+      (await db).query('batch_expiry', where: 'batch_id = ?', whereArgs: [id]);
+  Future<int> updateBatchExpiry(int id, Map<String, dynamic> d) async =>
+      (await db).update('batch_expiry', d, where: 'batch_expiry_id = ?', whereArgs: [id]);
+  Future<int> deleteBatchExpiry(int id) async =>
+      (await db).delete('batch_expiry', where: 'batch_expiry_id = ?', whereArgs: [id]);
 
   // ========== UTILITY ==========
 
   Future<int> getRowCount(String tableName) async {
-    final database = await db;
-    final result =
-    await database.rawQuery('SELECT COUNT(*) AS count FROM $tableName');
+    final result = await (await db)
+        .rawQuery('SELECT COUNT(*) AS count FROM $tableName');
     return result.first['count'] is int
         ? result.first['count'] as int
         : int.tryParse(result.first['count'].toString()) ?? 0;
