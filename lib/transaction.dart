@@ -14,7 +14,7 @@ class PaymentMethodData {
   PaymentMethodData(this.method, this.percentage);
 }
 
-/// Model for individual transactions (monogram approach, no images).
+/// Model for individual transactions.
 class TransactionItem {
   final String medicine;
   final String date; // e.g. "2025-04-04 12:05:00"
@@ -45,7 +45,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
   late Future<List<TransactionItem>> _futureTransactions;
 
   // Filtering state
-  // Default sort is "Date Descending" for newest-first.
   String _sortOption = 'Date Descending';
   String _filterPaymentMethod = 'All';
   DateTimeRange? _selectedDateRange;
@@ -54,10 +53,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final TextEditingController _maxAmountController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
-  // Replace with your actual brand color in light mode.
+  // Brand color in light mode
   final Color brandColorLight = const Color(0xFF0D2A5E);
 
-  // Updated Date format to parse dates from the database.
+  // Date format for parsing DB dates
   final DateFormat _fmt = DateFormat("yyyy-MM-dd HH:mm:ss");
 
   @override
@@ -65,9 +64,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
     super.initState();
     _isDarkMode = widget.isDarkMode;
     _futureTransactions = _fetchAndFilterTransactions();
-
-    // Periodically refresh the transactions every minute.
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    // Refresh every minute
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
       setState(() {
         _futureTransactions = _fetchAndFilterTransactions();
       });
@@ -84,74 +82,53 @@ class _TransactionScreenState extends State<TransactionScreen> {
     super.dispose();
   }
 
-  /// Fetch transactions from the database, convert to TransactionItem,
-  /// then apply all active filters and sorting.
   Future<List<TransactionItem>> _fetchAndFilterTransactions() async {
-    final rawData = await DatabaseHelper().getTransactions();
-    List<TransactionItem> list = rawData.map((row) {
-      // Check if amount_inserted exists; if so, use it.
-      double amountInserted = row['amount_inserted'] != null
+    final raw = await DatabaseHelper().getTransactions();
+    var list = raw.map((row) {
+      double amount = row['amount_inserted'] != null
           ? (row['amount_inserted'] is int
           ? (row['amount_inserted'] as int).toDouble()
           : row['amount_inserted'])
           : (row['total_amount'] is int
           ? (row['total_amount'] as int).toDouble()
           : row['total_amount']);
-
       return TransactionItem(
         medicine: row['medicine'],
         date: row['date'],
-        totalAmount: amountInserted,
+        totalAmount: amount,
         paymentMethod: row['payment_method'],
       );
     }).toList();
 
-    // Date range filter
+    // Date range
     if (_selectedDateRange != null) {
       list = list.where((tx) {
         DateTime dt = _fmt.parse(tx.date);
-        return dt.isAfter(
-            _selectedDateRange!.start.subtract(const Duration(days: 1))) &&
+        return dt.isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
             dt.isBefore(_selectedDateRange!.end.add(const Duration(days: 1)));
       }).toList();
     }
-
-    // Payment method filter
+    // Payment filter
     if (_filterPaymentMethod != 'All') {
       list = list.where((tx) => tx.paymentMethod == _filterPaymentMethod).toList();
     }
-
-    // Search query filter
+    // Search
     if (_searchQuery.isNotEmpty) {
-      list = list
-          .where((tx) =>
-          tx.medicine.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
+      list = list.where((tx) =>
+          tx.medicine.toLowerCase().contains(_searchQuery.toLowerCase())
+      ).toList();
     }
+    // Amount
+    double? min = double.tryParse(_minAmountController.text);
+    double? max = double.tryParse(_maxAmountController.text);
+    if (min != null) list = list.where((tx) => tx.totalAmount >= min).toList();
+    if (max != null) list = list.where((tx) => tx.totalAmount <= max).toList();
 
-    // Amount filters
-    double? minAmount = double.tryParse(_minAmountController.text);
-    double? maxAmount = double.tryParse(_maxAmountController.text);
-    if (minAmount != null) {
-      list = list.where((tx) => tx.totalAmount >= minAmount).toList();
-    }
-    if (maxAmount != null) {
-      list = list.where((tx) => tx.totalAmount <= maxAmount).toList();
-    }
-
-    // Sorting based on the selected option.
+    // Sort
     if (_sortOption == 'Date Ascending') {
-      list.sort((a, b) {
-        DateTime da = _fmt.parse(a.date);
-        DateTime db = _fmt.parse(b.date);
-        return da.compareTo(db);
-      });
+      list.sort((a, b) => _fmt.parse(a.date).compareTo(_fmt.parse(b.date)));
     } else if (_sortOption == 'Date Descending') {
-      list.sort((a, b) {
-        DateTime da = _fmt.parse(a.date);
-        DateTime db = _fmt.parse(b.date);
-        return db.compareTo(da);
-      });
+      list.sort((a, b) => _fmt.parse(b.date).compareTo(_fmt.parse(a.date)));
     } else if (_sortOption == 'Amount Ascending') {
       list.sort((a, b) => a.totalAmount.compareTo(b.totalAmount));
     } else if (_sortOption == 'Amount Descending') {
@@ -161,10 +138,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
     return list;
   }
 
-  /// Builds a card for a single transaction.
   Widget _buildTransactionCard(TransactionItem tx) {
     String initials = tx.medicine.isNotEmpty ? tx.medicine[0].toUpperCase() : '?';
-
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -178,9 +153,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
           child: Text(
             initials,
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
+                fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue
             ),
           ),
         ),
@@ -215,73 +188,56 @@ class _TransactionScreenState extends State<TransactionScreen> {
         trailing: Text(
           "₱${tx.totalAmount.toStringAsFixed(2)}",
           style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.green,
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green
           ),
         ),
       ),
     );
   }
 
-  /// Builds the pie chart widget for payment methods.
   Widget _buildPieChart(
       BuildContext context,
-      List<PaymentMethodData> paymentMethods,
-      bool isDarkMode,
+      List<PaymentMethodData> data,
+      bool dark,
       ) {
-    return Container(
-      width: double.infinity,
-      height: 350,
-      child: SfCircularChart(
-        backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
-        legend: Legend(
-          isVisible: true,
-          overflowMode: LegendItemOverflowMode.wrap,
-          position: LegendPosition.bottom,
-          textStyle: TextStyle(
-            fontSize: 14,
-            color: isDarkMode ? Colors.white : Colors.black,
+    return SfCircularChart(
+      backgroundColor: dark ? Colors.grey[900] : Colors.white,
+      legend: Legend(
+        isVisible: true,
+        overflowMode: LegendItemOverflowMode.wrap,
+        position: LegendPosition.bottom,
+        textStyle: TextStyle(color: dark ? Colors.white : Colors.black),
+      ),
+      series: <CircularSeries>[
+        PieSeries<PaymentMethodData, String>(
+          dataSource: data,
+          xValueMapper: (d, _) => d.method,
+          yValueMapper: (d, _) => d.percentage,
+          pointColorMapper: (d, _) {
+            switch (d.method) {
+              case 'Cash/Coins': return const Color(0xFF0D2A5E);
+              case 'Points':    return const Color(0xFF546E94);
+              default:          return Colors.grey;
+            }
+          },
+          dataLabelSettings: const DataLabelSettings(
+            isVisible: true,
+            textStyle: TextStyle(color: Colors.white),
           ),
         ),
-        series: <CircularSeries>[
-          PieSeries<PaymentMethodData, String>(
-            dataSource: paymentMethods,
-            xValueMapper: (PaymentMethodData data, _) => data.method,
-            yValueMapper: (PaymentMethodData data, _) => data.percentage,
-            pointColorMapper: (PaymentMethodData data, _) {
-              switch (data.method) {
-                case 'Cash/Coins':
-                  return const Color(0xFF0D2A5E);
-                case 'Points':
-                  return const Color(0xFF546E94);
-                default:
-                  return Colors.grey;
-              }
-            },
-            dataLabelSettings: const DataLabelSettings(
-              isVisible: true,
-              textStyle: TextStyle(fontSize: 14, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
-  /// Builds the stats card.
   Widget _buildStats(
       BuildContext context,
-      int totalCount,
-      String mostUsedMethod,
-      bool isDarkMode,
+      int total,
+      String most,
+      bool dark,
       ) {
-    Color methodColor = mostUsedMethod == "Cash/Coins"
-        ? Colors.green[300]!
-        : Colors.blue[300]!;
-
+    Color chipColor = most == "Cash/Coins" ? Colors.green[300]! : Colors.blue[300]!;
     return Card(
-      color: isDarkMode ? Colors.grey[850] : brandColorLight,
+      color: dark ? Colors.grey[850] : brandColorLight,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
       child: Padding(
@@ -289,58 +245,31 @@ class _TransactionScreenState extends State<TransactionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.receipt_long,
-                  color: isDarkMode ? Colors.white70 : Colors.white,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "Total Transactions",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "$totalCount",
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Row(children: [
+              Icon(Icons.receipt_long, color: dark ? Colors.white70 : Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                "Total Transactions",
+                style: TextStyle(color: dark ? Colors.white70 : Colors.white),
               ),
-            ),
+            ]),
+            const SizedBox(height: 6),
+            Text("$total",
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
             const Divider(height: 20, color: Colors.white70),
-            Row(
-              children: [
-                Icon(
-                  Icons.account_balance_wallet,
-                  color: isDarkMode ? Colors.white70 : Colors.white,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "Most Used Method",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.white,
-                  ),
-                ),
-              ],
-            ),
+            Row(children: [
+              Icon(Icons.account_balance_wallet,
+                  color: dark ? Colors.white70 : Colors.white),
+              const SizedBox(width: 8),
+              Text("Most Used Method",
+                  style: TextStyle(color: dark ? Colors.white70 : Colors.white)),
+            ]),
             const SizedBox(height: 6),
             Chip(
-              label: Text(
-                mostUsedMethod,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              backgroundColor: methodColor,
+              label: Text(most,
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+              backgroundColor: chipColor,
             ),
           ],
         ),
@@ -348,7 +277,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
-  /// Shows a bottom sheet containing advanced filters.
   void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
@@ -356,485 +284,349 @@ class _TransactionScreenState extends State<TransactionScreen> {
       backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.white,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (context) {
+      builder: (ctx) {
         return Padding(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
             top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
           ),
           child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[400],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+            child: Column(children: [
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400], borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  "Advanced Filters",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: _isDarkMode ? Colors.white : Colors.black,
-                  ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Advanced Filters",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: _isDarkMode ? Colors.white : Colors.black,
                 ),
-                const SizedBox(height: 16),
-                // Date range picker
-                Row(
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                        _isDarkMode ? Colors.grey[800] : null,
-                      ),
-                      onPressed: () async {
-                        DateTimeRange? picked = await showDateRangePicker(
-                          context: context,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                          initialDateRange: _selectedDateRange,
-                          builder: (context, child) {
-                            return Theme(
-                              data: _isDarkMode
-                                  ? ThemeData.dark()
-                                  : ThemeData.light(),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _selectedDateRange = picked;
-                          });
-                        }
-                      },
-                      child: const Text("Select Date Range"),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_selectedDateRange != null)
-                      Expanded(
-                        child: Text(
-                          "${_selectedDateRange!.start.toLocal().toShortDateString()} - ${_selectedDateRange!.end.toLocal().toShortDateString()}",
-                          style: TextStyle(
-                            color: _isDarkMode ? Colors.white : Colors.black,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Payment method dropdown
-                DropdownButtonFormField<String>(
-                  value: _filterPaymentMethod,
-                  dropdownColor:
-                  _isDarkMode ? Colors.grey[800] : Colors.white,
-                  decoration: InputDecoration(
-                    labelText: "Payment Method",
-                    labelStyle: TextStyle(
-                      color: _isDarkMode ? Colors.white : Colors.black,
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: <String>['All', 'Cash/Coins', 'Points']
-                      .map((option) => DropdownMenuItem(
-                    value: option,
-                    child: Text(
-                      option,
-                      style: TextStyle(
-                        color: _isDarkMode
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                    ),
-                  ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _filterPaymentMethod = value;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Sort option dropdown
-                DropdownButtonFormField<String>(
-                  value: _sortOption,
-                  dropdownColor:
-                  _isDarkMode ? Colors.grey[800] : Colors.white,
-                  decoration: InputDecoration(
-                    labelText: "Sort By",
-                    labelStyle: TextStyle(
-                      color: _isDarkMode ? Colors.white : Colors.black,
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: <String>[
-                    'Date Ascending',
-                    'Date Descending',
-                    'Amount Ascending',
-                    'Amount Descending'
-                  ]
-                      .map((option) => DropdownMenuItem(
-                    value: option,
-                    child: Text(
-                      option,
-                      style: TextStyle(
-                        color: _isDarkMode
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                    ),
-                  ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _sortOption = value;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Min/Max amount
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _minAmountController,
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Min Amount',
-                          labelStyle: TextStyle(
-                            color: _isDarkMode ? Colors.white : Colors.black,
-                          ),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _maxAmountController,
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(
-                          color: _isDarkMode ? Colors.white : Colors.black,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Max Amount',
-                          labelStyle: TextStyle(
-                            color: _isDarkMode ? Colors.white : Colors.black,
-                          ),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Apply Filters
+              ),
+              const SizedBox(height: 16),
+              // Date range picker
+              Row(children: [
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                    _isDarkMode ? Colors.grey[700] : null,
+                    backgroundColor: _isDarkMode ? Colors.grey[800] : null,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      Navigator.pop(context);
-                      _futureTransactions = _fetchAndFilterTransactions();
-                    });
-                  },
-                  child: const Text("Apply Filters"),
+                  onPressed: () async { /* … */ },
+                  child: const Text("Select Date Range"),
                 ),
-              ],
-            ),
+                /* … show selected range … */
+              ]),
+              const SizedBox(height: 16),
+              // Payment method dropdown
+              DropdownButtonFormField<String>(
+                value: _filterPaymentMethod,
+                dropdownColor: _isDarkMode ? Colors.grey[800] : Colors.white,
+                decoration: InputDecoration(
+                  labelText: "Payment Method",
+                  labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                  border: const OutlineInputBorder(),
+                ),
+                items: <String>['All', 'Cash/Coins', 'Points']
+                    .map((opt) => DropdownMenuItem(
+                  value: opt,
+                  child: Text(opt,
+                      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black)),
+                ))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _filterPaymentMethod = val);
+                },
+              ),
+              const SizedBox(height: 16),
+              // Sort By
+              DropdownButtonFormField<String>(
+                value: _sortOption,
+                dropdownColor: _isDarkMode ? Colors.grey[800] : Colors.white,
+                decoration: InputDecoration(
+                  labelText: "Sort By",
+                  labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                  border: const OutlineInputBorder(),
+                ),
+                items: <String>[
+                  'Date Ascending',
+                  'Date Descending',
+                  'Amount Ascending',
+                  'Amount Descending'
+                ]
+                    .map((opt) => DropdownMenuItem(
+                  value: opt,
+                  child: Text(opt,
+                      style:
+                      TextStyle(color: _isDarkMode ? Colors.white : Colors.black)),
+                ))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _sortOption = val);
+                },
+              ),
+              const SizedBox(height: 16),
+              // Min / Max
+              Row(children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _minAmountController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    decoration: InputDecoration(
+                      labelText: 'Min Amount',
+                      labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _maxAmountController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                    decoration: InputDecoration(
+                      labelText: 'Max Amount',
+                      labelStyle: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isDarkMode ? Colors.grey[700] : null,
+                ),
+                onPressed: () {
+                  setState(() {
+                    Navigator.pop(ctx);
+                    _futureTransactions = _fetchAndFilterTransactions();
+                  });
+                },
+                child: const Text("Apply Filters"),
+              ),
+            ]),
           ),
         );
       },
     );
   }
 
-  /// Builds the row that contains the search bar and the filter button.
   Widget _buildSearchFilterRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            style:
-            TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-            decoration: InputDecoration(
-              hintText: 'Search by Medicine',
-              hintStyle: TextStyle(
-                color:
-                _isDarkMode ? Colors.white70 : Colors.grey[600],
-              ),
-              filled: true,
-              fillColor:
-              _isDarkMode ? Colors.grey[800] : Colors.grey[200],
-              prefixIcon: Icon(
-                Icons.search,
-                color: _isDarkMode ? Colors.white : Colors.black54,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                  vertical: 0, horizontal: 8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onChanged: (value) {
-              if (_debounce?.isActive ?? false) _debounce?.cancel();
-              _debounce =
-                  Timer(const Duration(milliseconds: 500), () {
-                    setState(() {
-                      _searchQuery = value;
-                      _futureTransactions =
-                          _fetchAndFilterTransactions();
-                    });
-                  });
-            },
+    return Row(children: [
+      Expanded(
+        child: TextField(
+          controller: _searchController,
+          style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+          decoration: InputDecoration(
+            hintText: 'Search by Medicine',
+            hintStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.grey[600]),
+            filled: true,
+            fillColor: _isDarkMode ? Colors.grey[800] : Colors.grey[200],
+            prefixIcon: Icon(Icons.search, color: _isDarkMode ? Colors.white : Colors.black54),
+            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           ),
+          onChanged: (val) {
+            if (_debounce?.isActive ?? false) _debounce?.cancel();
+            _debounce = Timer(const Duration(milliseconds: 500), () {
+              setState(() {
+                _searchQuery = val;
+                _futureTransactions = _fetchAndFilterTransactions();
+              });
+            });
+          },
         ),
-        const SizedBox(width: 8),
-        ElevatedButton.icon(
-          onPressed: _showFilterSheet,
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-            _isDarkMode ? Colors.grey[800] : brandColorLight,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            foregroundColor: Colors.white,
-          ),
-          icon: const Icon(Icons.filter_list),
-          label: const Text(
-            "Filter",
-            style: TextStyle(color: Colors.white),
-          ),
+      ),
+      const SizedBox(width: 8),
+      ElevatedButton.icon(
+        onPressed: _showFilterSheet,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _isDarkMode ? Colors.grey[800] : brandColorLight,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          foregroundColor: Colors.white,
         ),
-      ],
-    );
+        icon: const Icon(Icons.filter_list),
+        label: const Text("Filter"),
+      ),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text(
-          'Transactions',
-          style: TextStyle(color: Colors.white, fontSize: 24),
-        ),
-        backgroundColor:
-        _isDarkMode ? Colors.grey[900] : brandColorLight,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Transactions', style: TextStyle(color: Colors.white, fontSize: 24)),
       ),
-      body: FutureBuilder<List<TransactionItem>>(
-        future: _futureTransactions,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
-            return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError)
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: TextStyle(
-                  color:
-                  _isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-            );
-          final transactions = snapshot.data ?? [];
-          if (transactions.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 16),
-              child: Column(
-                children: [
-                  _buildSearchFilterRow(),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        'No transactions available',
-                        style: TextStyle(
-                          color: _isDarkMode
-                              ? Colors.white
-                              : Colors.black,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0D2A5E),
+              Color(0xFF1E5D6F),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: FutureBuilder<List<TransactionItem>>(
+            future: _futureTransactions,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Error: ${snapshot.error}',
+                    style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+                  ),
+                );
+              }
+              final transactions = snapshot.data ?? [];
+              if (transactions.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: Column(
+                    children: [
+                      _buildSearchFilterRow(),
+                      const SizedBox(height: 16),
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            'No transactions available',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }
+                );
+              }
 
-          final totalCount = transactions.length;
-          int cashCount = transactions
-              .where((tx) => tx.paymentMethod == 'Cash/Coins')
-              .length;
-          int ptsCount = transactions
-              .where((tx) => tx.paymentMethod == 'Points')
-              .length;
-          double pctCash =
-          totalCount > 0 ? cashCount / totalCount * 100 : 0;
-          double pctPts =
-          totalCount > 0 ? ptsCount / totalCount * 100 : 0;
-          String mostUsedMethod =
-          cashCount >= ptsCount ? "Cash/Coins" : "Points";
+              final totalCount = transactions.length;
+              int cashCount =
+                  transactions.where((tx) => tx.paymentMethod == 'Cash/Coins').length;
+              int ptsCount =
+                  transactions.where((tx) => tx.paymentMethod == 'Points').length;
+              double pctCash = totalCount > 0 ? cashCount / totalCount * 100 : 0;
+              double pctPts = totalCount > 0 ? ptsCount / totalCount * 100 : 0;
+              String mostUsedMethod = cashCount >= ptsCount ? "Cash/Coins" : "Points";
 
-          final List<PaymentMethodData> paymentMethods = [
-            PaymentMethodData("Cash/Coins", pctCash),
-            PaymentMethodData("Points", pctPts),
-          ];
+              final methods = <PaymentMethodData>[
+                PaymentMethodData("Cash/Coins", pctCash),
+                PaymentMethodData("Points", pctPts),
+              ];
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              bool isWideScreen = constraints.maxWidth > 600;
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 16),
-                child: Column(
-                  children: [
-                    _buildSearchFilterRow(),
-                    const SizedBox(height: 16),
-                    if (isWideScreen)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Card(
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(12)),
-                              color: _isDarkMode
-                                  ? Colors.grey[900]
-                                  : Colors.white,
-                              child: Padding(
-                                padding:
-                                const EdgeInsets.all(8.0),
-                                child: _buildPieChart(
-                                  context,
-                                  paymentMethods,
-                                  _isDarkMode,
+              return LayoutBuilder(
+                builder: (ctx, constraints) {
+                  bool wide = constraints.maxWidth > 600;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    child: Column(
+                      children: [
+                        _buildSearchFilterRow(),
+                        const SizedBox(height: 16),
+                        if (wide)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Card(
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  color: _isDarkMode ? Colors.grey[900] : Colors.white,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: _buildPieChart(ctx, methods, _isDarkMode),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 1,
-                            child: _buildStats(
-                              context,
-                              totalCount,
-                              mostUsedMethod,
-                              _isDarkMode,
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Column(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.stretch,
-                        children: [
-                          Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                                borderRadius:
-                                BorderRadius.circular(12)),
-                            color: _isDarkMode
-                                ? Colors.grey[900]
-                                : Colors.white,
-                            child: Padding(
-                              padding:
-                              const EdgeInsets.all(8.0),
-                              child: _buildPieChart(
-                                context,
-                                paymentMethods,
-                                _isDarkMode,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 1,
+                                child: _buildStats(ctx, totalCount, mostUsedMethod, _isDarkMode),
                               ),
+                            ],
+                          )
+                        else
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                color: _isDarkMode ? Colors.grey[900] : Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: _buildPieChart(ctx, methods, _isDarkMode),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildStats(ctx, totalCount, mostUsedMethod, _isDarkMode),
+                            ],
+                          ),
+                        const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "Transactions",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          _buildStats(
-                            context,
-                            totalCount,
-                            mostUsedMethod,
-                            _isDarkMode,
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Transactions",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: _isDarkMode
-                              ? Colors.white
-                              : Colors.black,
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: transactions.length,
+                            itemBuilder: (ctx, i) => _buildTransactionCard(transactions[i]),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: transactions.length,
-                        itemBuilder: (context, index) {
-                          return _buildTransactionCard(
-                              transactions[index]);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               );
             },
-          );
-        },
+          ),
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor:
-        _isDarkMode ? Colors.grey[850] : Colors.white,
+        backgroundColor: _isDarkMode ? Colors.grey[850] : Colors.white,
         currentIndex: 1,
-        onTap: (index) {
-          if (index == 0) {
+        onTap: (idx) {
+          if (idx == 0) {
             Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => DashboardScreen()),
-            );
-          } else if (index == 2) {
+                context, MaterialPageRoute(builder: (_) => DashboardScreen()));
+          } else if (idx == 2) {
             Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) =>
-                      UserScreen(isDarkMode: _isDarkMode)),
-            );
-          } else if (index == 3) {
+                context,
+                MaterialPageRoute(
+                    builder: (_) => UserScreen(isDarkMode: _isDarkMode)));
+          } else if (idx == 3) {
             Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) =>
-                      InventoryScreen(isDarkMode: _isDarkMode)),
-            );
+                context,
+                MaterialPageRoute(
+                    builder: (_) => InventoryScreen(isDarkMode: _isDarkMode)));
           }
         },
         selectedItemColor: Colors.blueAccent,
@@ -843,14 +635,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
         selectedFontSize: 14,
         unselectedFontSize: 12,
         items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.payment), label: "Payments"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
     );
