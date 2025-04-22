@@ -1555,7 +1555,7 @@ class _AboutUsDialogState extends State<AboutUsDialog>
   final List<Map<String, String>> teamMembers = [
     {
       "name": "Maritonee Cardenas \n [Project Manager]",
-      "image": "assets/images/angelo.png",
+      "image": "assets/images/mai.png",
     },
     {
       "name": "Rustan  Chavez \n [Developer]",
@@ -1563,11 +1563,11 @@ class _AboutUsDialogState extends State<AboutUsDialog>
     },
     {
       "name": "Russel Jr.\n [Quality Tester]",
-      "image": "assets/images/angelo.png",
+      "image": "assets/images/russel.png",
     },
     {
       "name": "John Mark Romulo \n [Developer]",
-      "image": "assets/images/angelo.png",
+      "image": "assets/images/jm.png",
     },
     {
       "name": "Angelo Delos Santos \n [Developer]",
