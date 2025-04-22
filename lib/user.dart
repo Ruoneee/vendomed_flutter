@@ -155,7 +155,12 @@ class _UserScreenState extends State<UserScreen> {
         backgroundColor: _brandStart,
         title: const Text(
           "User Dashboard",
-          style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold) ),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedTabIndex,
@@ -164,18 +169,10 @@ class _UserScreenState extends State<UserScreen> {
         selectedItemColor: Colors.blueAccent,
         unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: "Sales"
-          ),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.payment), label: "Payments"
-          ),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.people), label: "Users"
-          ),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: "Inventory"
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
+          BottomNavigationBarItem(icon: Icon(Icons.payment),   label: "Payments"),
+          BottomNavigationBarItem(icon: Icon(Icons.people),    label: "Users"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
         ],
       ),
       body: Container(
@@ -184,6 +181,7 @@ class _UserScreenState extends State<UserScreen> {
           child: CustomScrollView(
             slivers: [
 
+              // Animated fade‐in form
               SliverToBoxAdapter(
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 600),
@@ -201,6 +199,7 @@ class _UserScreenState extends State<UserScreen> {
 
               const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
+              // Header + search
               SliverToBoxAdapter(
                 child: _UserInfoHeader(
                   searchCtrl: _searchCtrl,
@@ -210,6 +209,7 @@ class _UserScreenState extends State<UserScreen> {
 
               const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
+              // ** NEW: animated shimmer loader or ListTile list **
               if (_isLoading) ...[
                 SliverToBoxAdapter(
                   child: Column(
@@ -229,18 +229,27 @@ class _UserScreenState extends State<UserScreen> {
                   delegate: SliverChildBuilderDelegate(
                         (ctx, i) {
                       final u = _filteredUsers[i];
-                      final rfid = u['RFID'].toString();
-                      final isSel = rfid == _selectedRfid;
+                      final rfid   = u['RFID'].toString();
+                      final isSel  = rfid == _selectedRfid;
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         color: isSel ? Colors.white24 : Colors.transparent,
                         child: ListTile(
-                          title: Text(u['NAME'], style: const TextStyle(color: Colors.white)),
+                          title: Text(
+                            u['NAME'] ?? '',
+                            style: const TextStyle(color: Colors.white),
+                          ),
                           subtitle: Text(
                             "RFID: $rfid  •  EXP: ${u['EXPIRATION']}",
                             style: const TextStyle(color: Colors.white70),
                           ),
-                          trailing: Text("${u['POINTS']}", style: const TextStyle(color: Colors.white)),
+                          trailing: Text(
+                            "${u['POINTS']}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           onTap: () {
                             setState(() {
                               _selectedRfid = rfid;
@@ -260,6 +269,7 @@ class _UserScreenState extends State<UserScreen> {
 
               const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
+              // Actions bar
               SliverToBoxAdapter(
                 child: _UserActionsBar(
                   onEdit   : _editUser,
