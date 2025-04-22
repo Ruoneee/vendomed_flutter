@@ -75,7 +75,7 @@ class MedicineMenuState extends State<MedicineMenu> {
       'warnings': 'May cause constipation or diarrhea. Avoid if on a low-sodium diet or with kidney issues.',
       'additionalMedia': 'Check specific product labeling for exact formulation and instructions.',
     },
-    'Buscopan': {
+    'Hyoscine Butylbromide': {
       'dosage': 'Adults: 1-2 tablets (10 mg each) 3-4 times daily. Max 6 tablets/day. Swallow whole.',
       'ingredients': 'Active: Hyoscine Butylbromide 10 mg. Inactive: Sucrose, calcium hydrogen phosphate, etc.',
       'warnings': 'May cause dry mouth or blurred vision. Avoid if you have glaucoma or bowel obstruction.',
@@ -225,7 +225,7 @@ class MedicineMenuState extends State<MedicineMenu> {
     showDialog(
         context: context,
         builder: (_) => Dialog(
-      backgroundColor: const Color(0xFFF5F8FF), // a VERY light blue from your gradient
+      backgroundColor: const Color(0xFFF0F7FA), // a VERY light blue from your gradient
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
