@@ -529,6 +529,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+// ---------------------- FILTER ROW ----------------------
   Widget _buildFiltersRow() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -550,28 +551,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+// ---------------------- YEAR ----------------------
   Widget _buildYearDropdown() {
-    final currentYear = DateTime
-        .now()
-        .year;
-    final years = List.generate(5, (index) => currentYear - 2 + index);
+    final currentYear = DateTime.now().year;
+    final years = List.generate(5, (i) => currentYear - 2 + i);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text("Year: "),
+        const Text(
+          "Year: ",
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
         DropdownButton<int>(
           value: _selectedYear,
-          items: years
-              .map((year) =>
-              DropdownMenuItem<int>(
-                value: year,
-                child: Text("$year"),
-              ))
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
+          dropdownColor: brandColor,
+          iconEnabledColor: Colors.white,
+          underline: Container(height: 2, color: Colors.white),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+          items: years.map((year) {
+            return DropdownMenuItem<int>(
+              value: year,
+              child: Text(year.toString(), style: const TextStyle(color: Colors.white)),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val == null) return;
             setState(() {
-              _selectedYear = value;
+              _selectedYear = val;
               _selectedMonth = null;
               _selectedWeek = null;
               _selectedDay = null;
@@ -583,29 +590,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+// ---------------------- MONTH ----------------------
   Widget _buildMonthDropdown() {
-    final months = [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    final months = [null, for (var m = 1; m <= 12; m++) m];
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text("Month: "),
+        const Text(
+          "Month: ",
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
         DropdownButton<int?>(
           value: _selectedMonth,
+          dropdownColor: brandColor,
+          iconEnabledColor: Colors.white,
+          underline: Container(height: 2, color: Colors.white),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
           items: months.map((m) {
-            if (m == null) {
-              return const DropdownMenuItem<int?>(
-                value: null,
-                child: Text("All"),
-              );
-            }
             return DropdownMenuItem<int?>(
               value: m,
-              child: Text(_monthName(m)),
+              child: Text(
+                m == null ? "All" : _monthName(m),
+                style: const TextStyle(color: Colors.white),
+              ),
             );
           }).toList(),
-          onChanged: (value) {
+          onChanged: (val) {
             setState(() {
-              _selectedMonth = value;
+              _selectedMonth = val;
               _selectedWeek = null;
               _selectedDay = null;
             });
@@ -616,29 +629,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+// ---------------------- WEEK ----------------------
   Widget _buildWeekDropdown() {
     final weeks = [null, 1, 2, 3, 4, 5];
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text("Week: "),
+        const Text(
+          "Week: ",
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
         DropdownButton<int?>(
           value: _selectedWeek,
+          dropdownColor: brandColor,
+          iconEnabledColor: Colors.white,
+          underline: Container(height: 2, color: Colors.white),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
           items: weeks.map((w) {
-            if (w == null) {
-              return const DropdownMenuItem<int?>(
-                value: null,
-                child: Text("All"),
-              );
-            }
             return DropdownMenuItem<int?>(
               value: w,
-              child: Text("Week $w"),
+              child: Text(
+                w == null ? "All" : "Week $w",
+                style: const TextStyle(color: Colors.white),
+              ),
             );
           }).toList(),
-          onChanged: (value) {
+          onChanged: (val) {
             setState(() {
-              _selectedWeek = value;
+              _selectedWeek = val;
               _selectedDay = null;
             });
             _updateChartData();
@@ -648,33 +667,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+// ---------------------- DAY ----------------------
   Widget _buildDayDropdown() {
     final daysInMonth = _daysInMonth(_selectedYear, _selectedMonth!);
-    final days = <int?>[null];
-    for (int i = 1; i <= daysInMonth; i++) {
-      days.add(i);
-    }
+    final days = <int?>[null, for (var i = 1; i <= daysInMonth; i++) i];
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text("Day: "),
+        const Text(
+          "Day: ",
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
         DropdownButton<int?>(
           value: _selectedDay,
+          dropdownColor: brandColor,
+          iconEnabledColor: Colors.white,
+          underline: Container(height: 2, color: Colors.white),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
           items: days.map((d) {
-            if (d == null) {
-              return const DropdownMenuItem<int?>(
-                value: null,
-                child: Text("All"),
-              );
-            }
             return DropdownMenuItem<int?>(
               value: d,
-              child: Text("$d"),
+              child: Text(
+                d == null ? "All" : d.toString(),
+                style: const TextStyle(color: Colors.white),
+              ),
             );
           }).toList(),
-          onChanged: (value) {
+          onChanged: (val) {
             setState(() {
-              _selectedDay = value;
+              _selectedDay = val;
             });
             _updateChartData();
           },
@@ -1241,15 +1263,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
+      // make the Scaffold itself transparent
+      backgroundColor: Colors.transparent,
+      // allow the AppBar to float over the gradient (optional)
+      extendBodyBehindAppBar: true,
+
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text(
           "Welcome, Admin!",
           style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
-        backgroundColor: brandColor,
+        // make AppBar transparent so the gradient shows through
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
@@ -1257,26 +1288,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedTabIndex,
-        onTap: _onTabSelected,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        iconSize: 28,
-        selectedFontSize: 14,
-        unselectedFontSize: 12,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: "Inventory"),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+
+      // wrap the body in your branded gradient
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0D2A5E), // Start color
+              Color(0xFF1E5D6F), // End color
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1298,8 +1326,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
+
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedTabIndex,
+        onTap: _onTabSelected,
+        selectedItemColor: Colors.blueAccent,
+        unselectedItemColor: Colors.grey,
+        iconSize: 28,
+        selectedFontSize: 14,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart), label: "Sales"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.people), label: "Users"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory), label: "Inventory"),
+        ],
+      ),
     );
   }
+
 
   Widget _buildBalanceCard() {
     return Card(

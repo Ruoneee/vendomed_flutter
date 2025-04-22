@@ -53,4 +53,7 @@ flutter:
     - assets/animations/rfida.json
     - assets/images/angelo.png
     - assets/images/rustan.png
+    - assets/images/jm.png
+    - assets/images/mai.png
+    - assets/images/russel.png
   uses-material-design: true
