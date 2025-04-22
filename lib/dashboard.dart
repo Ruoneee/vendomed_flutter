@@ -1273,7 +1273,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text(
           "Welcome, Admin!",
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),

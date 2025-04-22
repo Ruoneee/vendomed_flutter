@@ -468,7 +468,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
         automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Transactions', style: TextStyle(color: Colors.white, fontSize: 24)),
+        title: const Text('Transactions', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
       ),
       body: Container(
         decoration: const BoxDecoration(
