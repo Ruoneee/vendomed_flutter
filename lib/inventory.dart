@@ -492,46 +492,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // BATCH EXPIRY MANAGEMENT TABLE
-              Text(
-                "Batch Expiry Management",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  dataRowHeight: 64.0,
-                  headingRowHeight: 64.0,
-                  columns: [
-                    DataColumn(
-                      label: Text("Batch ID", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ),
-                    DataColumn(
-                      label: Text("Expiration", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ),
-                    DataColumn(
-                      label: Text("Supplier", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ),
-                    DataColumn(
-                      label: Text("Date Received", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                  rows: _filteredExpiry.map((batch) {
-                    return DataRow(cells: [
-                      DataCell(Text(batch["batchId"] ?? "", style: const TextStyle(fontSize: 16))),
-                      DataCell(Text(batch["expiration"] ?? "", style: const TextStyle(fontSize: 16))),
-                      DataCell(Text(batch["supplier"] ?? "", style: const TextStyle(fontSize: 16))),
-                      DataCell(Text(batch["dateReceived"] ?? "", style: const TextStyle(fontSize: 16))),
-                    ]);
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
               // REFRESH BUTTON
               Center(
                 child: ElevatedButton(
