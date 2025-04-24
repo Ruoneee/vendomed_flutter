@@ -1,8 +1,20 @@
+// inventory.dart
+
 import 'package:flutter/material.dart';
 import 'dashboard.dart';
 import 'transaction.dart';
 import 'user.dart';
 import 'database_helper.dart';
+
+// Branding gradient reused here
+const LinearGradient _brandGradient = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    Color(0xFF0D2A5E),
+    Color(0xFF1E5D6F),
+  ],
+);
 
 class InventoryScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -16,29 +28,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
   bool _isDarkMode = false;
   int _selectedTabIndex = 3; // Inventory tab index
 
-  // "Manage Inventory" form fields
+  // form controllers
   final TextEditingController _productNameController = TextEditingController();
-  final TextEditingController _productIdController = TextEditingController();
-  final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _countController = TextEditingController();
+  final TextEditingController _productIdController   = TextEditingController();
+  final TextEditingController _amountController      = TextEditingController();
+  final TextEditingController _countController       = TextEditingController();
+  final TextEditingController _searchController      = TextEditingController();
 
-  // For searching inventory
-  final TextEditingController _searchController = TextEditingController();
-
-  // Inventory data loaded from DB
-  List<Map<String, dynamic>> _stocks = [];
+  List<Map<String, dynamic>> _stocks         = [];
   List<Map<String, dynamic>> _filteredStocks = [];
-
-  // Batch expiry data loaded from DB
-  List<Map<String, dynamic>> _batchExpiry = [];
+  List<Map<String, dynamic>> _batchExpiry    = [];
   List<Map<String, dynamic>> _filteredExpiry = [];
 
-  // Stock counters
-  int _inStockCount = 0;
-  int _warningCount = 0;
+  int _inStockCount    = 0;
+  int _warningCount    = 0;
   int _outOfStockCount = 0;
-
-  // Track the selected row's Batch ID for updating
   int? _selectedBatchId;
 
   @override
@@ -59,489 +63,565 @@ class _InventoryScreenState extends State<InventoryScreen> {
     super.dispose();
   }
 
-  // 1) Fetch inventory data from 'stocks'
   Future<void> _fetchStocksFromDB() async {
     try {
       final stockList = await DatabaseHelper.instance.getAllStocks();
-      // Convert each map to a modifiable map so we can override status
-      final modifiableStockList =
-      stockList.map((item) => Map<String, dynamic>.from(item)).toList();
-
+      final modifiable = stockList
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
       setState(() {
-        _stocks = modifiableStockList;
-        _filteredStocks = List.from(modifiableStockList);
+        _stocks = modifiable;
+        _filteredStocks = List.from(modifiable);
       });
-      debugPrint("Fetched ${modifiableStockList.length} items from 'stocks' table");
       _computeStockIndicators();
     } catch (e) {
-      debugPrint("Error fetching stocks from DB: $e");
+      debugPrint("Error fetching stocks: $e");
     }
   }
 
-  // 2) Fetch batch expiry data
   Future<void> _fetchBatchExpiryFromDB() async {
     try {
       final expiryList = await DatabaseHelper.instance.getAllBatchExpiry();
       setState(() {
-        _batchExpiry = expiryList.map((row) {
-          return {
-            "batchId": row["batch_id"]?.toString() ?? "",
-            "expiration": row["expiration_date"] ?? "",
-            "supplier": row["supplier"] ?? "",
-            "dateReceived": row["date_received"] ?? "",
-          };
-        }).toList();
+        _batchExpiry = expiryList
+            .map((row) => {
+          "batchId": row["batch_id"]?.toString() ?? "",
+          "expiration": row["expiration_date"] ?? "",
+          "supplier": row["supplier"] ?? "",
+          "dateReceived": row["date_received"] ?? "",
+        })
+            .toList();
         _filteredExpiry = List.from(_batchExpiry);
       });
-      debugPrint("Fetched ${expiryList.length} items from 'batch_expiry' table");
     } catch (e) {
-      debugPrint("Error fetching batch expiry from DB: $e");
+      debugPrint("Error fetching batch expiry: $e");
     }
   }
 
-  // Helper function to compute status based on count
-  String _computeStatusFromCount(int countVal) {
-    if (countVal == 0) {
-      return "Out of stock";
-    } else if (countVal <= 7) {
-      return "Warning";
-    } else {
-      return "In Stock";
-    }
+  String _computeStatusFromCount(int c) {
+    if (c == 0) return "Out of stock";
+    if (c <= 7) return "Warning";
+    return "In Stock";
   }
 
-  // 3) Insert a new row into 'stocks'
   Future<void> _onSubmit() async {
-    // Check how many rows we have
     final totalRows = await DatabaseHelper.instance.getRowCount('stocks');
     if (totalRows >= 6) {
-      // Block new insertion: show dialog instead of snackbar
       _showCenterDialog(
         title: "Limit Reached",
         message: "You already have 6 medicines. Update existing ones instead.",
       );
       return;
     }
-
-    final newCountStr = _countController.text.trim();
-    final newCountVal = int.tryParse(newCountStr) ?? 0;
-    if (newCountVal > 13) {
+    final newCount = int.tryParse(_countController.text.trim()) ?? 0;
+    if (newCount > 13) {
       _showCenterDialog(
         title: "Error",
         message: "Maximum allowed is 13 pieces.",
       );
       return;
     }
-
-    // Compute status from the count
-    final computedStatus = _computeStatusFromCount(newCountVal);
-
-    final newItem = {
+    final status = _computeStatusFromCount(newCount);
+    await DatabaseHelper.instance.insertStock({
       "product_name": _productNameController.text,
-      "product_id": _productIdController.text,
-      "amount": _amountController.text,
-      "status": computedStatus,
-      "count": newCountStr,
-    };
-
-    try {
-      await DatabaseHelper.instance.insertStock(newItem);
-      await _fetchStocksFromDB();
-      _clearManageInventoryFields();
-    } catch (e) {
-      debugPrint("Error inserting stock: $e");
-    }
+      "product_id":   _productIdController.text,
+      "amount":       _amountController.text,
+      "status":       status,
+      "count":        newCount.toString(),
+    });
+    await _fetchStocksFromDB();
+    _clearManageInventoryFields();
   }
 
-  // 4) Update the selected stock record
   Future<void> _onUpdate() async {
     if (_selectedBatchId == null) return;
-
-    final newCountStr = _countController.text.trim();
-    final newCountVal = int.tryParse(newCountStr) ?? 0;
-    if (newCountVal > 13) {
+    final newCount = int.tryParse(_countController.text.trim()) ?? 0;
+    if (newCount > 13) {
       _showCenterDialog(
         title: "Error",
         message: "Maximum allowed is 13 pieces.",
       );
       return;
     }
-
-    final computedStatus = _computeStatusFromCount(newCountVal);
-
-    final updatedItem = {
+    final status = _computeStatusFromCount(newCount);
+    await DatabaseHelper.instance.updateStockByBatchId({
       "product_name": _productNameController.text,
-      "product_id": _productIdController.text,
-      "amount": _amountController.text,
-      "status": computedStatus,
-      "count": newCountStr,
-    };
-
-    try {
-      await DatabaseHelper.instance.updateStockByBatchId(updatedItem, _selectedBatchId!);
-      _showCenterDialog(
-        title: "Success",
-        message: "Stock updated successfully",
-      );
-      setState(() {
-        _selectedBatchId = null;
-      });
-      await _fetchStocksFromDB();
-      _clearManageInventoryFields();
-    } catch (e) {
-      debugPrint("Error updating stock: $e");
-      _showCenterDialog(
-        title: "Error",
-        message: "Error updating stock: $e",
-      );
-    }
+      "product_id":   _productIdController.text,
+      "amount":       _amountController.text,
+      "status":       status,
+      "count":        newCount.toString(),
+    }, _selectedBatchId!);
+    _showCenterDialog(
+      title: "Success",
+      message: "Stock updated successfully",
+    );
+    setState(() => _selectedBatchId = null);
+    await _fetchStocksFromDB();
+    _clearManageInventoryFields();
   }
 
-  // 5) Clear the Manage Inventory form fields
   void _clearManageInventoryFields() {
     _productNameController.clear();
     _productIdController.clear();
     _amountController.clear();
     _countController.clear();
-    setState(() {
-      _selectedBatchId = null;
-    });
+    setState(() => _selectedBatchId = null);
   }
 
-  // 6) Compute stock indicators from 'count'
   void _computeStockIndicators() {
-    int inStock = 0;
-    int warning = 0;
-    int outOfStock = 0;
-
+    int inStock = 0, warn = 0, out = 0;
     for (var item in _stocks) {
-      final countStr = (item["count"] ?? "0").toString().trim();
-      final countVal = int.tryParse(countStr) ?? 0;
-      final computedStatus = _computeStatusFromCount(countVal);
-      item["status"] = computedStatus;
-      if (computedStatus == "In Stock") {
-        inStock++;
-      } else if (computedStatus == "Warning") {
-        warning++;
-      } else if (computedStatus == "Out of stock") {
-        outOfStock++;
-      }
+      final cnt = int.tryParse((item["count"] ?? "0").toString()) ?? 0;
+      final st = _computeStatusFromCount(cnt);
+      item["status"] = st;
+      if (st == "In Stock") inStock++;
+      else if (st == "Warning") warn++;
+      else out++;
     }
-
     setState(() {
-      _inStockCount = inStock;
-      _warningCount = warning;
-      _outOfStockCount = outOfStock;
+      _inStockCount    = inStock;
+      _warningCount    = warn;
+      _outOfStockCount = out;
     });
   }
 
-  // 7) Return a color based on the computed status
   Color _getStatusColor(String status) {
-    final lower = status.toLowerCase();
-    if (lower == "in stock") return Colors.green;
-    if (lower == "warning") return Colors.orange;
-    if (lower == "out of stock") return Colors.red;
-    return _isDarkMode ? Colors.white : Colors.black;
+    switch (status.toLowerCase()) {
+      case "in stock":
+        return Colors.green;
+      case "warning":
+        return Colors.orange;
+      case "out of stock":
+        return Colors.red;
+      default:
+        return _isDarkMode ? Colors.white : Colors.black;
+    }
   }
 
-  // 8) Search in 'stocks' and 'batch_expiry'
-  void _searchItem(String query) {
+  void _searchItem(String q) {
     setState(() {
       _filteredStocks = _stocks.where((item) {
-        final productId = (item["product_id"] ?? "").toString().toLowerCase();
-        final productName = (item["product_name"] ?? "").toString().toLowerCase();
-        final combined = "$productId $productName";
-        return combined.contains(query.toLowerCase());
+        final combined =
+        "${item["product_id"]} ${item["product_name"]}".toLowerCase();
+        return combined.contains(q.toLowerCase());
       }).toList();
-
       _filteredExpiry = _batchExpiry.where((batch) {
-        final batchId = batch["batchId"].toString().toLowerCase();
-        final supplier = batch["supplier"].toString().toLowerCase();
-        final combined = "$batchId $supplier";
-        return combined.contains(query.toLowerCase());
+        final combined =
+        "${batch["batchId"]} ${batch["supplier"]}".toLowerCase();
+        return combined.contains(q.toLowerCase());
       }).toList();
     });
   }
 
-  // 9) Bottom navigation
-  void _onTabSelected(int index) {
-    setState(() {
-      _selectedTabIndex = index;
-    });
-    if (index == 0) {
+  void _onTabSelected(int idx) {
+    setState(() => _selectedTabIndex = idx);
+    if (idx == 0) {
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => DashboardScreen()));
-    } else if (index == 1) {
+          context, MaterialPageRoute(builder: (_) => DashboardScreen()));
+    } else if (idx == 1) {
       Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => TransactionScreen(isDarkMode: _isDarkMode)));
-    } else if (index == 2) {
+              builder: (_) =>
+                  TransactionScreen(isDarkMode: _isDarkMode)));
+    } else if (idx == 2) {
       Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => UserScreen(isDarkMode: _isDarkMode)));
+              builder: (_) => UserScreen(isDarkMode: _isDarkMode)));
     }
-    // index == 3 => remain on Inventory
+    // idx == 3 -> stay here
   }
 
   @override
   Widget build(BuildContext context) {
     _isDarkMode = widget.isDarkMode;
-    return Scaffold(
-      backgroundColor: _isDarkMode ? Colors.black : Colors.white,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text(
-          "Inventory Dashboard",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0D2A5E),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: _isDarkMode ? Colors.grey[850] : Colors.white,
-        currentIndex: _selectedTabIndex,
-        onTap: _onTabSelected,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        iconSize: 28,
-        selectedFontSize: 14,
-        unselectedFontSize: 12,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Inventory"),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // MANAGE INVENTORY SECTION
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: _isDarkMode ? Colors.grey[900] : Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _isDarkMode ? Colors.white54 : Colors.grey.shade300,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Manage Inventory",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: _isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    if (_selectedBatchId != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(
-                          "Batch ID: $_selectedBatchId",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: _isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ),
-                    _buildTextField(controller: _productNameController, label: "Enter product name"),
-                    const SizedBox(height: 10),
-                    _buildTextField(controller: _productIdController, label: "Enter product ID"),
-                    const SizedBox(height: 10),
-                    _buildTextField(controller: _amountController, label: "Enter amount"),
-                    const SizedBox(height: 10),
-                    _buildTextField(controller: _countController, label: "Enter count"),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton(
-                        onPressed: _selectedBatchId == null ? _onSubmit : _onUpdate,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D2A5E),
-                          foregroundColor: Colors.white,
-                        ),
-                        child: Text(_selectedBatchId == null ? "Submit" : "Update"),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              // STOCK INDICATORS
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStockIndicator(count: _inStockCount, label: "In stock", color: Colors.green),
-                  _buildStockIndicator(count: _warningCount, label: "Warning", color: Colors.orange),
-                  _buildStockIndicator(count: _outOfStockCount, label: "Out of stock", color: Colors.red),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // SEARCH
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 200,
-                    child: TextField(
-                      controller: _searchController,
-                      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
-                      decoration: InputDecoration(
-                        labelText: "Search",
-                        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (value) => _searchItem(value),
+    return Container(
+        decoration: const BoxDecoration(gradient: _brandGradient),
+    child: Scaffold(
+    extendBodyBehindAppBar: true,
+    extendBody: true,           // ← lets the gradient show *behind* the nav bar
+    backgroundColor: Colors.transparent,
+    appBar: AppBar(
+    automaticallyImplyLeading: false,
+    title: const Text(
+    "Inventory Dashboard",
+    style: TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+    ),
+    ),
+    backgroundColor: const Color(0xFF0D2A5E),
+    ),
+    bottomNavigationBar: BottomNavigationBar(
+    backgroundColor: Colors.transparent,  // ← now truly transparent
+    elevation: 0,
+    currentIndex: _selectedTabIndex,
+    onTap: _onTabSelected,
+    selectedItemColor: Colors.blueAccent,
+    unselectedItemColor: Colors.grey,
+    iconSize: 28,
+    selectedFontSize: 14,
+    unselectedFontSize: 12,
+    items: const [
+    BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Sales"),
+    BottomNavigationBarItem(icon: Icon(Icons.payment),  label: "Payments"),
+    BottomNavigationBarItem(icon: Icon(Icons.people),   label: "Users"),
+    BottomNavigationBarItem(icon: Icon(Icons.inventory),label: "Inventory"),
+    ],
+    ),
+      body: Container(
+        decoration: const BoxDecoration(gradient: _brandGradient),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // MANAGE INVENTORY SECTION
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color:
+                    _isDarkMode ? Colors.grey[900] : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _isDarkMode
+                          ? Colors.white54
+                          : Colors.grey.shade300,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              // MAIN INVENTORY TABLE
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  showCheckboxColumn: false,
-                  dataRowHeight: 56.0,
-                  headingRowHeight: 56.0,
-                  columns: [
-                    DataColumn(
-                      label: Text("Batch ID", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                    DataColumn(
-                      label: Text("Product Name", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                    DataColumn(
-                      label: Text("Product ID", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                    DataColumn(
-                      label: Text("Count", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Center(
-                          child: Text("Status", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Manage Inventory",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: _isDarkMode
+                              ? Colors.white
+                              : Colors.black,
                         ),
                       ),
-                    ),
-                    DataColumn(
-                      label: Text("Amount", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                  rows: _filteredStocks.map((item) {
-                    final batchIdStr = item["BATCH_ID"]?.toString() ?? item["batch_id"]?.toString() ?? "";
-                    final productNameStr = item["product_name"]?.toString() ?? "";
-                    final productIdStr = item["product_id"]?.toString() ?? "";
-                    final countStr = item["count"]?.toString() ?? "0";
-                    final statusStr = item["status"]?.toString() ?? "Out of stock";
-                    final amountStr = item["amount"]?.toString() ?? "0";
-
-                    final batchIdInt = int.tryParse(batchIdStr);
-
-                    return DataRow(
-                      selected: _selectedBatchId == batchIdInt,
-                      onSelectChanged: (selected) {
-                        if (selected == true) {
-                          setState(() {
-                            _selectedBatchId = batchIdInt;
-                            _productNameController.text = productNameStr;
-                            _productIdController.text = productIdStr;
-                            _countController.text = countStr;
-                            _amountController.text = amountStr;
-                          });
-                        } else {
-                          setState(() {
-                            _selectedBatchId = null;
-                            _clearManageInventoryFields();
-                          });
-                        }
-                      },
-                      cells: [
-                        DataCell(Text(batchIdStr, style: const TextStyle(fontSize: 16))),
-                        DataCell(Text(productNameStr, style: const TextStyle(fontSize: 16))),
-                        DataCell(Text(productIdStr, style: const TextStyle(fontSize: 16))),
-                        DataCell(Text(countStr, style: const TextStyle(fontSize: 16))),
-                        DataCell(
-                          Center(
-                            child: Text(
-                              statusStr,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: _getStatusColor(statusStr),
-                              ),
+                      const SizedBox(height: 10),
+                      if (_selectedBatchId != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Text(
+                            "Batch ID: $_selectedBatchId",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _isDarkMode
+                                  ? Colors.white
+                                  : Colors.black,
                             ),
                           ),
                         ),
-                        DataCell(Text(amountStr, style: const TextStyle(fontSize: 16))),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // REFRESH BUTTON
-              Center(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    _searchController.clear();
-                    await _fetchStocksFromDB();
-                    await _fetchBatchExpiryFromDB();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      _buildTextField(
+                          controller: _productNameController,
+                          label: "Enter product name"),
+                      const SizedBox(height: 10),
+                      _buildTextField(
+                          controller: _productIdController,
+                          label: "Enter product ID"),
+                      const SizedBox(height: 10),
+                      _buildTextField(
+                          controller: _amountController,
+                          label: "Enter amount"),
+                      const SizedBox(height: 10),
+                      _buildTextField(
+                          controller: _countController,
+                          label: "Enter count"),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton(
+                          onPressed: _selectedBatchId == null
+                              ? _onSubmit
+                              : _onUpdate,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D2A5E),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text(_selectedBatchId == null
+                              ? "Submit"
+                              : "Update"),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text("Refresh"),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                // STOCK INDICATORS
+                Row(
+                  mainAxisAlignment:
+                  MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildStockIndicator(
+                        count: _inStockCount,
+                        label: "In stock",
+                        color: Colors.green),
+                    _buildStockIndicator(
+                        count: _warningCount,
+                        label: "Warning",
+                        color: Colors.orange),
+                    _buildStockIndicator(
+                        count: _outOfStockCount,
+                        label: "Out of stock",
+                        color: Colors.red),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // SEARCH
+                Row(
+                  mainAxisAlignment:
+                  MainAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      child: TextField(
+                        controller: _searchController,
+                        style: TextStyle(
+                            color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: "Search",
+                          labelStyle: TextStyle(
+                              color: Colors.white70),
+                          border:
+                          const OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: (value) =>
+                            _searchItem(value),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // MAIN INVENTORY TABLE
+                SingleChildScrollView(
+                  scrollDirection:
+                  Axis.horizontal,
+                  child: DataTable(
+                    showCheckboxColumn: false,
+                    headingRowHeight: 56.0,
+                    dataRowHeight: 56.0,
+                    headingTextStyle: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    dataTextStyle:
+                    const TextStyle(color: Colors.white),
+                    columns: [
+                      DataColumn(
+                          label: Text("Batch ID",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight:
+                                  FontWeight.bold))),
+                      DataColumn(
+                          label: Text("Product Name",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight:
+                                  FontWeight.bold))),
+                      DataColumn(
+                          label: Text("Product ID",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight:
+                                  FontWeight.bold))),
+                      DataColumn(
+                          label: Text("Count",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight:
+                                  FontWeight.bold))),
+                      DataColumn(
+                          label: Center(
+                              child: Text("Status",
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)))),
+                      DataColumn(
+                          label: Text("Amount",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight:
+                                  FontWeight.bold))),
+                    ],
+                    rows: _filteredStocks.map((item) {
+                      final batchIdStr = item["BATCH_ID"]?.toString() ??
+                          item["batch_id"]?.toString() ??
+                          "";
+                      final productNameStr = item["product_name"]
+                          ?.toString() ??
+                          "";
+                      final productIdStr =
+                          item["product_id"]?.toString() ?? "";
+                      final countStr =
+                          item["count"]?.toString() ?? "0";
+                      final statusStr =
+                          item["status"]?.toString() ??
+                              "Out of stock";
+                      final amountStr =
+                          item["amount"]?.toString() ?? "0";
+                      final batchIdInt =
+                      int.tryParse(batchIdStr);
+
+                      return DataRow(
+                        selected:
+                        _selectedBatchId ==
+                            batchIdInt,
+                        onSelectChanged:
+                            (selected) {
+                          if (selected ==
+                              true) {
+                            setState(() {
+                              _selectedBatchId =
+                                  batchIdInt;
+                              _productNameController
+                                  .text =
+                                  productNameStr;
+                              _productIdController
+                                  .text =
+                                  productIdStr;
+                              _countController
+                                  .text =
+                                  countStr;
+                              _amountController
+                                  .text =
+                                  amountStr;
+                            });
+                          } else {
+                            setState(() {
+                              _selectedBatchId =
+                              null;
+                              _clearManageInventoryFields();
+                            });
+                          }
+                        },
+                        cells: [
+                          DataCell(Text(batchIdStr,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  color:
+                                  Colors.white))),
+                          DataCell(Text(
+                              productNameStr,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  color:
+                                  Colors.white))),
+                          DataCell(Text(
+                              productIdStr,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  color:
+                                  Colors.white))),
+                          DataCell(Text(countStr,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  color:
+                                  Colors.white))),
+                          DataCell(
+                            Center(
+                              child: Text(statusStr,
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight:
+                                      FontWeight.bold,
+                                      color:
+                                      _getStatusColor(statusStr))),
+                            ),
+                          ),
+                          DataCell(Text(amountStr,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  color:
+                                  Colors.white))),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // REFRESH BUTTON
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      _searchController.clear();
+                      await _fetchStocksFromDB();
+                      await _fetchBatchExpiryFromDB();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 24),
+                      textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    child: const Text("Refresh"),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    ),
     );
   }
 
   // Helper for building text fields
-  Widget _buildTextField({required TextEditingController controller, required String label}) {
+  Widget _buildTextField(
+      {required TextEditingController controller,
+        required String label}) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
+      style:
+      TextStyle(color: _isDarkMode ? Colors.white : Colors.black),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
+        labelStyle: TextStyle(
+            color:
+            _isDarkMode ? Colors.white70 : Colors.black54),
         border: const OutlineInputBorder(),
       ),
     );
   }
 
   // Helper for the colored stock indicator boxes
-  Widget _buildStockIndicator({required int count, required String label, required Color color}) {
+  Widget _buildStockIndicator({
+    required int count,
+    required String label,
+    required Color color,
+  }) {
     return Container(
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        // gradient from a stronger tint to a weaker one
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withOpacity(0.3),
+            color.withOpacity(0.1),
+          ],
+        ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color, width: 2),
       ),
       child: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               "$count",
@@ -569,7 +649,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   /// Helper function to show a centered dialog with a title and message.
   /// Text styles have been enlarged for readability.
-  void _showCenterDialog({required String title, required String message}) {
+  void _showCenterDialog(
+      {required String title, required String message}) {
     showDialog(
       context: context,
       builder: (ctx) {
